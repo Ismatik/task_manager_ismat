@@ -370,6 +370,49 @@ func TestPlanCascadeNotes(t *testing.T) {
 	})
 }
 
+// The same rule as TestPlanCascadeNotes, for the other type PLAN.md §4 gives no
+// column: a habit. It was the fourth spelling of the no-column rule and the one
+// that diverged — the filter named the note type literally, so a habit
+// descendant was given week, today, doing or done by a drag on its parent, and
+// a habit dragged on its own produced a plan instead of nothing.
+func TestPlanCascadeHabits(t *testing.T) {
+	// root (task)
+	// ├── h (habit)   <- must never be touched, at any target
+	// └── leaf (task) <- the positive control: the drag must still do something
+	tree := func() []domain.Node {
+		return []domain.Node{
+			task("root", "", domain.StatusBacklog),
+			habit("h", "root"),
+			task("leaf", "root", domain.StatusBacklog),
+		}
+	}
+
+	for _, target := range domain.Statuses() {
+		t.Run("a habit descendant is skipped by a drag to "+target.String(), func(t *testing.T) {
+			plan, err := domain.PlanCascade(tree(), "root", target, cascadeNow)
+			if err != nil {
+				t.Fatalf("PlanCascade() = %v", err)
+			}
+			if c := changeByID(plan, "h"); c != nil {
+				t.Errorf("the plan writes %q onto a habit: %+v — a habit has no column", c.Status, c)
+			}
+			if changeByID(plan, "leaf") == nil {
+				t.Fatalf("plan = %v, want the task leaf in it", changeIDs(plan))
+			}
+		})
+
+		t.Run("a habit as the drag root plans nothing for "+target.String(), func(t *testing.T) {
+			plan, err := domain.PlanCascade(tree(), "h", target, cascadeNow)
+			if err != nil {
+				t.Fatalf("PlanCascade() = %v, want the same nil a note root returns", err)
+			}
+			if len(plan) != 0 {
+				t.Errorf("plan = %v, want empty — a habit has no column", changeIDs(plan))
+			}
+		})
+	}
+}
+
 func TestPlanCascadeErrors(t *testing.T) {
 	nodes := headlineTree()
 

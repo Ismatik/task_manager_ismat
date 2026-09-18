@@ -261,6 +261,14 @@ func (n Node) IsLeaf(children []Node) bool {
 // CanEnterDoing reports whether n may be given the STORED status doing, given
 // its direct children (D2, D7, D9).
 //
+// # A type with no column cannot be in one
+//
+// The first question is not about leaf-ness at all: doing is a Kanban column,
+// and a note or a habit has none (NodeType.HasColumn, PLAN.md §4), so neither
+// can be doing whatever its children look like. Starting from HasColumn is what
+// keeps this predicate agreeing with CheckStatus and with PlanCascade — it
+// previously said yes to a childless habit, and the cascade believed it.
+//
 // # Type beats the leaf rule (D9)
 //
 // D7 says a project never enters doing and never runs a timer; D2 says a node
@@ -271,13 +279,11 @@ func (n Node) IsLeaf(children []Node) bool {
 // project is therefore inert until it gains children; adding a child is how
 // work becomes timeable.
 //
-// A note is excluded too, for the older reason that a note has no column at all.
-//
 // A parent that is not a leaf is excluded because doing means a timer and only
 // leaves run one. Such a parent still RENDERS in the Doing column when a leaf
 // underneath it is running — that is DeriveStatus's answer, not a stored status.
 func (n Node) CanEnterDoing(children []Node) bool {
-	if n.Type == NodeTypeProject || n.Type == NodeTypeNote {
+	if !n.Type.HasColumn() || n.Type == NodeTypeProject {
 		return false
 	}
 	return n.IsLeaf(children)
@@ -286,15 +292,18 @@ func (n Node) CanEnterDoing(children []Node) bool {
 // CanStartTimer reports whether a time entry may be opened on n, given its
 // direct children (D2, D7, D9).
 //
-// It is CanEnterDoing plus habits: a habit is checked off, never timed, it never
-// appears in a Kanban column and it has no PMP activity (D4), so there is
-// nothing for a timer on one to mean. Everything else — a project at any size, a
-// note, a node with non-note children — is refused for the reasons CanEnterDoing
-// gives.
+// A timer is what doing MEANS, so the answer is CanEnterDoing's: a node that may
+// not be in the Doing column may not be timed either, and there is no third
+// thing to check. A habit used to be named here a second time, because
+// CanEnterDoing let one through; it is refused one level down now, by the
+// no-column rule that also says a habit is checked off rather than timed and has
+// no PMP activity (D4). A project at any size, a note, and a node with non-note
+// children are refused for the reasons CanEnterDoing gives.
+//
+// It stays a separate method: "may this be dragged to Doing?" and "may a timer
+// be opened on this?" are asked by different callers, and the day one of them
+// gains a rule the other has not got, this is where it goes.
 func (n Node) CanStartTimer(children []Node) bool {
-	if n.Type == NodeTypeHabit {
-		return false
-	}
 	return n.CanEnterDoing(children)
 }
 
@@ -323,9 +332,9 @@ var ErrTypeHasNoColumn = errors.New("domain: this node type has no kanban column
 //
 //   - A note or a habit has no column (Type.HasColumn), so the only status it
 //     may carry is backlog — the value its NOT NULL column needs, not a claim
-//     that it sits in the Backlog column. Note that CanEnterDoing alone would
-//     not catch a habit: that predicate answers the timer question, and a habit
-//     is excluded from columns for a different reason.
+//     that it sits in the Backlog column. This is the same predicate
+//     CanEnterDoing and PlanCascade start from, so the three cannot disagree
+//     about a type the way they once did about a habit.
 //   - A project never enters doing, empty or not (D9) — the same sentinel the
 //     drag returns, because it is the same rule.
 //   - Anything else that is not a leaf may not be stored as doing either, since

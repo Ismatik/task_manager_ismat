@@ -630,6 +630,88 @@ func TestMoveToColumnDoesNotDateATypeWithNoColumn(t *testing.T) {
 	}
 }
 
+// The reviewer's reproduction of the third door into an illegal status: the
+// drag root is a legal one, and the CASCADE underneath it wrote a column status
+// onto a habit child — `habit` with status "today" is precisely the row the
+// no-column rule exists to make impossible.
+//
+// Every one of the five columns is dragged, and the habit's whole row is
+// compared field by field: status, due, due_source and updated_at included.
+func TestMoveToColumnDoesNotCascadeOntoAHabitChild(t *testing.T) {
+	ctx := context.Background()
+
+	for _, target := range domain.Statuses() {
+		t.Run("to "+target.String(), func(t *testing.T) {
+			f := newFixture(t)
+
+			// A task parent, not a project, so that the drag to doing is legal
+			// in the first place (D9) and the cascade really runs.
+			parent := f.create(draft("parent", domain.NodeTypeTask, nil))
+			hd := draft("stretch", domain.NodeTypeHabit, &parent.ID)
+			hd.Recurrence = ptr("FREQ=DAILY")
+			h := f.create(hd)
+			sibling := f.create(draft("real work", domain.NodeTypeTask, &parent.ID))
+
+			before := f.get(h.ID)
+			f.now = testNow.Add(time.Hour)
+
+			if _, err := f.tasks.MoveToColumn(ctx, parent.ID, target); err != nil {
+				t.Fatalf("MoveToColumn(parent, %s) = %v", target, err)
+			}
+
+			if after := f.get(h.ID); !reflect.DeepEqual(after, before) {
+				t.Errorf("the habit row changed:\n got %+v\nwant %+v", after, before)
+			}
+
+			// The positive control: the drag did do its job on the sibling that
+			// does have a column, so the assertion above is not passing because
+			// nothing happened at all.
+			if got := f.get(sibling.ID).Status; got != target {
+				t.Fatalf("the task sibling is %q, want %q — the cascade did not run", got, target)
+			}
+
+			// And the illegal row cannot reach the board even by derivation.
+			board, err := f.tasks.Board(ctx)
+			if err != nil {
+				t.Fatalf("Board: %v", err)
+			}
+			for _, col := range board {
+				for _, v := range col.Nodes {
+					if v.Node.ID == h.ID {
+						t.Errorf("the habit is on the board in the %s column", col.Status)
+					}
+				}
+			}
+		})
+	}
+}
+
+// The other half of what the corrupt status corrupted: a habit is not work, so
+// a project holding one finished task and one habit is finished — not 1 of 2.
+func TestProgressDoesNotCountAHabit(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	p := f.create(draft("p", domain.NodeTypeProject, nil))
+	task := f.create(draft("real work", domain.NodeTypeTask, &p.ID))
+	hd := draft("stretch", domain.NodeTypeHabit, &p.ID)
+	hd.Recurrence = ptr("FREQ=DAILY")
+	f.create(hd)
+
+	if _, err := f.tasks.MoveToColumn(ctx, task.ID, domain.StatusDone); err != nil {
+		t.Fatalf("MoveToColumn(task, done) = %v", err)
+	}
+
+	got, err := f.tasks.Progress(ctx, p.ID)
+	if err != nil {
+		t.Fatalf("Progress: %v", err)
+	}
+	want := service.ProgressView{Done: 1, Total: 1, Defined: true, Percent: 100}
+	if got != want {
+		t.Errorf("Progress(p) = %+v, want %+v — the habit is not a unit of work", got, want)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // The column <-> due coupling (D1, D8) and all four due_source transitions.
 

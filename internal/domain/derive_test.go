@@ -34,6 +34,14 @@ func note(id, parent string) domain.Node {
 	return nd(id, parent, domain.NodeTypeNote, domain.StatusBacklog)
 }
 
+// habit carries the inert backlog its NOT NULL column needs — PLAN.md §4 gives
+// it no column at all — and the recurrence a real habit row always has.
+func habit(id, parent string) domain.Node {
+	n := nd(id, parent, domain.NodeTypeHabit, domain.StatusBacklog)
+	n.Recurrence = ptr("FREQ=DAILY")
+	return n
+}
+
 func project(id, parent string, status domain.Status) domain.Node {
 	return nd(id, parent, domain.NodeTypeProject, status)
 }
@@ -427,6 +435,44 @@ func TestComputeProgress(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A habit is not a unit of work, so it is not in the progress denominator.
+//
+// This is the consequence of the no-column rule the reviewer measured: a habit
+// has no column, so it never becomes done, and counting it would leave a
+// project whose every task is finished stuck below 100% for ever.
+func TestComputeProgressExcludesAHabit(t *testing.T) {
+	nodes := []domain.Node{
+		project("p", "", domain.StatusBacklog),
+		task("t", "p", domain.StatusDone),
+		habit("h", "p"),
+	}
+
+	got, err := domain.ComputeProgress(nodes, "p")
+	if err != nil {
+		t.Fatalf("ComputeProgress() = %v", err)
+	}
+	if got.Done != 1 || got.Total != 1 {
+		t.Fatalf("ComputeProgress(p) = %d/%d, want 1/1 — the habit is not work", got.Done, got.Total)
+	}
+	if got.Percent() != 100 {
+		t.Errorf("Percent() = %d, want 100", got.Percent())
+	}
+
+	t.Run("a subtree of nothing but habits has no progress at all", func(t *testing.T) {
+		only := []domain.Node{
+			project("p", "", domain.StatusBacklog),
+			habit("h", "p"),
+		}
+		got, err := domain.ComputeProgress(only, "p")
+		if err != nil {
+			t.Fatalf("ComputeProgress() = %v", err)
+		}
+		if got.Defined() {
+			t.Errorf("Defined() = true (%d/%d), want false — there is no work in it", got.Done, got.Total)
+		}
+	})
 }
 
 // The headline of D7's undefined case: a subtree with no work in it reports

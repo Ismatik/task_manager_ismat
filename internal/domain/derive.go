@@ -184,16 +184,15 @@ func (p Progress) Percent() int {
 //
 // Only leaves count. An intermediate parent is not a unit of work — its leaves
 // are — so counting it would make a project with one deeply nested task look
-// half finished the moment that task was done. note leaves are excluded from
-// both the numerator and the denominator, consistent with status derivation, and
-// a note's subtree is not descended into at all.
+// half finished the moment that task was done. Which leaf types are units of
+// work is countsAsWork's answer: not a note, not a habit — neither has a column
+// to be finished in — and not a project, which is what the bar is drawn FOR. A
+// note's subtree is not descended into at all.
 //
-// A PROJECT is excluded as well, even when it has no children or only note
-// children and is therefore a leaf by shape (D7, D9). A project is the thing a
-// progress bar is drawn FOR; it is not one of the units the bar measures. An
-// empty project and a project holding only notes both report an UNDEFINED
-// progress — no work in it to measure — which is what the type's documentation
-// above promises and what the board and the tree render as no bar at all.
+// An empty project, a project holding only notes and a project holding only
+// habits therefore all report an UNDEFINED progress — no work in them to
+// measure — which is what the type's documentation above promises and what the
+// board and the tree render as no bar at all.
 //
 // A leaf's own stored status decides whether it is done; nothing is derived
 // here, because a leaf is where the stored status is the truth.
@@ -206,6 +205,23 @@ func ComputeProgress(nodes []Node, id string) (Progress, error) {
 		return Progress{}, err
 	}
 	return p, nil
+}
+
+// countsAsWork reports whether a leaf of type t is one of the units the progress
+// bar measures.
+//
+// A type with NO COLUMN — a note or a habit — is not. Progress counts work
+// through the Kanban columns, and something that never enters one can never
+// become done: counting a habit would leave a project whose every task is
+// finished reporting 1 of 2 for ever. The rule is NodeType.HasColumn's, the same
+// one the cascade and CheckStatus use, rather than a second list of types.
+//
+// A PROJECT is not counted either, even though it has a column (D7, D9): a
+// project is the thing a progress bar is drawn FOR, not one of the units the bar
+// measures, so an empty project or one holding only notes reports an UNDEFINED
+// progress rather than 0% of 1 — a bar about nothing.
+func countsAsWork(t NodeType) bool {
+	return t.HasColumn() && t != NodeTypeProject
 }
 
 func walkProgress(byID map[string]Node, kids map[string][]Node, id string, visiting map[string]bool, p *Progress) error {
@@ -225,13 +241,7 @@ func walkProgress(byID map[string]Node, kids map[string][]Node, id string, visit
 
 	children := kids[id]
 	if n.IsLeaf(children) {
-		// D9, applied to the denominator: a PROJECT is a container with a
-		// progress bar, never a unit of work itself, so it is not counted even
-		// when it is shaped like a leaf — empty, or holding only notes. Type
-		// wins over the leaf rule, exactly as it does for doing and for the
-		// timer (see Node.CanEnterDoing). Counting it would give an empty
-		// project a progress bar reading 0% of 1, which is a bar about nothing.
-		if n.Type == NodeTypeProject {
+		if !countsAsWork(n.Type) {
 			return nil
 		}
 		p.Total++

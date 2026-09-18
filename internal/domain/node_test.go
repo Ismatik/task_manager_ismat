@@ -512,9 +512,16 @@ func TestNodeCanEnterDoingAndCanStartTimer(t *testing.T) {
 		{"D9: a project with children is neither", node(domain.NodeTypeProject),
 			[]domain.Node{child(domain.NodeTypeTask)}, false, false},
 		{"a note is neither", node(domain.NodeTypeNote), nil, false, false},
-		{"a habit may hold doing but never a timer", node(domain.NodeTypeHabit), nil, true, false},
+		// A habit has no Kanban column at all (PLAN.md §4), so doing is not a
+		// state it can be in. The old expectation here was `true`: it read
+		// CanEnterDoing as "is this a timeable leaf?" and left the type rule to
+		// CanStartTimer and CheckStatus, which is exactly how PlanCascade came
+		// to hand a habit descendant the status doing.
+		{"a habit is neither: it has no column to be doing in", node(domain.NodeTypeHabit), nil, false, false},
 		{"a habit with children holds neither", node(domain.NodeTypeHabit),
 			[]domain.Node{child(domain.NodeTypeTask)}, false, false},
+		{"an unknown type has no column and so is neither",
+			node(domain.NodeType("gizmo")), nil, false, false},
 	}
 
 	for _, tt := range tests {

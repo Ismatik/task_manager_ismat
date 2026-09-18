@@ -49,12 +49,14 @@ type StatusChange struct {
 //   - done descendants are never touched. A finished task does not get
 //     un-finished because somebody dragged its parent to Today, and its
 //     completed_at survives.
-//   - note descendants are never touched. Notes have no column.
+//   - descendants whose TYPE has no column — a note or a habit — are never
+//     touched, and neither is such a node when it is the drag root itself: the
+//     plan is empty. NodeType.HasColumn is the one place that rule lives.
 //
 // # doing is different, because doing means a timer
 //
 // Only leaves start a timer (D2), so a drag to Doing cascades doing onto the
-// non-done, non-note LEAF descendants only. Intermediate parents get no stored
+// non-done LEAF descendants that have a column. Intermediate parents get no stored
 // status; they derive Doing from the leaves underneath them, which is what puts
 // them in the Doing column on screen without anything having started a timer on
 // them.
@@ -62,8 +64,8 @@ type StatusChange struct {
 // A project is refused outright as the drag target (ErrProjectNeverDoing) and
 // skipped as a descendant, empty or not — D9, see Node.CanEnterDoing.
 //
-// For the other targets the cascade writes to every non-done, non-note
-// descendant, intermediate parents included, which is what D2 says literally.
+// For the other targets the cascade writes to every non-done descendant that has
+// a column, intermediate parents included, which is what D2 says literally.
 // Their stored status stays inert — derivation never reads it — but their
 // completed_at is real, and a project that finished needs one.
 //
@@ -93,9 +95,14 @@ func PlanCascade(nodes []Node, rootID string, target Status, now func() time.Tim
 	}
 	root := subtree[0]
 
-	// Notes have no column (PLAN.md §4, behaviour by type), so there is nothing
-	// to cascade and nothing to write.
-	if root.Type == NodeTypeNote {
+	// A type with no column — a note or a habit (NodeType.HasColumn, PLAN.md §4)
+	// — has nothing to cascade and nothing to write, so the plan is empty.
+	//
+	// The test is the TYPE predicate rather than a list of type constants. The
+	// list here used to name the note alone, which let a habit dragged on its
+	// own produce a plan that stored a column status on it; the same divergence
+	// then repeated in the descendant loop below.
+	if !root.Type.HasColumn() {
 		return nil, nil
 	}
 
@@ -118,7 +125,10 @@ func PlanCascade(nodes []Node, rootID string, target Status, now func() time.Tim
 
 	out := make([]StatusChange, 0, len(subtree)-1)
 	for _, n := range subtree[1:] {
-		if n.Type == NodeTypeNote || n.Status == StatusDone {
+		// The same predicate as the root test above, for the same reason: a
+		// descendant whose type has no column cannot be given one by somebody
+		// dragging its parent.
+		if !n.Type.HasColumn() || n.Status == StatusDone {
 			continue
 		}
 		// doing is only ever stored on a node that may run a timer: a leaf that

@@ -312,8 +312,14 @@ func (s *TaskService) Board(ctx context.Context) ([]ColumnView, error) {
 }
 
 // onTheBoard reports whether a node type belongs in a Kanban column at all.
+//
+// The rule is the domain's — NodeType.HasColumn — not a second copy of the type
+// list. It read `!= habit && != note` before, which is the same rule spelled a
+// fourth time, and a rule spelled four times is a rule that will disagree with
+// itself: it did, in PlanCascade, which is how a habit came to hold the status
+// today while this function quietly kept the row off the screen.
 func onTheBoard(n domain.Node) bool {
-	return n.Type != domain.NodeTypeHabit && n.Type != domain.NodeTypeNote
+	return n.Type.HasColumn()
 }
 
 // Progress returns the done-leaves-over-total-leaves progress of a subtree (D7)
