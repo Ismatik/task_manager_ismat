@@ -326,17 +326,27 @@ This replaces the earlier `due_is_auto BOOLEAN` proposal.
 Parent status is **never stored**. Neither option (a) nor (b) was taken; the rule is:
 
 - Dragging a parent to column **X** sets `status = X` on **every descendant that is
-  not `done` and not a `note`**.
+  not `done` and whose type has a Kanban column**. Descendants with no column
+  (`note`, `habit`) are skipped — see **D10**.
 - The parent **renders in its derived column**: the least-advanced status among its
-  non-done, non-note children; `done` only when **all** such children are done.
+  non-done children **whose type has a Kanban column**; `done` only when **all** such
+  children are done. Children with no column are excluded entirely — from the
+  "least advanced" scan and from the "all done" test.
 - **The old "reject move to Done" test is REPLACED.** The new test is:
   *drag parent to Done → all unfinished descendants become `done`, `completed_at` is
   set on each, and the parent derives `done`.*
 - **Parents never enter `doing` on their own.** Only **leaves** start a timer.
-- A node **with no children, or whose children are all notes, behaves as a leaf** —
-  it has its own stored status and can be dragged and timed like a task.
+- A node **with no children, or whose children all have no Kanban column, behaves as a
+  leaf** — it has its own stored status and can be dragged and timed like a task.
+  All-`note` children and all-`habit` children count alike (`IsLeaf`/`HasColumn`).
   **Except a `project`**: type beats leaf-ness, so an empty project is still never
   dragged to Doing and never timed — see **D9**, which settles this contradiction.
+
+**Amended by D10.** As originally recorded, the three bullets above said `note` where
+the rule is **any type with no Kanban column** (`note` **and** `habit`). They are
+restated above in the generalised form; the single spelling is
+`domain.NodeType.HasColumn()`. Read any surviving "non-note" in this decision the same
+way — implementing this decision as `note`-only reproduces the defect D10 fixed.
 
 ### D3 — ARCHITECTURE.md (was Q3)
 The layout below is decided and is written into `ARCHITECTURE.md` during **Stage 0**:
@@ -436,8 +446,10 @@ children at all.**
 
 This resolves a real contradiction found while implementing Stage 1: **D7** says
 projects can never enter `doing`, while **D2** says a node with no children, or with
-only `note` children, "behaves as a leaf" and can be dragged and timed. An *empty
-project* satisfies both descriptions at once.
+only `note` children, "behaves as a leaf" and can be dragged and timed (D2's leaf rule
+is now generalised by **D10** to children with **no Kanban column**, which widens the
+contradiction rather than changing it). An *empty project* satisfies both descriptions
+at once.
 
 - **Type wins.** The per-type rule ("`project` → progress bar, **no timer**", §4) is
   more specific than the general leaf rule, so it takes precedence. Leaf-ness decides
@@ -460,7 +472,8 @@ project* satisfies both descriptions at once.
 - `PlanCascade` **skips project descendants** when cascading `doing`, and refuses a
   project as the drag target outright.
 - A project is **not counted as a unit of work in the progress denominator**.
-  Consequently a project whose leaves are all notes — or which is empty — reports
+  Consequently a project with nothing under it that counts as work — all notes, all
+  habits, any mix of types with no Kanban column, or empty — reports
   `Defined() == false`: **neither 0% nor 100%**, but *no percentage at all*. A progress
   bar with nothing to measure must not claim it measured nothing.
   **Amended by D11** for one case only: a project's *own* progress is still undefined

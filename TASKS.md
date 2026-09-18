@@ -723,7 +723,8 @@ short:
   Consequences already encoded below: `ErrProjectNeverDoing` from `MoveToColumn` and
   from create; `PlanCascade` skips project descendants when cascading `doing`; a
   project is **not a unit of work in the progress denominator**, so an empty project —
-  or one whose leaves are all notes — reports `Defined() == false`, neither 0% nor
+  or one with nothing under it that counts as work, all notes, all habits or any mix of
+  types with no Kanban column (**D10**) — reports `Defined() == false`, neither 0% nor
   100%; and types with no column (`note`, `habit`) are refused by both create and
   `MoveToColumn` and never receive a due date. Affects **S1-07**, **S1-10**, **S1-18**,
   **S1-19**, **S1-21**.
@@ -1179,8 +1180,10 @@ Requirements:
   **date-not-timestamp** columns. Whatever is chosen, `due`'s comparison semantics must
   be unambiguous, because "overdue" (**D1**) compares a date to today and an
   off-by-one-timezone here is a bug the user sees every morning.
-- `Node.IsLeaf(children []Node) bool` — true when there are no children **or every
-  child is a `note`** (**D2**). This predicate is load-bearing for status derivation,
+- `Node.IsLeaf(children []Node) bool` — true when there are no children **or no child's
+  type has a Kanban column** (`!child.Type.HasColumn()` — `note` **and** `habit`;
+  **D2** as generalised by **D10**, see the amendment in the criteria below). This
+  predicate is load-bearing for status derivation,
   progress, cascades and "only leaves start a timer"; it lives here, once.
 - `DefaultActivity(NodeType) *Activity` per **D4**: task→Разработка, bug→Тестирование,
   project→Управление проектом, note→Документация, habit→none.
@@ -1286,7 +1289,8 @@ supersede the corresponding lines above; the follow-up commits are `81fb6e4` and
   the leaf case only. A **leaf** project — nothing under it has a column — is **one
   work leaf in its parent's denominator**, done iff its own stored status is `done`.
   `project{empty sub-project, task:done}` read 100% behind a `backlog` column; it reads
-  **1 of 2** now. **The "zero non-note leaves" requirement above is unchanged**: asked
+  **1 of 2** now. **The "zero non-note leaves" requirement above is unchanged** — read
+  it as *zero work leaves*, the D10 predicate: asked
   about *itself*, a project with no work beneath it still reports
   `Defined() == false`, neither 0% nor 100%, and the caller still draws no bar. A
   project **with** children that have columns is still not a unit itself. Derivation
@@ -1437,7 +1441,11 @@ Requirements:
   parent derives Doing from them. Intermediate parents get no stored status.
   **Amended by D9/D10:** "non-note" is really `Type.HasColumn()` — every type with no
   Kanban column is skipped as a descendant, and `project` descendants are skipped when
-  the cascaded status is `doing`. Read every "non-note" below the same way.
+  the cascaded status is `doing`. Read every "note" and "non-note" in this ticket —
+  **above and below this line** — the same way: the predicate is
+  `Type.HasColumn()`, so `habit` descendants and all-`habit` children behave exactly
+  as notes do here. Implemented as `note`-only, this ticket reproduces the pre-D10
+  defect.
 - The plan is a **plan**: a deterministic, ordered slice the service applies in one
   transaction (S1-18). Pure, no I/O, injected clock.
 
@@ -1798,10 +1806,11 @@ Requirements:
   bound yet (**that is Stage 2**).
 
 **Acceptance criteria**
-- [ ] **Parent → Done, end to end against a real temp DB:** every unfinished non-note
-      descendant is `done` in the database, each with `completed_at` set to the
-      injected clock; the note is untouched; reading the tree back derives `done` on
-      the parent.
+- [ ] **Parent → Done, end to end against a real temp DB:** every unfinished descendant
+      **whose type has a Kanban column** (`!Type.HasColumn()` is skipped — `note`
+      **and** `habit`, per **D10**) is `done` in the database, each with `completed_at`
+      set to the injected clock; the no-column descendants are untouched; reading the
+      tree back derives `done` on the parent.
 - [ ] **Circular parent is rejected**: moving a node under its own grandchild returns
       `domain.ErrCircularParent` via `errors.Is` **and the database is unchanged** —
       assert the rollback, not just the error.
@@ -1855,10 +1864,12 @@ Requirements:
 - [ ] Start → stop → start on the same node produces **two** closed entries, not one
       long one.
 - [ ] Stop with nothing running: no error, no rows changed.
-- [ ] Start on a node with non-note children → matchable error, **no** entry created.
+- [ ] Start on a node with children **whose type has a Kanban column** → matchable
+      error, **no** entry created (the predicate is `Node.IsLeaf`/`HasColumn`, **D10**).
 - [ ] Start on a `project` → matchable error even when it has no children (**D7**:
       projects never enter Doing).
-- [ ] Start on a node whose children are all notes **succeeds** (it is a leaf).
+- [ ] Start on a node whose children **all have no Kanban column** — all notes, all
+      habits, or a mix — **succeeds** (it is a leaf, **D10**).
 - [ ] Start on an already-running node is a no-op: same entry id, same `started_at`.
 - [ ] Elapsed time uses the injected clock; no `time.Sleep` in any test.
 - [ ] A forced failure between close and open rolls back both.
@@ -1936,11 +1947,15 @@ Requirements:
       whose parent's stored status disagrees with its children and assert the derived
       placement.
 - [ ] Habits never appear in any column.
-- [ ] Notes never appear in any column, and never in a progress denominator.
+- [ ] Notes never appear in any column.
+- [ ] **No type without a Kanban column** — `note` **and** `habit`, `!Type.HasColumn()`
+      (**D10**) — ever appears in a column or in a progress denominator.
 - [ ] Archived nodes never appear.
 - [ ] `overdue` is true for a node due yesterday and not done, false for one due today
       — computed in Go, present on the DTO.
-- [ ] A project whose leaves are all notes reports progress with `Defined == false`
+- [ ] A project with nothing under it that counts as work — all notes, all habits, or
+      any mix of types with no Kanban column (**D10**) — reports progress with
+      `Defined == false`
       **when that project is the node being asked about** — this is D11 part 1 and is
       *not* superseded. Asked about its **parent**, the same project is one work leaf
       in the denominator (**D11** part 2).
