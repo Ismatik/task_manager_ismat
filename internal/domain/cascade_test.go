@@ -55,6 +55,19 @@ func headlineTree() []domain.Node {
 	return nodes
 }
 
+// headlineTreeUnderATask is headlineTree with its top node typed task rather
+// than project, so that a drag to Doing is legal at all: D9 refuses a project
+// outright, and these cases are about which descendants a legal drag touches.
+func headlineTreeUnderATask() []domain.Node {
+	nodes := headlineTree()
+	for i := range nodes {
+		if nodes[i].ID == "p" {
+			nodes[i].Type = domain.NodeTypeTask
+		}
+	}
+	return nodes
+}
+
 // THE headline test of D2: drag a parent to Done and everything unfinished
 // beneath it finishes, with completed_at, while the note and the already-done
 // task are left alone — and the parent then DERIVES done.
@@ -183,7 +196,7 @@ func TestPlanCascadeParentToToday(t *testing.T) {
 // Only leaves start a timer, so a drag to Doing touches only leaves and no
 // intermediate parent gets a stored status.
 func TestPlanCascadeToDoingTouchesOnlyLeaves(t *testing.T) {
-	nodes := headlineTree()
+	nodes := headlineTreeUnderATask()
 
 	plan, err := domain.PlanCascade(nodes, "p", domain.StatusDoing, cascadeNow)
 	if err != nil {
@@ -326,7 +339,7 @@ func TestPlanCascadeStampsADoneLeafThatHasNoCompletedAt(t *testing.T) {
 // Dragging a whole subtree out of done: the descendants that are done stay
 // done, because a finished task is not un-finished by its parent moving.
 func TestPlanCascadeNeverUnfinishesADoneDescendant(t *testing.T) {
-	nodes := headlineTree()
+	nodes := headlineTreeUnderATask()
 
 	for _, target := range []domain.Status{
 		domain.StatusBacklog, domain.StatusWeek, domain.StatusToday, domain.StatusDoing,
@@ -384,7 +397,7 @@ func TestPlanCascadeErrors(t *testing.T) {
 
 // The plan is a plan: same input, same order, every time.
 func TestPlanCascadeIsDeterministic(t *testing.T) {
-	nodes := headlineTree()
+	nodes := headlineTreeUnderATask()
 
 	for _, target := range domain.Statuses() {
 		t.Run("to "+target.String(), func(t *testing.T) {
@@ -499,6 +512,80 @@ func TestApplyStatusChanges(t *testing.T) {
 			if n.ID == "finished" && n.CompletedAt != nil {
 				t.Errorf("CompletedAt = %v, want nil", n.CompletedAt)
 			}
+		}
+	})
+}
+
+// D9 — the rule the user settled: a project NEVER enters doing, with children,
+// with only notes underneath it, or empty. Type beats D2's leaf rule.
+func TestPlanCascadeProjectNeverEntersDoing(t *testing.T) {
+	t.Run("an empty project dragged to doing is refused", func(t *testing.T) {
+		nodes := []domain.Node{project("solo", "", domain.StatusBacklog)}
+
+		plan, err := domain.PlanCascade(nodes, "solo", domain.StatusDoing, cascadeNow)
+		if !errors.Is(err, domain.ErrProjectNeverDoing) {
+			t.Fatalf("PlanCascade() err = %v, want ErrProjectNeverDoing", err)
+		}
+		if plan != nil {
+			t.Errorf("plan = %v, want nil", changeIDs(plan))
+		}
+	})
+
+	t.Run("a project whose children are all notes is refused", func(t *testing.T) {
+		nodes := []domain.Node{
+			project("p", "", domain.StatusBacklog),
+			note("memo", "p"),
+		}
+
+		if _, err := domain.PlanCascade(nodes, "p", domain.StatusDoing, cascadeNow); !errors.Is(err, domain.ErrProjectNeverDoing) {
+			t.Fatalf("PlanCascade() err = %v, want ErrProjectNeverDoing", err)
+		}
+	})
+
+	t.Run("a project with real children is refused", func(t *testing.T) {
+		if _, err := domain.PlanCascade(headlineTree(), "p", domain.StatusDoing, cascadeNow); !errors.Is(err, domain.ErrProjectNeverDoing) {
+			t.Fatalf("PlanCascade() err = %v, want ErrProjectNeverDoing", err)
+		}
+	})
+
+	t.Run("an empty project descendant is skipped by a doing cascade", func(t *testing.T) {
+		nodes := []domain.Node{
+			task("root", "", domain.StatusBacklog),
+			project("empty", "root", domain.StatusBacklog),
+			task("leaf", "root", domain.StatusBacklog),
+		}
+
+		plan, err := domain.PlanCascade(nodes, "root", domain.StatusDoing, cascadeNow)
+		if err != nil {
+			t.Fatalf("PlanCascade() = %v", err)
+		}
+		if got, want := changeIDs(plan), []string{"leaf"}; !equalStrings(got, want) {
+			t.Fatalf("plan = %v, want %v — the empty project must not be stored as doing", got, want)
+		}
+	})
+
+	t.Run("every other column still accepts a project", func(t *testing.T) {
+		for _, target := range domain.Statuses() {
+			if target == domain.StatusDoing {
+				continue
+			}
+			t.Run("to "+target.String(), func(t *testing.T) {
+				if _, err := domain.PlanCascade(headlineTree(), "p", target, cascadeNow); err != nil {
+					t.Errorf("PlanCascade(p -> %s) = %v", target, err)
+				}
+			})
+		}
+	})
+
+	t.Run("a childless task still enters doing", func(t *testing.T) {
+		nodes := []domain.Node{task("solo", "", domain.StatusBacklog)}
+
+		plan, err := domain.PlanCascade(nodes, "solo", domain.StatusDoing, cascadeNow)
+		if err != nil {
+			t.Fatalf("PlanCascade() = %v", err)
+		}
+		if len(plan) != 1 || plan[0].Status != domain.StatusDoing {
+			t.Fatalf("plan = %+v, want one doing change", plan)
 		}
 	})
 }

@@ -258,6 +258,46 @@ func (n Node) IsLeaf(children []Node) bool {
 	return true
 }
 
+// CanEnterDoing reports whether n may be given the STORED status doing, given
+// its direct children (D2, D7, D9).
+//
+// # Type beats the leaf rule (D9)
+//
+// D7 says a project never enters doing and never runs a timer; D2 says a node
+// with no children, or with only note children, behaves as a leaf and can be
+// dragged and timed. An empty project satisfies both descriptions, and the user
+// has ruled that the TYPE wins: the per-type rule is the more specific one, so
+// a project is never doing no matter how few children it has. A freshly created
+// project is therefore inert until it gains children; adding a child is how
+// work becomes timeable.
+//
+// A note is excluded too, for the older reason that a note has no column at all.
+//
+// A parent that is not a leaf is excluded because doing means a timer and only
+// leaves run one. Such a parent still RENDERS in the Doing column when a leaf
+// underneath it is running — that is DeriveStatus's answer, not a stored status.
+func (n Node) CanEnterDoing(children []Node) bool {
+	if n.Type == NodeTypeProject || n.Type == NodeTypeNote {
+		return false
+	}
+	return n.IsLeaf(children)
+}
+
+// CanStartTimer reports whether a time entry may be opened on n, given its
+// direct children (D2, D7, D9).
+//
+// It is CanEnterDoing plus habits: a habit is checked off, never timed, it never
+// appears in a Kanban column and it has no PMP activity (D4), so there is
+// nothing for a timer on one to mean. Everything else — a project at any size, a
+// note, a node with non-note children — is refused for the reasons CanEnterDoing
+// gives.
+func (n Node) CanStartTimer(children []Node) bool {
+	if n.Type == NodeTypeHabit {
+		return false
+	}
+	return n.CanEnterDoing(children)
+}
+
 // DefaultActivity returns the PMP activity a new node of type t starts with
 // (D4), or nil when the type has no sensible default. The user may override it
 // at any time, which is why this is a starting value in the domain rather than

@@ -1,9 +1,19 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
+
+// ErrProjectNeverDoing is returned when a project is dragged to the Doing
+// column (D7, D9).
+//
+// A project carries a progress bar and never runs a timer. The awkward case is
+// an EMPTY project, which D2's "a node with no children behaves as a leaf"
+// would otherwise let into Doing: the user has ruled that the TYPE wins, so a
+// project is refused whether it has children or not. See Node.CanEnterDoing.
+var ErrProjectNeverDoing = errors.New("domain: a project never enters doing")
 
 // StatusChange is one row of a cascade plan: the status a node must be written
 // with, and the value its completed_at must be written with at the same time.
@@ -49,6 +59,9 @@ type StatusChange struct {
 // them in the Doing column on screen without anything having started a timer on
 // them.
 //
+// A project is refused outright as the drag target (ErrProjectNeverDoing) and
+// skipped as a descendant, empty or not — D9, see Node.CanEnterDoing.
+//
 // For the other targets the cascade writes to every non-done, non-note
 // descendant, intermediate parents included, which is what D2 says literally.
 // Their stored status stays inert — derivation never reads it — but their
@@ -86,6 +99,14 @@ func PlanCascade(nodes []Node, rootID string, target Status, now func() time.Tim
 		return nil, nil
 	}
 
+	// D9: a project never enters doing, with or without children. Refusing the
+	// whole drag — rather than quietly cascading onto the leaves underneath —
+	// is what makes the rule visible to the user instead of leaving them
+	// wondering why the card did not move.
+	if target == StatusDoing && root.Type == NodeTypeProject {
+		return nil, fmt.Errorf("domain: drag project %q to doing: %w", rootID, ErrProjectNeverDoing)
+	}
+
 	kids := groupByParent(nodes)
 	at := now()
 
@@ -100,7 +121,11 @@ func PlanCascade(nodes []Node, rootID string, target Status, now func() time.Tim
 		if n.Type == NodeTypeNote || n.Status == StatusDone {
 			continue
 		}
-		if target == StatusDoing && !n.IsLeaf(kids[n.ID]) {
+		// doing is only ever stored on a node that may run a timer: a leaf that
+		// is not a project (D9). An empty project descendant is a leaf by
+		// shape and still skipped, which is the same rule the root is refused
+		// by one branch up.
+		if target == StatusDoing && !n.CanEnterDoing(kids[n.ID]) {
 			continue
 		}
 		out = append(out, statusChange(n, target, at))

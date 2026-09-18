@@ -478,3 +478,53 @@ func TestDateWeekdayAndTime(t *testing.T) {
 		})
 	}
 }
+
+// D9: type beats the leaf rule. A project never enters doing and never runs a
+// timer, and neither does a note, a habit or a node with non-note children.
+func TestNodeCanEnterDoingAndCanStartTimer(t *testing.T) {
+	child := func(tp domain.NodeType) domain.Node {
+		n := validNode()
+		n.Type = tp
+		return n
+	}
+	node := func(tp domain.NodeType) domain.Node {
+		n := validNode()
+		n.Type = tp
+		return n
+	}
+
+	tests := []struct {
+		name      string
+		node      domain.Node
+		children  []domain.Node
+		wantDoing bool
+		wantTimer bool
+	}{
+		{"a childless task is both", node(domain.NodeTypeTask), nil, true, true},
+		{"a task with only note children is both", node(domain.NodeTypeTask),
+			[]domain.Node{child(domain.NodeTypeNote)}, true, true},
+		{"a task with a task child is neither", node(domain.NodeTypeTask),
+			[]domain.Node{child(domain.NodeTypeTask)}, false, false},
+		{"a childless bug is both", node(domain.NodeTypeBug), nil, true, true},
+		{"D9: an EMPTY project is neither", node(domain.NodeTypeProject), nil, false, false},
+		{"D9: a project with only note children is neither", node(domain.NodeTypeProject),
+			[]domain.Node{child(domain.NodeTypeNote)}, false, false},
+		{"D9: a project with children is neither", node(domain.NodeTypeProject),
+			[]domain.Node{child(domain.NodeTypeTask)}, false, false},
+		{"a note is neither", node(domain.NodeTypeNote), nil, false, false},
+		{"a habit may hold doing but never a timer", node(domain.NodeTypeHabit), nil, true, false},
+		{"a habit with children holds neither", node(domain.NodeTypeHabit),
+			[]domain.Node{child(domain.NodeTypeTask)}, false, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.node.CanEnterDoing(tt.children); got != tt.wantDoing {
+				t.Errorf("CanEnterDoing() = %v, want %v", got, tt.wantDoing)
+			}
+			if got := tt.node.CanStartTimer(tt.children); got != tt.wantTimer {
+				t.Errorf("CanStartTimer() = %v, want %v", got, tt.wantTimer)
+			}
+		})
+	}
+}
