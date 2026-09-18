@@ -1,0 +1,100 @@
+/* Nexus design tokens — two palettes (aurora | studio), each with light + dark.
+   Toggle palette:  <html data-palette="aurora"> or "studio"
+   Toggle theme:    add/remove class "dark" on <html>
+   User accent picker: document.documentElement.style.setProperty('--accent', c) */
+
+:root {
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --font-mono: 'JetBrains Mono', monospace;
+  --dur-fast: 120ms;
+  --dur-base: 150ms;
+  --dur-slow: 200ms;
+}
+
+/* ---------- AURORA ---------- */
+[data-palette='aurora'] {
+  --font-ui: 'Space Grotesk', sans-serif;
+  --blur: 14px;
+  /* light */
+  --bg: #eef1f8;
+  --surface: rgba(255, 255, 255, 0.55);
+  --surface-elevated: rgba(255, 255, 255, 0.8);
+  --border: rgba(30, 41, 66, 0.14);
+  --text: #141a28;
+  --text-muted: #5d6579;
+  --accent: #0284c7;
+  --accent-2: #7c5cd6;
+  --on-accent: #ffffff;
+  --danger: #c93d36;
+  --warning: #946d0d;
+  --success: #177a52;
+  --shadow-sm: none;
+  --shadow-lg: 0 12px 40px rgba(20, 26, 40, 0.18);
+}
+[data-palette='aurora'].dark,
+[data-palette='aurora'] .dark {
+  --bg: #090b12;
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-elevated: rgba(255, 255, 255, 0.09);
+  --border: rgba(255, 255, 255, 0.11);
+  --text: #eef1f8;
+  --text-muted: #98a0b3;
+  --accent: #38bdf8;
+  --accent-2: #a78bfa;
+  --on-accent: #06121c;
+  --danger: #f0564e;
+  --warning: #e0b13e;
+  --success: #34d399;
+  --shadow-sm: none;
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- STUDIO ---------- */
+[data-palette='studio'] {
+  --font-ui: 'Figtree', sans-serif;
+  --blur: 0px;
+  --radius-md: 9px;
+  --radius-lg: 12px;
+  /* light (default for this palette) */
+  --bg: #faf7f2;
+  --surface: #ffffff;
+  --surface-elevated: #f1ebe2;
+  --border: #e6ddd0;
+  --text: #37322c;
+  --text-muted: #8a8175;
+  --accent: #c96f3b;
+  --accent-2: #c96f3b;
+  --on-accent: #ffffff;
+  --danger: #c94b42;
+  --warning: #9a7412;
+  --success: #3f8a5c;
+  --shadow-sm: 0 1px 3px rgba(80, 60, 40, 0.1), 0 1px 2px rgba(80, 60, 40, 0.06);
+  --shadow-lg: 0 12px 32px rgba(80, 60, 40, 0.18);
+}
+[data-palette='studio'].dark,
+[data-palette='studio'] .dark {
+  --bg: #211d19;
+  --surface: #2b2620;
+  --surface-elevated: #38322a;
+  --border: #443d33;
+  --text: #ede7de;
+  --text-muted: #a39a8d;
+  --accent: #e08b52;
+  --accent-2: #e08b52;
+  --on-accent: #211d19;
+  --danger: #e06258;
+  --warning: #d9a83e;
+  --success: #6fb583;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* motion guard */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

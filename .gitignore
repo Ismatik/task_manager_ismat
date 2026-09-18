@@ -1,0 +1,16 @@
+# build artifacts
+/build/bin/
+/frontend/dist/
+/nexus
+
+# deps
+/frontend/node_modules/
+
+# local data
+*.db
+*.db-shm
+*.db-wal
+
+# editor / os
+.DS_Store
+*.swp
