@@ -312,6 +312,31 @@ func (n Node) CanStartTimer(children []Node) bool {
 // create path, or whatever is written next (PLAN.md §4, Type.HasColumn).
 var ErrTypeHasNoColumn = errors.New("domain: this node type has no kanban column")
 
+// ErrTypeHasNoDue is returned when a node whose TYPE may not carry a due date —
+// a note — is given one, by any door: the create path, a user edit, or whatever
+// is written next (PLAN.md §4, NodeType.HasDue).
+//
+// It is a separate sentinel from ErrTypeHasNoColumn because it is a separate
+// rule with a different membership: a habit has no column but may be due on a
+// date. A caller that matched one sentinel for both would refuse the habit too.
+var ErrTypeHasNoDue = errors.New("domain: this node type has no due date")
+
+// CheckDue reports whether n may be STORED carrying n.Due.
+//
+// It is the due-date twin of CheckStatus and exists for the same reason: the
+// rule was spelled in prose ("a note has no status, no due") and enforced on the
+// status half only, so a note could be created with a due date and given one
+// afterwards by a hand edit. Both doors ask this now.
+//
+// Clearing a due date is always allowed — a nil Due is nothing to refuse, and a
+// note that somehow has one must be able to lose it.
+func (n Node) CheckDue() error {
+	if n.Due != nil && !n.Type.HasDue() {
+		return fmt.Errorf("domain: a %s cannot carry the due date %s: %w", n.Type, n.Due, ErrTypeHasNoDue)
+	}
+	return nil
+}
+
 // CheckStatus reports whether n may be STORED carrying n.Status, given its
 // direct children, and names the rule that refuses it when it may not.
 //

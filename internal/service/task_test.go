@@ -913,6 +913,77 @@ func TestSetDueIsAlwaysManual(t *testing.T) {
 	})
 }
 
+// PLAN.md §4 spells a note out as "no status, no due". The status half was
+// locked; the due half was not, and both doors were open — CreateNode stored the
+// date it was handed and SetDue wrote one afterwards.
+//
+// A HABIT is the control, and it is deliberately NOT refused: §4 says only that
+// a habit never appears in a column, and nothing anywhere says a habit may not
+// be due on a date. D9's prose over-claimed; the prose is what was corrected.
+func TestANoteNeverReceivesADueDate(t *testing.T) {
+	ctx := context.Background()
+	date := domain.NewDate(2026, time.September, 18)
+
+	t.Run("the create path refuses it and writes no row", func(t *testing.T) {
+		f := newFixture(t)
+
+		d := draft("memo", domain.NodeTypeNote, nil)
+		d.Due = &date
+
+		if _, err := f.tasks.CreateNode(ctx, d); !errors.Is(err, domain.ErrTypeHasNoDue) {
+			t.Fatalf("CreateNode(note, due) = %v, want domain.ErrTypeHasNoDue", err)
+		}
+		if got := f.all(); len(got) != 0 {
+			t.Fatalf("%d rows written by a refused create, want 0: %+v", len(got), got)
+		}
+	})
+
+	t.Run("SetDue refuses it and writes nothing", func(t *testing.T) {
+		f := newFixture(t)
+		n := f.create(draft("memo", domain.NodeTypeNote, nil))
+
+		before := f.get(n.ID)
+		f.now = testNow.Add(time.Hour)
+
+		if _, err := f.tasks.SetDue(ctx, n.ID, &date); !errors.Is(err, domain.ErrTypeHasNoDue) {
+			t.Fatalf("SetDue(note, %s) = %v, want domain.ErrTypeHasNoDue", date, err)
+		}
+		if after := f.get(n.ID); !reflect.DeepEqual(after, before) {
+			t.Errorf("the note row changed:\n got %+v\nwant %+v", after, before)
+		}
+	})
+
+	t.Run("clearing the due date of a note is still allowed", func(t *testing.T) {
+		f := newFixture(t)
+		n := f.create(draft("memo", domain.NodeTypeNote, nil))
+
+		if _, err := f.tasks.SetDue(ctx, n.ID, nil); err != nil {
+			t.Fatalf("SetDue(note, nil) = %v, want it to succeed — there is no date to refuse", err)
+		}
+	})
+
+	t.Run("a habit may have one, by both doors", func(t *testing.T) {
+		f := newFixture(t)
+
+		d := draft("stretch", domain.NodeTypeHabit, nil)
+		d.Recurrence = ptr("FREQ=DAILY")
+		d.Due = &date
+		created := f.create(d)
+		if created.Due == nil || !created.Due.Equal(date) {
+			t.Fatalf("created habit due = %v, want %v", created.Due, date)
+		}
+
+		later := domain.NewDate(2026, time.October, 1)
+		edited, err := f.tasks.SetDue(ctx, created.ID, &later)
+		if err != nil {
+			t.Fatalf("SetDue(habit, %s) = %v — §4 forbids a habit a COLUMN, not a date", later, err)
+		}
+		if edited.Due == nil || !edited.Due.Equal(later) {
+			t.Errorf("habit due = %v, want %v", edited.Due, later)
+		}
+	})
+}
+
 // ---------------------------------------------------------------------------
 // MoveNode
 

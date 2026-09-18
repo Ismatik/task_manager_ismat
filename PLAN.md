@@ -388,8 +388,17 @@ project* satisfies both descriptions at once.
   Consequently a project whose leaves are all notes — or which is empty — reports
   `Defined() == false`: **neither 0% nor 100%**, but *no percentage at all*. A progress
   bar with nothing to measure must not claim it measured nothing.
-- Types **without a Kanban column** (`note`, `habit`) are refused by **both** the create
-  path and `MoveToColumn`, and never receive a due date.
+- Types **without a Kanban column** (`note`, `habit`) are refused a **column status** by
+  every door: the create path refuses anything but the inert `backlog`, `MoveToColumn`
+  refuses the drag outright, and `PlanCascade` skips them as descendants, so a drag on
+  their parent cannot give them one either. The rule lives in one place,
+  `NodeType.HasColumn`.
+- **A `note` never receives a due date**, by any door — §4 says `note` = "no status, **no
+  due**" — so `CreateNode` and `SetDue` refuse one (`ErrTypeHasNoDue`). **A `habit` may
+  have one.** §4 denies a habit a *column*, not a *date*, and this bullet used to claim
+  otherwise for both types; the code was never written that way and the restriction is
+  not invented now. The predicate is `NodeType.HasDue`, deliberately separate from
+  `HasColumn` because the two questions have different answers for a habit.
 
 ### FTS5 — spike it, do not guess (was Q8, unchanged)
 **Spike FTS5 on `modernc.org/sqlite` in Stage 1**, first thing. If FTS5 is not

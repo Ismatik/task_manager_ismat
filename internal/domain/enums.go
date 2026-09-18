@@ -67,6 +67,30 @@ func (t NodeType) HasColumn() bool {
 	}
 }
 
+// HasDue reports whether a node of type t may carry a due date at all (PLAN.md
+// §4, "Behaviour by type").
+//
+// Exactly one type may not: a note is "no status, **no due**". A note is a piece
+// of writing attached to something else — it is not work, it is not on the
+// board, and there is nothing about it that can be late.
+//
+// A HABIT may. §4 says only that a habit "never appears in Kanban columns", and
+// a column is not a date: a habit that has to be done by the end of the month is
+// a sentence the specification nowhere forbids. This is why HasDue is a separate
+// predicate from HasColumn rather than the same one under two names — the two
+// questions genuinely have different answers, and D9's prose was corrected to
+// stop claiming otherwise.
+//
+// An unknown type may not either, on HasColumn's reasoning: a type nobody
+// recognises is not one this rule can vouch for. Rejecting it as a type is
+// Node.Validate's job.
+func (t NodeType) HasDue() bool {
+	if t == NodeTypeNote {
+		return false
+	}
+	return t.Valid()
+}
+
 // Status is a node's Kanban column. It is stored on leaves only: a parent's
 // status is derived from its children and is never written (Stage 1, D2).
 type Status string

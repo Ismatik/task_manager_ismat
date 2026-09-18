@@ -96,6 +96,32 @@ func TestNodeTypeHasColumn(t *testing.T) {
 	}
 }
 
+// PLAN.md §4: a note is "no status, no due". Every other known type may carry a
+// date — a habit included, because §4 denies it a COLUMN, not a date.
+func TestNodeTypeHasDue(t *testing.T) {
+	tests := []struct {
+		name string
+		in   domain.NodeType
+		want bool
+	}{
+		{"a task may be due", domain.NodeTypeTask, true},
+		{"a project may be due", domain.NodeTypeProject, true},
+		{"a bug may be due", domain.NodeTypeBug, true},
+		{"a habit may be due: it has no column, which is a different rule", domain.NodeTypeHabit, true},
+		{"a note may not: no status, no due", domain.NodeTypeNote, false},
+		{"an unknown type may not", domain.NodeType("epic"), false},
+		{"the empty type may not", domain.NodeType(""), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.in.HasDue(); got != tt.want {
+				t.Errorf("NodeType(%q).HasDue() = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestStatusValid(t *testing.T) {
 	tests := []struct {
 		name string

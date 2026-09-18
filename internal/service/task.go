@@ -139,9 +139,10 @@ type NewNode struct {
 // the user's (D1), so it is stored with due_source = manual.
 //
 // The node is validated by domain.Validate before anything is written, its
-// type/status combination by domain.CheckStatus, and the parent — if there is
-// one — by domain.ValidateMove, so that a parent that does not exist or a note
-// used as a parent is refused by the rules rather than by a foreign key.
+// type/status combination by domain.CheckStatus, its type/due combination by
+// domain.CheckDue — a note has no due date (PLAN.md §4) — and the parent — if
+// there is one — by domain.ValidateMove, so that a parent that does not exist or
+// a note used as a parent is refused by the rules rather than by a foreign key.
 func (s *TaskService) CreateNode(ctx context.Context, draft NewNode) (domain.Node, error) {
 	now := s.clock()
 
@@ -179,6 +180,14 @@ func (s *TaskService) CreateNode(ctx context.Context, draft NewNode) (domain.Nod
 	// answers both, so the two doors cannot drift apart. A node that is being
 	// created has no children yet, hence the empty child set.
 	if err := n.CheckStatus(nil); err != nil {
+		return domain.Node{}, fmt.Errorf("service: creating a node: %w", err)
+	}
+	// The due date is the other half of the same sentence in PLAN.md §4 — a note
+	// has "no status, no due" — and it was the half nothing enforced: a note
+	// created with a due date kept it, and the drag that would have written one
+	// had been refused for a year by then. A habit is NOT refused here; §4 gives
+	// it no column, not no date.
+	if err := n.CheckDue(); err != nil {
 		return domain.Node{}, fmt.Errorf("service: creating a node: %w", err)
 	}
 
@@ -398,6 +407,10 @@ func (s *TaskService) MoveToColumn(ctx context.Context, nodeID string, target do
 // The result always carries due_source = manual — including when the date is
 // cleared, and including when it happens to equal the date a column move picked.
 // From then on a move to Backlog leaves it alone.
+//
+// A NOTE is refused a date here (domain.ErrTypeHasNoDue): PLAN.md §4 gives it
+// "no status, no due". A habit is not — it has no column, which is a different
+// rule and not one about dates.
 func (s *TaskService) SetDue(ctx context.Context, nodeID string, due *domain.Date) (domain.Node, error) {
 	var updated domain.Node
 
@@ -412,6 +425,12 @@ func (s *TaskService) SetDue(ctx context.Context, nodeID string, due *domain.Dat
 		edited := domain.DueForUserEdit(due).ApplyTo(node)
 		edited.UpdatedAt = s.clock()
 		if err := edited.Validate(); err != nil {
+			return fmt.Errorf("service: setting the due date of %q: %w", nodeID, err)
+		}
+		// The third door onto a due date, and the one a user actually clicks. A
+		// note has none (PLAN.md §4); clearing one is still allowed, because a
+		// nil date is nothing to refuse.
+		if err := edited.CheckDue(); err != nil {
 			return fmt.Errorf("service: setting the due date of %q: %w", nodeID, err)
 		}
 		if err := nodes.Update(ctx, edited); err != nil {

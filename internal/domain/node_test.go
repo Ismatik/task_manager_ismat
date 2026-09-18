@@ -598,7 +598,7 @@ func TestNodeCheckStatus(t *testing.T) {
 		{"a habit may hold the default backlog", node(domain.NodeTypeHabit, domain.StatusBacklog), nil, nil},
 		{"a habit may not hold week", node(domain.NodeTypeHabit, domain.StatusWeek), nil, domain.ErrTypeHasNoColumn},
 		{"a habit may not hold today", node(domain.NodeTypeHabit, domain.StatusToday), nil, domain.ErrTypeHasNoColumn},
-		{"a habit may not hold doing, which CanEnterDoing alone would allow",
+		{"a habit may not hold doing, the status the cascade used to give it",
 			node(domain.NodeTypeHabit, domain.StatusDoing), nil, domain.ErrTypeHasNoColumn},
 		{"a habit may not hold done", node(domain.NodeTypeHabit, domain.StatusDone), nil, domain.ErrTypeHasNoColumn},
 
@@ -619,6 +619,48 @@ func TestNodeCheckStatus(t *testing.T) {
 			case tt.wantErr == nil:
 			case !errors.Is(err, tt.wantErr):
 				t.Fatalf("CheckStatus() = %v, want an error matching %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// The due half of PLAN.md §4's "a note has no status, no due". The status half
+// is CheckStatus above; this is the half that nothing enforced until the create
+// path and SetDue were caught storing a date on a note.
+func TestNodeCheckDue(t *testing.T) {
+	date := domain.NewDate(2026, time.September, 18)
+
+	node := func(tp domain.NodeType, due *domain.Date) domain.Node {
+		n := validNode()
+		n.Type = tp
+		n.Due = due
+		return n
+	}
+
+	tests := []struct {
+		name    string
+		node    domain.Node
+		wantErr error
+	}{
+		{"a task may be due", node(domain.NodeTypeTask, &date), nil},
+		{"a project may be due", node(domain.NodeTypeProject, &date), nil},
+		{"a bug may be due", node(domain.NodeTypeBug, &date), nil},
+		{"a habit may be due: §4 denies it a column, not a date",
+			node(domain.NodeTypeHabit, &date), nil},
+		{"a note may not be due", node(domain.NodeTypeNote, &date), domain.ErrTypeHasNoDue},
+		{"a note with no date passes", node(domain.NodeTypeNote, nil), nil},
+		{"an unknown type may not be due", node(domain.NodeType("epic"), &date), domain.ErrTypeHasNoDue},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.node.CheckDue()
+			switch {
+			case tt.wantErr == nil && err != nil:
+				t.Fatalf("CheckDue() = %v, want nil", err)
+			case tt.wantErr == nil:
+			case !errors.Is(err, tt.wantErr):
+				t.Fatalf("CheckDue() = %v, want an error matching %v", err, tt.wantErr)
 			}
 		})
 	}
