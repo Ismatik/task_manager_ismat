@@ -2,8 +2,11 @@
 // every rule derived from them (status derivation, the column<->due coupling,
 // progress and habit streaks).
 //
-// Stage 0 delivers only the enumerations and their validators. The rules
-// themselves land in Stage 1, in this package, alongside their tests.
+// The package holds the enumerations and their validators, the Node, Tag,
+// TimeEntry and HabitCheck types, and the Date type used by the columns that are
+// dates rather than instants. The rules that operate on them — status
+// derivation, progress, the column<->due coupling, the tree and cascade plans
+// and habit streaks — live in this same package, alongside their tests.
 //
 // # Purity
 //
