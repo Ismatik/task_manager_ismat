@@ -3,6 +3,9 @@
 /frontend/dist/
 /nexus
 
+# wails build caches the frontend install with a checksum file
+/frontend/package.json.md5
+
 # deps
 /frontend/node_modules/
 
