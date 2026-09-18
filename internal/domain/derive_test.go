@@ -46,6 +46,10 @@ func project(id, parent string, status domain.Status) domain.Node {
 	return nd(id, parent, domain.NodeTypeProject, status)
 }
 
+func bug(id, parent string, status domain.Status) domain.Node {
+	return nd(id, parent, domain.NodeTypeBug, status)
+}
+
 // D2: a parent's status is the least-advanced status among its non-done
 // children, done only when all of them are done, with notes excluded.
 func TestDeriveStatus(t *testing.T) {
@@ -347,6 +351,107 @@ func TestComputeProgressCutsOffAHabitSubtree(t *testing.T) {
 		if got.Defined() {
 			t.Errorf("Defined() = true (%d/%d), want false — a habit has no column to finish in",
 				got.Done, got.Total)
+		}
+	})
+}
+
+// S1-09: derivation cuts at the NODE ITSELF, not only at its children.
+//
+// walkProgress has always cut on the node it was called with; deriveStatus cut
+// on the children only. A no-column node that somehow HAS children was therefore
+// not a leaf, fell through to the parent branch and derived a real Kanban column
+// — §4 says a habit never appears in one. ValidateMove now refuses to build that
+// shape at all, so these node sets are constructed directly, which is the only
+// way to reach the state a database migrated from an older build could hold.
+//
+// The answer is backlog: the inert value a NOT NULL status column carries, which
+// means "no column", not "in the Backlog column".
+func TestDeriveStatusCutsAtANoColumnNodeItself(t *testing.T) {
+	for _, parent := range []domain.Node{habit("x", "p"), note("x", "p")} {
+		t.Run(string(parent.Type)+" with children", func(t *testing.T) {
+			// p ├── done task
+			//   └── x (habit or note)   <- must not derive a column
+			//       ├── buried (task, today)
+			//       └── deeper (task, doing)
+			nodes := []domain.Node{
+				project("p", "", domain.StatusBacklog),
+				task("t", "p", domain.StatusDone),
+				parent,
+				task("buried", "x", domain.StatusToday),
+				task("deeper", "x", domain.StatusDoing),
+			}
+
+			got, err := domain.DeriveStatus(nodes, "x")
+			if err != nil {
+				t.Fatalf("DeriveStatus(x) = %v", err)
+			}
+			if got != domain.StatusBacklog {
+				t.Errorf("DeriveStatus(%s with children) = %q, want backlog: a type with no "+
+					"column never derives one", parent.Type, got)
+			}
+
+			// It is a leaf as well, by the same predicate: everything in this
+			// package cuts the subtree off there.
+			if !parent.IsLeaf([]domain.Node{
+				task("buried", "x", domain.StatusToday),
+				task("deeper", "x", domain.StatusDoing),
+			}) {
+				t.Errorf("IsLeaf(%s with task children) = false, want true", parent.Type)
+			}
+
+			// And the cut is the one the bar already made: the project above is
+			// done at 100%, both agreeing to ignore the buried work.
+			status, err := domain.DeriveStatus(nodes, "p")
+			if err != nil {
+				t.Fatalf("DeriveStatus(p) = %v", err)
+			}
+			p, err := domain.ComputeProgress(nodes, "p")
+			if err != nil {
+				t.Fatalf("ComputeProgress(p) = %v", err)
+			}
+			if (status == domain.StatusDone) != (p.Percent() == 100) {
+				t.Errorf("the column (%q) and the bar (%d%%) disagree", status, p.Percent())
+			}
+		})
+	}
+
+	// A childless one is unchanged: it was already a leaf, and it still reads
+	// the backlog it is parked at.
+	t.Run("a childless habit still reads backlog", func(t *testing.T) {
+		got, err := domain.DeriveStatus([]domain.Node{habit("h", "")}, "h")
+		if err != nil {
+			t.Fatalf("DeriveStatus(h) = %v", err)
+		}
+		if got != domain.StatusBacklog {
+			t.Errorf("DeriveStatus(childless habit) = %q, want backlog", got)
+		}
+	})
+
+	// The self cut is not the same guard as Node.IsLeaf's, and this is the case
+	// that tells them apart: a STORED column on a type that has none. CheckStatus
+	// refuses to write one, so it can only come from an older build — and a leaf
+	// reports its stored status, so without the cut in deriveStatus itself the
+	// habit would render in a Kanban column again, children or no children.
+	t.Run("a stored column on a no-column type is not rendered", func(t *testing.T) {
+		for _, stored := range domain.Statuses() {
+			t.Run("stored "+stored.String(), func(t *testing.T) {
+				corrupt := habit("h", "")
+				corrupt.Status = stored
+
+				for _, nodes := range [][]domain.Node{
+					{corrupt},
+					{corrupt, task("under", "h", domain.StatusDoing)},
+				} {
+					got, err := domain.DeriveStatus(nodes, "h")
+					if err != nil {
+						t.Fatalf("DeriveStatus(h) = %v", err)
+					}
+					if got != domain.StatusBacklog {
+						t.Errorf("a habit stored at %q with %d nodes below derives %q, want backlog",
+							stored, len(nodes)-1, got)
+					}
+				}
+			})
 		}
 	})
 }

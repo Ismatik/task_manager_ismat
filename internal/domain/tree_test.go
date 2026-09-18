@@ -312,22 +312,66 @@ func TestValidateMoveRejectsMissingNodes(t *testing.T) {
 	})
 }
 
-// Notes hold no children: work parked under a note would be invisible to both
-// status derivation and the progress denominator, so the move is refused.
-func TestValidateMoveRejectsANoteAsParent(t *testing.T) {
-	nodes := deepTree()
+// A type with no Kanban column holds no children: work parked under one would
+// be invisible to both status derivation and the progress denominator, so the
+// move is refused (S1-09).
+//
+// The habit half is the defect this test was widened for. It named the note type
+// alone, and every word of its justification was already true of a habit: a
+// habit is cut out of derivation and out of the bar by the same predicate, so a
+// task dragged under one vanished from both while still sitting on the board.
+func TestValidateMoveRejectsAParentWithNoColumn(t *testing.T) {
+	nodes := append(deepTree(), habit("h", "root"))
 
-	for _, id := range []string{"a1", "b", "a2"} {
-		t.Run("moving "+id+" under a note", func(t *testing.T) {
-			err := domain.ValidateMove(nodes, id, ptr("n"))
-			if !errors.Is(err, domain.ErrNoteParent) {
-				t.Errorf("ValidateMove(%q -> note) = %v, want ErrNoteParent", id, err)
-			}
-		})
+	for _, parent := range []string{"n", "h"} {
+		for _, id := range []string{"a1", "b", "a2"} {
+			t.Run("moving "+id+" under "+parent, func(t *testing.T) {
+				err := domain.ValidateMove(nodes, id, ptr(parent))
+				if !errors.Is(err, domain.ErrTypeHasNoChildren) {
+					t.Errorf("ValidateMove(%q -> %q) = %v, want ErrTypeHasNoChildren", id, parent, err)
+				}
+			})
+		}
 	}
 
-	t.Run("a note under itself is circular, not a note-parent problem", func(t *testing.T) {
+	// Every type, including another no-column one: what is being MOVED is not
+	// the question, the parent's type is.
+	t.Run("every type is refused under a habit", func(t *testing.T) {
+		moving := []domain.Node{
+			task("t", "root", domain.StatusWeek),
+			bug("g", "root", domain.StatusWeek),
+			project("pp", "root", domain.StatusBacklog),
+			note("nn", "root"),
+			habit("hh", "root"),
+		}
+		set := append(append([]domain.Node{}, nodes...), moving...)
+		for _, m := range moving {
+			if err := domain.ValidateMove(set, m.ID, ptr("h")); !errors.Is(err, domain.ErrTypeHasNoChildren) {
+				t.Errorf("ValidateMove(%s %q -> habit) = %v, want ErrTypeHasNoChildren", m.Type, m.ID, err)
+			}
+		}
+	})
+
+	// The user's earlier decision, guarded: grouping habits UNDER a project is
+	// legal and stays legal. This rule is about the parent, not the child.
+	t.Run("a habit under a project is still allowed", func(t *testing.T) {
+		if err := domain.ValidateMove(nodes, "h", ptr("b")); err != nil {
+			t.Errorf("ValidateMove(habit -> project) = %v, want nil", err)
+		}
+		if err := domain.ValidateMove(nodes, "h", nil); err != nil {
+			t.Errorf("ValidateMove(habit -> root) = %v, want nil", err)
+		}
+	})
+
+	t.Run("a note under itself is circular, not a no-column-parent problem", func(t *testing.T) {
 		err := domain.ValidateMove(nodes, "n", ptr("n"))
+		if !errors.Is(err, domain.ErrCircularParent) {
+			t.Errorf("err = %v, want ErrCircularParent", err)
+		}
+	})
+
+	t.Run("a habit under itself is circular too", func(t *testing.T) {
+		err := domain.ValidateMove(nodes, "h", ptr("h"))
 		if !errors.Is(err, domain.ErrCircularParent) {
 			t.Errorf("err = %v, want ErrCircularParent", err)
 		}
@@ -599,7 +643,7 @@ func TestPlanMove(t *testing.T) {
 }
 
 func TestPlanMoveRefusesAnInvalidMove(t *testing.T) {
-	nodes := deepTree()
+	nodes := append(deepTree(), habit("h", "root"))
 
 	tests := []struct {
 		name      string
@@ -609,7 +653,8 @@ func TestPlanMoveRefusesAnInvalidMove(t *testing.T) {
 	}{
 		{"into its own subtree", "a", ptr("a1x"), domain.ErrCircularParent},
 		{"into itself", "a", ptr("a"), domain.ErrCircularParent},
-		{"under a note", "a", ptr("n"), domain.ErrNoteParent},
+		{"under a note", "a", ptr("n"), domain.ErrTypeHasNoChildren},
+		{"under a habit", "a", ptr("h"), domain.ErrTypeHasNoChildren},
 		{"an unknown node", "nope", ptr("a"), domain.ErrNodeNotFound},
 		{"an unknown parent", "a", ptr("nope"), domain.ErrNodeNotFound},
 	}

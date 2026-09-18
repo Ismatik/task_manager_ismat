@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"errors"
 	"testing"
 
 	"nexus/internal/domain"
@@ -91,6 +92,47 @@ func TestNodeTypeHasColumn(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.in.HasColumn(); got != tt.want {
 				t.Errorf("NodeType(%q).HasColumn() = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+// S1-09: the one place the "who may be doing" type rules live. The project half
+// of it used to be written out at four call sites with no predicate behind it,
+// which is the setup that produced five reviews' worth of one copy diverging.
+func TestNodeTypeCanBeDoingAndDoingRefusal(t *testing.T) {
+	tests := []struct {
+		name   string
+		in     domain.NodeType
+		want   bool
+		reason error
+	}{
+		{"a task may be doing", domain.NodeTypeTask, true, nil},
+		{"a bug may be doing", domain.NodeTypeBug, true, nil},
+		{"D9: a project never may, empty or not", domain.NodeTypeProject, false,
+			domain.ErrProjectNeverDoing},
+		{"a habit has no column to be doing in", domain.NodeTypeHabit, false,
+			domain.ErrTypeHasNoColumn},
+		{"a note has no column to be doing in", domain.NodeTypeNote, false,
+			domain.ErrTypeHasNoColumn},
+		{"an unknown type may not", domain.NodeType("epic"), false, domain.ErrTypeHasNoColumn},
+		{"the empty type may not", domain.NodeType(""), false, domain.ErrTypeHasNoColumn},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.in.CanBeDoing(); got != tt.want {
+				t.Errorf("NodeType(%q).CanBeDoing() = %v, want %v", tt.in, got, tt.want)
+			}
+			reason := domain.DoingRefusal(tt.in)
+			if tt.reason == nil {
+				if reason != nil {
+					t.Errorf("DoingRefusal(%q) = %v, want nil", tt.in, reason)
+				}
+				return
+			}
+			if !errors.Is(reason, tt.reason) {
+				t.Errorf("DoingRefusal(%q) = %v, want %v", tt.in, reason, tt.reason)
 			}
 		})
 	}

@@ -54,7 +54,8 @@ func (t NodeType) Valid() bool {
 //
 // task, project and bug do have columns. Whether a node that has a column may
 // enter doing is a different and narrower question — that one is about running
-// a timer and is answered by Node.CanEnterDoing (D2, D9).
+// a timer and is answered by NodeType.CanBeDoing and Node.CanEnterDoing
+// (D2, D9).
 //
 // An unknown type has no column either: a type nobody recognises is not one
 // this rule can vouch for. Rejecting it as a type is Node.Validate's job.
@@ -66,6 +67,25 @@ func (t NodeType) HasColumn() bool {
 		return false
 	}
 }
+
+// CanBeDoing reports whether the TYPE t permits the doing status at all — which
+// is to say, permits a timer, since doing is what a timer means (D2, D7, D9).
+//
+// It is the bool form of DoingRefusal, defined in terms of it so that the two
+// can never answer differently: task and bug yes, project no (D9), note and
+// habit no (they have no column to be doing in). Whether a particular NODE of a
+// permitted type may be doing depends on its children as well and is
+// Node.CanEnterDoing's question.
+//
+// # Not the same rule as countsAsWork, which happens to admit the same types
+//
+// countsAsWork in derive.go excludes a project too, and for an unrelated reason:
+// a project is the thing a progress bar is drawn FOR rather than a unit the bar
+// measures. Two questions with the same answer today are still two questions —
+// the precedent is HasColumn and HasDue, which a habit answers differently —
+// and folding them together would mean a future change to one silently moving
+// the other.
+func (t NodeType) CanBeDoing() bool { return DoingRefusal(t) == nil }
 
 // HasDue reports whether a node of type t may carry a due date at all (PLAN.md
 // §4, "Behaviour by type").

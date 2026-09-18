@@ -57,9 +57,10 @@ type Running struct {
 //
 // # Who may be timed
 //
-// domain.Node.CanStartTimer decides, and this file does not re-derive it: a leaf
-// that is not a project, not a habit and not a note (D2, D7, D9). A project is
-// refused whether or not it has children — the type wins over the leaf rule.
+// domain.DoingRefusal and domain.Node.CanStartTimer decide, and this file does
+// not re-derive either: a leaf whose TYPE may be doing, which is a task or a bug
+// (D2, D7, D9). A project is refused whether or not it has children — the type
+// wins over the leaf rule — and a note or a habit has no column to be doing in.
 //
 // Sleep and lock handling is Stage 4. store.TimeEntryRepo.CloseAll already
 // exists for it; nothing here subscribes to anything.
@@ -158,11 +159,20 @@ func (s *TimerService) Start(ctx context.Context, nodeID string) (domain.TimeEnt
 //
 // Every rule it applies comes from the domain; the two service-level refusals
 // (archived, done) are facts about the row rather than rules about the tree.
+//
+// The TYPE rules come first and are domain.DoingRefusal's — a timer is what
+// doing MEANS, so a type that may not be doing may not be timed. This case
+// tested `n.Type == domain.NodeTypeProject` until S1-09: the fourth copy of the
+// project rule, and the copy that would have been left behind next. Asking the
+// domain for the reason keeps the message as specific as it was — a project
+// still names ErrProjectNeverDoing — and now a habit or a note names
+// ErrTypeHasNoColumn instead of falling through to the generic refusal below.
 func canBeTimed(n domain.Node, children []domain.Node) error {
-	switch {
-	case n.Type == domain.NodeTypeProject:
+	if reason := domain.DoingRefusal(n.Type); reason != nil {
 		return fmt.Errorf("service: starting a timer on %q: %w (%w)",
-			n.ID, ErrTimerNotAllowed, domain.ErrProjectNeverDoing)
+			n.ID, ErrTimerNotAllowed, reason)
+	}
+	switch {
 	case n.ArchivedAt != nil:
 		return fmt.Errorf("service: starting a timer on %q: %w (%w)",
 			n.ID, ErrTimerNotAllowed, ErrNodeArchived)

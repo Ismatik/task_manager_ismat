@@ -14,16 +14,31 @@ import (
 // the nodes exist and nothing can ever display them.
 var ErrCircularParent = errors.New("domain: a node cannot be moved into its own subtree")
 
-// ErrNoteParent is returned when a move would make a note the parent of
-// something.
+// ErrTypeHasNoChildren is returned when a move — or a create, which validates
+// through the same function — would park something under a node whose TYPE has
+// no Kanban column: a note or a habit (NodeType.HasColumn, PLAN.md §4).
 //
-// Notes hold no children, and that is a decision rather than an oversight. A
-// note is excluded from status derivation and from the progress denominator
-// (D2, D7), so work parked under one would be invisible to both: the parent
-// above would derive a status that ignores it and a progress bar that does not
-// count it, and the user would see a project reported as done with unfinished
-// tasks inside it. Refusing the move is the only way to keep that unreachable.
-var ErrNoteParent = errors.New("domain: a note cannot have children")
+// # Why the predicate and not the note type
+//
+// Such a node holds no children, and that is a decision rather than an
+// oversight. A node with no column is excluded from status derivation and from
+// the progress denominator, and its whole subtree is cut with it (D2, D7, D10),
+// so work parked under one would be invisible to both: the parent above would
+// derive a status that ignores it and a progress bar that does not count it, and
+// the user would see a project reported as done with unfinished tasks inside it.
+// Refusing the move is the only way to keep that unreachable.
+//
+// Every word of that is true of a HABIT and not only of a note — a habit is
+// excluded by exactly the same cut — which is why this sentinel was renamed from
+// ErrNoteParent and the test generalised to NodeType.HasColumn. It was the last
+// place the no-column rule was still spelled as "is it a note", and it produced
+// precisely the described outcome: a task created under a habit put the habit
+// itself in a Kanban column and left its project reading done at 100% with that
+// task unfinished on the board underneath it.
+//
+// It is NOT the rule about being a child. A habit may still be grouped UNDER a
+// project; only the other direction is refused.
+var ErrTypeHasNoChildren = errors.New("domain: this node type cannot have children")
 
 // rootKey is the parent key of a node with no parent.
 const rootKey = ""
@@ -130,12 +145,16 @@ func Ancestors(nodes []Node, id string) ([]Node, error) {
 //   - a newParentID that is not in the loaded set (ErrNodeNotFound),
 //   - a node moved into itself or into its own subtree, at any depth
 //     (ErrCircularParent),
-//   - a note as the new parent (ErrNoteParent),
+//   - a new parent whose TYPE has no Kanban column — a note or a habit
+//     (NodeType.HasColumn, ErrTypeHasNoChildren),
 //   - a loaded set that is already cyclic (ErrCycle) — the walk is bounded, so
 //     corrupt data produces an error rather than a hang.
 //
-// The circular check comes before the note check so that a note dragged onto
-// itself reports the more specific reason.
+// The circular check comes before the no-column check so that a note dragged
+// onto itself reports the more specific reason.
+//
+// Only the PARENT's type is examined. What is being moved does not matter: a
+// habit grouped under a project is legal and stays legal.
 func ValidateMove(nodes []Node, nodeID string, newParentID *string) error {
 	byID := indexByID(nodes)
 
@@ -165,8 +184,13 @@ func ValidateMove(nodes []Node, nodeID string, newParentID *string) error {
 		}
 	}
 
-	if parent.Type == NodeTypeNote {
-		return fmt.Errorf("domain: move %q under the note %q: %w", nodeID, parent.ID, ErrNoteParent)
+	// The rule is NodeType.HasColumn's, the same predicate deriveStatus,
+	// walkProgress, PlanCascade, Node.IsLeaf and the board's onTheBoard start
+	// from. It named the note type alone until S1-09, which is how a task came to
+	// be parkable under a habit — invisible to every one of them.
+	if !parent.Type.HasColumn() {
+		return fmt.Errorf("domain: move %q under the %s %q: %w",
+			nodeID, parent.Type, parent.ID, ErrTypeHasNoChildren)
 	}
 	return nil
 }

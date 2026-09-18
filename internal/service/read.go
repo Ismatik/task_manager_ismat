@@ -325,8 +325,9 @@ func onTheBoard(n domain.Node) bool {
 // Progress returns the done-leaves-over-total-leaves progress of a subtree (D7)
 // — what a project's progress bar draws.
 //
-// A subtree with no non-note leaves reports Defined = false. That is not 0% and
-// not 100%: there is no work in it to measure, and the caller draws no bar.
+// A subtree with no leaves that count as work reports Defined = false — a leaf
+// with no Kanban column, a note or a habit (D10), does not count. That is not 0%
+// and not 100%: there is no work in it to measure, and the caller draws no bar.
 func (s *TaskService) Progress(ctx context.Context, nodeID string) (ProgressView, error) {
 	var out ProgressView
 

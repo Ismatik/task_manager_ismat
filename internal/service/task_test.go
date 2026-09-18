@@ -292,11 +292,58 @@ func TestCreateNode(t *testing.T) {
 		memo := f.create(draft("memo", domain.NodeTypeNote, nil))
 
 		_, err := f.tasks.CreateNode(ctx, draft("x", domain.NodeTypeTask, &memo.ID))
-		if !errors.Is(err, domain.ErrNoteParent) {
-			t.Fatalf("CreateNode() = %v, want domain.ErrNoteParent", err)
+		if !errors.Is(err, domain.ErrTypeHasNoChildren) {
+			t.Fatalf("CreateNode() = %v, want domain.ErrTypeHasNoChildren", err)
 		}
 		if got := len(f.all()); got != 1 {
 			t.Errorf("%d rows, want only the note", got)
+		}
+	})
+
+	// S1-09. The create path is the door the reviewer came through: a habit has
+	// no column either, so nothing may be parented under one, and the create
+	// path must refuse it for the same reason and with the same sentinel as a
+	// note. Every type is refused, because the rule is about the PARENT.
+	t.Run("a habit cannot be a parent", func(t *testing.T) {
+		for _, typ := range domain.NodeTypes() {
+			t.Run(string(typ), func(t *testing.T) {
+				f := newFixture(t)
+
+				hd := draft("stretch every morning", domain.NodeTypeHabit, nil)
+				hd.Recurrence = ptr("FREQ=DAILY")
+				h := f.create(hd)
+
+				d := draft("x", typ, &h.ID)
+				if typ == domain.NodeTypeHabit {
+					d.Recurrence = ptr("FREQ=DAILY")
+				}
+				_, err := f.tasks.CreateNode(ctx, d)
+				if !errors.Is(err, domain.ErrTypeHasNoChildren) {
+					t.Fatalf("CreateNode(%s under a habit) = %v, want domain.ErrTypeHasNoChildren",
+						typ, err)
+				}
+				if got := len(f.all()); got != 1 {
+					t.Errorf("%d rows, want only the habit", got)
+				}
+			})
+		}
+	})
+
+	// The user's earlier decision is the opposite direction and is untouched:
+	// grouping a habit under a project is legal.
+	t.Run("a habit under a project is still created", func(t *testing.T) {
+		f := newFixture(t)
+
+		p := f.create(draft("project", domain.NodeTypeProject, nil))
+		d := draft("stretch every morning", domain.NodeTypeHabit, &p.ID)
+		d.Recurrence = ptr("FREQ=DAILY")
+
+		h, err := f.tasks.CreateNode(ctx, d)
+		if err != nil {
+			t.Fatalf("CreateNode(habit under a project) = %v, want it created", err)
+		}
+		if h.ParentID == nil || *h.ParentID != p.ID {
+			t.Errorf("the habit's parent = %v, want %q", h.ParentID, p.ID)
 		}
 	})
 }
@@ -1075,6 +1122,34 @@ func TestMoveNode(t *testing.T) {
 			t.Errorf("first.updated_at = %v, want the original %v", got, testNow)
 		}
 	})
+
+	// The regression guard for the user's earlier decision: S1-09 refuses a
+	// parent with no column, which is the OPPOSITE direction. Grouping a habit
+	// under a project was ruled legal and stays legal, by drag as well as by
+	// create.
+	t.Run("a habit may still be dragged under a project", func(t *testing.T) {
+		f := newFixture(t)
+		p := f.create(draft("project", domain.NodeTypeProject, nil))
+		d := draft("stretch every morning", domain.NodeTypeHabit, nil)
+		d.Recurrence = ptr("FREQ=DAILY")
+		h := f.create(d)
+
+		moved, err := f.tasks.MoveNode(ctx, h.ID, &p.ID, 0)
+		if err != nil {
+			t.Fatalf("MoveNode(habit under a project) = %v, want it to succeed", err)
+		}
+		if moved.ParentID == nil || *moved.ParentID != p.ID {
+			t.Errorf("parent_id = %v, want %q", moved.ParentID, p.ID)
+		}
+		if got := f.get(h.ID).ParentID; got == nil || *got != p.ID {
+			t.Errorf("the stored parent_id = %v, want %q", got, p.ID)
+		}
+
+		// And back out to a root again.
+		if _, err := f.tasks.MoveNode(ctx, h.ID, nil, 0); err != nil {
+			t.Fatalf("MoveNode(habit to a root) = %v, want it to succeed", err)
+		}
+	})
 }
 
 // The circular-parent rejection, end to end: an error the caller can match, and
@@ -1113,8 +1188,24 @@ func TestMoveNodeRejectsACircularParent(t *testing.T) {
 		snapshot := f.all()
 
 		_, err := f.tasks.MoveNode(ctx, root.ID, &memo.ID, 0)
-		if !errors.Is(err, domain.ErrNoteParent) {
-			t.Fatalf("MoveNode = %v, want domain.ErrNoteParent", err)
+		if !errors.Is(err, domain.ErrTypeHasNoChildren) {
+			t.Fatalf("MoveNode = %v, want domain.ErrTypeHasNoChildren", err)
+		}
+		if after := f.all(); !reflect.DeepEqual(snapshot, after) {
+			t.Error("the database changed on a refused move")
+		}
+	})
+
+	// S1-09: a habit has no column either, so it holds no children either.
+	t.Run("under a habit", func(t *testing.T) {
+		d := draft("stretch every morning", domain.NodeTypeHabit, nil)
+		d.Recurrence = ptr("FREQ=DAILY")
+		h := f.create(d)
+		snapshot := f.all()
+
+		_, err := f.tasks.MoveNode(ctx, root.ID, &h.ID, 0)
+		if !errors.Is(err, domain.ErrTypeHasNoChildren) {
+			t.Fatalf("MoveNode = %v, want domain.ErrTypeHasNoChildren", err)
 		}
 		if after := f.all(); !reflect.DeepEqual(snapshot, after) {
 			t.Error("the database changed on a refused move")

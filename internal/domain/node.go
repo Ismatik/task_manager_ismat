@@ -240,8 +240,9 @@ func (n Node) Validate() error {
 
 // IsLeaf reports whether n behaves as a leaf, given its direct children.
 //
-// A node is a leaf when it has no children **or no child of it has a Kanban
-// column** (D2, D10). This is the predicate the rest of the package is built on:
+// A node is a leaf when its OWN type has no Kanban column, or when it has no
+// children, or when no child of it has a Kanban column (D2, D10). This is the
+// predicate the rest of the package is built on:
 // status derivation, progress, the cascade and "only leaves start a timer" all
 // ask it, so the case is decided here once instead of being re-derived — and
 // re-fumbled — in four places.
@@ -257,10 +258,22 @@ func (n Node) Validate() error {
 // parent already did — which is what stopped a task whose only children are
 // habits from producing an empty cascade plan.
 //
+// # A node with no column of its own is a leaf whatever is under it (S1-09)
+//
+// Nothing may be parented under such a node any more (ValidateMove,
+// ErrTypeHasNoChildren), and if corrupt data holds one anyway, every walk in
+// this package already cuts the subtree off at it: deriveStatus, walkProgress
+// and PlanCascade all stop there. Answering "not a leaf" for it would be the one
+// remaining disagreement — and it was exactly the one that put a habit holding a
+// task into a Kanban column.
+//
 // children must be n's direct children; nothing else in the slice is filtered
 // out, and archived children are counted like any other. Callers load the node
 // set they mean.
 func (n Node) IsLeaf(children []Node) bool {
+	if !n.Type.HasColumn() {
+		return true
+	}
 	for _, c := range children {
 		if c.Type.HasColumn() {
 			return false
@@ -269,32 +282,56 @@ func (n Node) IsLeaf(children []Node) bool {
 	return true
 }
 
+// DoingRefusal names the TYPE rule that forbids a node of type t the doing
+// status, or nil when the type itself permits it (D2, D7, D9).
+//
+// # The one place the "who may be doing" type rules live
+//
+// There are two of them and they have different reasons and different sentinels:
+//
+//   - a type with NO KANBAN COLUMN — a note, a habit (NodeType.HasColumn,
+//     PLAN.md §4) — cannot be in a column at all, so it cannot be in the Doing
+//     one either, whatever its children look like;
+//   - a PROJECT has a column and still never enters doing, empty or not (D9):
+//     it carries a progress bar and never runs a timer, and the user has ruled
+//     that this per-type rule beats D2's "a node with no children behaves as a
+//     leaf".
+//
+// It returns the reason rather than a bool so that a caller can keep the
+// specific message it had — "a project never enters doing" reads very
+// differently from "a habit has no column" — without holding its own copy of
+// either rule. That copy is what this function exists to remove: the project
+// half was spelled out in four places (CanEnterDoing, CheckStatus, PlanCascade
+// and the timer service) with no predicate behind it, which is the same setup
+// that let the no-column rule diverge one copy at a time.
+//
+// NodeType.CanBeDoing is the bool form for callers that only need yes or no.
+// This is a question about the TYPE alone; whether a node that passes it is
+// also a LEAF is Node.CanEnterDoing's.
+func DoingRefusal(t NodeType) error {
+	switch {
+	case !t.HasColumn():
+		return ErrTypeHasNoColumn
+	case t == NodeTypeProject:
+		return ErrProjectNeverDoing
+	default:
+		return nil
+	}
+}
+
 // CanEnterDoing reports whether n may be given the STORED status doing, given
 // its direct children (D2, D7, D9).
 //
-// # A type with no column cannot be in one
-//
-// The first question is not about leaf-ness at all: doing is a Kanban column,
-// and a note or a habit has none (NodeType.HasColumn, PLAN.md §4), so neither
-// can be doing whatever its children look like. Starting from HasColumn is what
-// keeps this predicate agreeing with CheckStatus and with PlanCascade — it
-// previously said yes to a childless habit, and the cascade believed it.
-//
-// # Type beats the leaf rule (D9)
-//
-// D7 says a project never enters doing and never runs a timer; D2 says a node
-// with no children, or with only note children, behaves as a leaf and can be
-// dragged and timed. An empty project satisfies both descriptions, and the user
-// has ruled that the TYPE wins: the per-type rule is the more specific one, so
-// a project is never doing no matter how few children it has. A freshly created
-// project is therefore inert until it gains children; adding a child is how
-// work becomes timeable.
+// The type question comes first and is DoingRefusal's: a note or a habit has no
+// column to be doing in, and a project never enters doing however few children
+// it has. A freshly created project is therefore inert until it gains children;
+// adding a child is how work becomes timeable.
 //
 // A parent that is not a leaf is excluded because doing means a timer and only
 // leaves run one. Such a parent still RENDERS in the Doing column when a leaf
 // underneath it is running — that is DeriveStatus's answer, not a stored status.
 func (n Node) CanEnterDoing(children []Node) bool {
-	if !n.Type.HasColumn() || n.Type == NodeTypeProject {
+	if !n.Type.CanBeDoing() {
 		return false
 	}
 	return n.IsLeaf(children)
@@ -308,8 +345,8 @@ func (n Node) CanEnterDoing(children []Node) bool {
 // thing to check. A habit used to be named here a second time, because
 // CanEnterDoing let one through; it is refused one level down now, by the
 // no-column rule that also says a habit is checked off rather than timed and has
-// no PMP activity (D4). A project at any size, a note, and a node with non-note
-// children are refused for the reasons CanEnterDoing gives.
+// no PMP activity (D4). A project at any size, a note, and a node with children
+// that have a Kanban column are refused for the reasons CanEnterDoing gives.
 //
 // It stays a separate method: "may this be dragged to Doing?" and "may a timer
 // be opened on this?" are asked by different callers, and the day one of them
@@ -384,10 +421,15 @@ func (n Node) CheckStatus(children []Node) error {
 		return nil
 	}
 	if n.Status == StatusDoing && !n.CanEnterDoing(children) {
-		if n.Type == NodeTypeProject {
-			return fmt.Errorf("domain: node %q: %w", n.ID, ErrProjectNeverDoing)
+		// Which rule refused is DoingRefusal's answer, not a second copy of the
+		// type list here: above this line the type is known to have a column, so
+		// the only type rule left to fire is the project one (D9), and it keeps
+		// the sentinel the drag returns because it is the same rule.
+		if reason := DoingRefusal(n.Type); reason != nil {
+			return fmt.Errorf("domain: node %q: %w", n.ID, reason)
 		}
-		return invalid("node", "status", "only a leaf is stored as doing, and %q has children that are not notes", n.ID)
+		return invalid("node", "status",
+			"only a leaf is stored as doing, and %q has children that have a kanban column", n.ID)
 	}
 	return nil
 }

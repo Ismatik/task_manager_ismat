@@ -20,14 +20,18 @@ type NodeView struct {
 	Node domain.Node
 
 	// Status is the DERIVED status (D2): the node's own for a leaf, and for a
-	// parent the least-advanced status among its non-done, non-note children,
-	// done only when all of them are done. This is the column the card belongs
-	// in, and it is never written back.
+	// parent the least-advanced status among its non-done children that HAVE a
+	// Kanban column, done only when all of them are done. A child with no column
+	// — a note or a habit (D10) — is excluded along with its whole subtree, and
+	// a node with no column of its own always reads backlog, which means "no
+	// column" rather than "in the Backlog column". This is the column the card
+	// belongs in, and it is never written back.
 	Status domain.Status
 
-	// Progress is done leaves over total leaves (D7), notes excluded. Check
-	// Defined before drawing a bar: a subtree with no work in it is neither 0%
-	// nor 100%.
+	// Progress is done leaves over total leaves (D7). Leaves with no Kanban
+	// column — notes and habits — are excluded, and so is everything beneath
+	// them. Check Defined before drawing a bar: a subtree with no work in it is
+	// neither 0% nor 100%.
 	Progress ProgressView
 
 	// Overdue is due < today && derived status != done (D1), computed against
@@ -35,7 +39,9 @@ type NodeView struct {
 	Overdue bool
 
 	// IsLeaf reports whether the node behaves as a leaf — no children, or no
-	// child with a Kanban column, which is notes and habits (D2, D10). It is
+	// child with a Kanban column, which is notes and habits (D2, D10). A node
+	// with no column of its own is always a leaf: nothing may be parented under
+	// one, and every derivation cuts the subtree off there anyway (S1-09). It is
 	// what the UI needs to decide between a progress bar and a timer button.
 	IsLeaf bool
 
@@ -61,9 +67,10 @@ type ProgressView struct {
 	Total   int
 	Percent int
 
-	// Defined is false exactly when there are no non-note leaves to measure.
-	// Neither 0% nor 100% is an honest answer then, and the caller draws no bar
-	// at all (D7).
+	// Defined is false exactly when there are no leaves that count as work to
+	// measure — a leaf with no Kanban column, which is a note and a habit alike
+	// (D10), is not one. Neither 0% nor 100% is an honest answer then, and the
+	// caller draws no bar at all (D7).
 	Defined bool
 }
 

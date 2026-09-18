@@ -113,8 +113,14 @@ func PlanCascade(nodes []Node, rootID string, target Status, now func() time.Tim
 	// whole drag — rather than quietly cascading onto the leaves underneath —
 	// is what makes the rule visible to the user instead of leaving them
 	// wondering why the card did not move.
-	if target == StatusDoing && root.Type == NodeTypeProject {
-		return nil, fmt.Errorf("domain: drag project %q to doing: %w", rootID, ErrProjectNeverDoing)
+	//
+	// The rule is DoingRefusal's, not a copy of it: the no-column types have
+	// already returned above, so the only reason it can give here is the project
+	// one, and it comes with the sentinel this drag has always returned.
+	if target == StatusDoing {
+		if reason := DoingRefusal(root.Type); reason != nil {
+			return nil, fmt.Errorf("domain: drag %s %q to doing: %w", root.Type, rootID, reason)
+		}
 	}
 
 	kids := groupByParent(nodes)

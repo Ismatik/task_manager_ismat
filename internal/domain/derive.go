@@ -125,6 +125,20 @@ func deriveStatus(byID map[string]Node, kids map[string][]Node, id string, visit
 	visiting[id] = true
 	defer delete(visiting, id)
 
+	// The SELF cut, at the same predicate and now in the same position as
+	// walkProgress's (D10). A type with no column has no column to derive: the
+	// answer is backlog, the inert value its NOT NULL column carries, which means
+	// "no column" and not "in the Backlog column".
+	//
+	// Until S1-09 the cut was applied to the CHILDREN only, a few lines below.
+	// That made a habit WITH children a non-leaf, which fell through to the
+	// parent branch and derived a real Kanban column for something PLAN.md §4
+	// says never appears in one. ValidateMove now refuses to create that shape at
+	// all; this line makes the derivation right even if one is already stored.
+	if !n.Type.HasColumn() {
+		return StatusBacklog, nil
+	}
+
 	children := kids[id]
 	if n.IsLeaf(children) {
 		if !n.Status.Valid() {
@@ -141,6 +155,12 @@ func deriveStatus(byID map[string]Node, kids map[string][]Node, id string, visit
 		// descended into at all. The test is NodeType.HasColumn rather than a
 		// list of type constants; it named the note alone until D10, which is
 		// how a habit child came to hold its parent at backlog for ever.
+		//
+		// The recursive call would cut such a child at the top of the function
+		// anyway now. Skipping it here as well is deliberate: a child that is not
+		// on the board must not enter the "all done" test either, and returning
+		// backlog for it would hold the parent at backlog for ever — the very
+		// defect D10 removed.
 		if !c.Type.HasColumn() {
 			continue
 		}
@@ -164,7 +184,7 @@ func deriveStatus(byID map[string]Node, kids map[string][]Node, id string, visit
 
 // Progress is the done-leaves-over-total-leaves fraction of a subtree (D7).
 //
-// # Zero non-note leaves is not zero per cent
+// # Zero countable leaves is not zero per cent
 //
 // PLAN.md does not say what a subtree with no work in it should report, and this
 // is where it is decided: Total is 0, Done is 0, and Defined reports false.
@@ -184,7 +204,11 @@ type Progress struct {
 }
 
 // Defined reports whether the subtree contains any work to measure. It is false
-// exactly when there are no non-note leaves; see the type's documentation.
+// exactly when there are no leaves that count as work — countsAsWork's answer,
+// which excludes every type with no Kanban column (a note AND a habit, D10) and
+// the measured node when it is a project. It said "no non-note leaves" until
+// S1-09, which was the note-only spelling of a rule D10 had already generalised.
+// See the type's documentation.
 func (p Progress) Defined() bool { return p.Total > 0 }
 
 // Fraction returns the completed share of the subtree in 0..1, and 0 when the

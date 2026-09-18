@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -210,6 +211,212 @@ func TestBoardPlacesAProjectWithADoneTaskAndAHabitInDone(t *testing.T) {
 			t.Errorf("the project derives %q, want its own stored backlog", v.Status)
 		}
 	})
+}
+
+// S1-09, the reviewer's end-to-end reproduction, against a real database and
+// through the public service API only.
+//
+// What it produced before the fix, with a task created under a habit:
+//
+//	project renders status="done" progress={Done:1 Total:1 Percent:100 Defined:true}
+//	habit   renders status="today" isLeaf=false progress={Defined:false}
+//	the buried task IS on the board, in column "today"
+//
+// Two rules broken at once: §4 says a habit never appears in a Kanban column,
+// and a project read done at 100% while an unfinished task sat on the board
+// underneath it. Both came from the same door — ValidateMove refusing a note
+// parent but not a habit one — and both are asserted here where the user sees
+// them.
+func TestNothingCanBeParkedUnderAHabit(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	p := f.create(draft("project", domain.NodeTypeProject, nil))
+	work := f.create(draft("the only work in it", domain.NodeTypeTask, &p.ID))
+
+	d := draft("stretch every morning", domain.NodeTypeHabit, &p.ID)
+	d.Recurrence = ptr("FREQ=DAILY")
+	h := f.create(d)
+
+	if _, err := f.tasks.MoveToColumn(ctx, work.ID, domain.StatusDone); err != nil {
+		t.Fatalf("MoveToColumn(work, done): %v", err)
+	}
+
+	// The door the reviewer came through: create.
+	before := f.all()
+	buried, err := f.tasks.CreateNode(ctx, draft("buried", domain.NodeTypeTask, &h.ID))
+	if err == nil {
+		t.Fatalf("CreateNode(task under a habit) created %q; want it refused", buried.ID)
+	}
+	if !errors.Is(err, domain.ErrTypeHasNoChildren) {
+		t.Fatalf("CreateNode(task under a habit) = %v, want domain.ErrTypeHasNoChildren", err)
+	}
+	if after := f.all(); !reflect.DeepEqual(before, after) {
+		t.Error("a refused create wrote to the database")
+	}
+
+	// And the other door: drag an existing task onto the habit.
+	loose := f.create(draft("loose", domain.NodeTypeTask, nil))
+	if _, err := f.tasks.MoveToColumn(ctx, loose.ID, domain.StatusToday); err != nil {
+		t.Fatalf("MoveToColumn(loose, today): %v", err)
+	}
+	before = f.all()
+	if _, err := f.tasks.MoveNode(ctx, loose.ID, &h.ID, 0); !errors.Is(err, domain.ErrTypeHasNoChildren) {
+		t.Fatalf("MoveNode(task under a habit) = %v, want domain.ErrTypeHasNoChildren", err)
+	}
+	if after := f.all(); !reflect.DeepEqual(before, after) {
+		t.Error("a refused move wrote to the database")
+	}
+
+	// What the user sees now.
+	board, err := f.tasks.Board(ctx)
+	if err != nil {
+		t.Fatalf("Board: %v", err)
+	}
+	if v := find(board, h.ID); v != nil {
+		t.Errorf("the habit is on the board, in the %q column: §4 says it never appears in one",
+			v.Status)
+	}
+
+	tree, err := f.tasks.Tree(ctx, nil)
+	if err != nil {
+		t.Fatalf("Tree: %v", err)
+	}
+	hv := findInTree(tree, h.ID)
+	if hv == nil {
+		t.Fatal("the habit is not in the tree at all")
+	}
+	if hv.Status != domain.StatusBacklog {
+		t.Errorf("the habit renders status %q, want backlog — which means \"no column\"", hv.Status)
+	}
+	if !hv.IsLeaf {
+		t.Error("the habit renders IsLeaf = false, want true: nothing may be under it")
+	}
+	assertNoDoneAncestorOverUnfinishedWork(t, tree, f.all())
+
+	// The derivation half holds even for data the service can no longer create:
+	// a row written straight through the repository, as an older build could
+	// have left behind.
+	t.Run("a task already parked under a habit does not give it a column", func(t *testing.T) {
+		legacy := domain.Node{
+			ID: "legacy", ParentID: &h.ID, Type: domain.NodeTypeTask,
+			Title: "written by an older build", Status: domain.StatusToday,
+			DueSource: domain.DueSourceManual, Priority: domain.Priority4,
+			CreatedAt: testNow, UpdatedAt: testNow,
+		}
+		if err := f.nodes.Create(ctx, legacy); err != nil {
+			t.Fatalf("Create(legacy): %v", err)
+		}
+
+		board, err := f.tasks.Board(ctx)
+		if err != nil {
+			t.Fatalf("Board: %v", err)
+		}
+		if v := find(board, h.ID); v != nil {
+			t.Errorf("the habit is on the board, in the %q column", v.Status)
+		}
+
+		tree, err := f.tasks.Tree(ctx, nil)
+		if err != nil {
+			t.Fatalf("Tree: %v", err)
+		}
+		hv := findInTree(tree, h.ID)
+		if hv == nil {
+			t.Fatal("the habit is not in the tree at all")
+		}
+		if hv.Status != domain.StatusBacklog {
+			t.Errorf("the habit renders status %q, want backlog even with a task under it",
+				hv.Status)
+		}
+		if !hv.IsLeaf {
+			t.Error("the habit renders IsLeaf = false, want true even with a task under it")
+		}
+
+		// The column and the bar still tell the same story about the project.
+		pv := findInTree(tree, p.ID)
+		if pv == nil {
+			t.Fatal("the project is not in the tree at all")
+		}
+		if (pv.Status == domain.StatusDone) != (pv.Progress.Percent == 100) {
+			t.Errorf("the column (%q) and the bar (%d%%) disagree on the project",
+				pv.Status, pv.Progress.Percent)
+		}
+	})
+}
+
+// findInTree returns the view of a node anywhere in a nested Tree result.
+func findInTree(views []service.NodeView, id string) *service.NodeView {
+	for i := range views {
+		if views[i].Node.ID == id {
+			return &views[i]
+		}
+		if v := findInTree(views[i].Children, id); v != nil {
+			return v
+		}
+	}
+	return nil
+}
+
+// assertNoDoneAncestorOverUnfinishedWork is the reviewer's second invariant: no
+// node may render done at 100% while unfinished work sits anywhere below it in
+// the STORED tree.
+//
+// "Below" is deliberately the raw parent_id chain, with no cut of its own: the
+// board shows every node whose type has a column wherever it sits, so a task
+// hidden under a habit is still on screen and still unfinished. The walk here
+// shares no code with the derivation it checks.
+func assertNoDoneAncestorOverUnfinishedWork(t *testing.T, views []service.NodeView, set []domain.Node) {
+	t.Helper()
+
+	kids := map[string][]domain.Node{}
+	for _, n := range set {
+		key := ""
+		if n.ParentID != nil {
+			key = *n.ParentID
+		}
+		kids[key] = append(kids[key], n)
+	}
+
+	// leaf reports whether n is where a stored status is the truth: nothing under
+	// it has a column, so nothing derives over it.
+	leaf := func(n domain.Node) bool {
+		for _, c := range kids[n.ID] {
+			if c.Type.HasColumn() {
+				return false
+			}
+		}
+		return true
+	}
+
+	// unfinished reports the first LEAF below id that has a column and is not
+	// done. Only leaves are asked: a parent's stored status is never written and
+	// means nothing, so reading it here would invent violations.
+	var unfinished func(id string) string
+	unfinished = func(id string) string {
+		for _, c := range kids[id] {
+			if c.Type.HasColumn() && leaf(c) && c.Status != domain.StatusDone {
+				return c.ID
+			}
+			if found := unfinished(c.ID); found != "" {
+				return found
+			}
+		}
+		return ""
+	}
+
+	var walk func(vs []service.NodeView)
+	walk = func(vs []service.NodeView) {
+		for _, v := range vs {
+			if v.Status == domain.StatusDone && v.Progress.Defined && v.Progress.Percent == 100 {
+				if found := unfinished(v.Node.ID); found != "" {
+					t.Errorf("%q renders done at 100%% while %q is unfinished below it",
+						v.Node.ID, found)
+				}
+			}
+			walk(v.Children)
+		}
+	}
+	walk(views)
 }
 
 // Notes have no column, and they are not work: they count in no denominator.
