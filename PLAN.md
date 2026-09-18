@@ -1,6 +1,8 @@
 # Nexus — Plan
 
-My restatement of the brief. Written before any code. Nothing below is implemented yet.
+My restatement of the brief, written before any code. It stays the source of truth for
+the data model and the decisions; only the stage status below moves. **Stage 0 is
+closed (PASS); Stage 1 is current** — see §5 and `TASKS.md`.
 
 ---
 
@@ -149,7 +151,7 @@ and stop for your "next".
 
 | # | Stage | Acceptance |
 |---|---|---|
-| 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) | `make check` green, empty window opens, second launch focuses the first |
+| 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) — **CLOSED, PASS** | `make check` green, empty window opens, second launch focuses the first |
 | 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions | **≥90% coverage** on `internal/domain` + `internal/service` |
 | 2 | **Kanban + Habits strip** (launch screen) — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** |
 | 3 | **Detail + Tree + Search/Archive** — slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | Every field round-trips through Go; reparent in tree shows on Kanban instantly |
@@ -158,6 +160,31 @@ and stop for your "next".
 | 6 | **Backup, export, PMP timelog** — nightly JSON export of all tables to `~/Nexus/backups/YYYY-MM-DD.json`, keep 30; Restore-from-file with confirmation; Markdown export of a subtree; day timelog screen grouping `time_entries` by node with editable minutes, output in PMP KIT format with Copy | **Restore reproduces an identical Kanban** |
 | 7 | **Calendar + Stats** — month/week by due, drag to reschedule; completed per day/week, time per project/tag, streaks, estimate vs actual | Numbers match raw SQL run directly |
 | 8 | **Gantt** (projects only) — children as bars between created/due, drag to change due | Dragging a bar updates due everywhere |
+
+### Stage 0 — CLOSED, PASS
+
+The Reviewer returned **PASS**. All five gates green — including gate 5,
+`wails build -tags webkit2_41`, now that the user has installed `pkg-config`,
+`libgtk-3-dev` and `libwebkit2gtk-4.1-dev` — and all seven Stage 0 DONE criteria in
+`TASKS.md` met, including the two that needed a real window: the app opens, and a
+second launch exits immediately and focuses the first. Thirteen tickets, **S0-01 …
+S0-13**, one conventional commit each, no AI author and no co-author trailer on any
+of them.
+
+What landed: the Wails v2 react-ts scaffold; Tailwind consuming `design/` without
+duplicating a single token; ESLint/Prettier/`typecheck` with `--max-warnings=0`; the
+five Go packages of **D3** with the core enums and a mechanical purity test; embedded
+migrations and the SQLite connection on `modernc.org/sqlite` with WAL, foreign keys
+and a busy timeout verified on open; the `settings` table with idempotent seeding; the
+unix-socket single-instance lock with `--quick`; `make check`; `CLAUDE.md`; and
+`design/pmp-timelog-format.md`.
+
+What Stage 0 deliberately did **not** ship, and Stage 1 therefore owes: the `nodes`
+schema and every rule in §4 — status derivation, progress, the column↔due coupling,
+the single-active timer, streaks and search. Stage 0's only migration is
+`0001_settings.sql`; Stage 1 appends `0002` onwards and never edits it.
+
+**Stage 1 is broken into tickets S1-01 … S1-22 in `TASKS.md`.**
 
 **Final review**: fresh clone → `make check` → `wails build -tags webkit2_41` → `install.sh` →
 reboot checklist, executed and reported. `QA.md` with 25 manual scenarios covering
@@ -297,10 +324,44 @@ shells**, so the Makefile must resolve it explicitly (e.g. via
 `$(shell go env GOPATH)/bin/wails`) rather than assume `wails` is callable.
 
 **E3 — Toolchain present**: Go 1.26.0, Node v22.22.2, npm 10.9.7.
-**Not yet present**: `pkg-config`, `libgtk-3-dev`, `libwebkit2gtk-4.1-dev`. These
-require `sudo apt install` **by the user** — Stage 0's `wails build` gate cannot pass
-until then. See the note at the top of `TASKS.md`.
+`pkg-config`, `libgtk-3-dev` and `libwebkit2gtk-4.1-dev` were **missing** when Stage 0
+was planned and have since been installed by the user, which is what unblocked gate 5
+and closed Stage 0. `pkg-config --exists gtk+-3.0 webkit2gtk-4.1` now succeeds.
 
 ---
 
-**Status: decisions locked. Stage 0 is broken into tickets in `TASKS.md`.**
+### Known issues — recorded, not scheduled
+
+**K1 — `BackgroundColour` never reaches GTK under a comma-decimal locale.**
+This machine runs `LC_NUMERIC=ru_RU.UTF-8`. Wails builds the window background as a
+CSS string in C at `window.c:205` and formats the alpha with the **process locale**
+rather than the C locale, so it emits
+
+```
+rgba(27, 38, 54, 0,0)
+```
+
+GTK's CSS parser rejects that declaration — a comma is an argument separator, not a
+decimal point — and the background colour is therefore **silently never applied**.
+Nothing is logged; the window just uses its default.
+
+This is an **upstream Wails bug**, not ours, and it is **not fixed in Stage 1**:
+Stage 1 is Go-only, has no window work in it, and a locale workaround bolted on now
+would be untestable until there is a palette to compare against. **The decision
+belongs to Stage 2**, where the palette/theme work makes the window background have
+to match a token. The options to weigh there, none of them chosen here:
+
+1. force `LC_NUMERIC=C` for the process before `wails.Run`;
+2. leave the window background transparent and let the frontend paint it, which is
+   where the palette lives anyway;
+3. patch upstream and pin the fork.
+
+Related but **separate**: `main.go` passed `&options.RGBA{R: 27, G: 38, B: 54, A: 1}`.
+Alpha is 0–255, so `A: 1` is ~0.4% opacity — a real bug of ours, fixed in Stage 1 by
+ticket **S1-02**. Fixing it does not fix K1, and K1 is why the fix cannot be verified
+by eye on this machine.
+
+---
+
+**Status: decisions locked. Stage 0 is CLOSED (PASS). Stage 1 is broken into tickets
+S1-01 … S1-22 in `TASKS.md`.**
