@@ -111,16 +111,22 @@ generate the most edge-case tests:
 - → **Today**: `due = today`.
 - → **This week**: `due = the upcoming Friday`; **if today is Friday, due = today**.
   (Today, 2026-09-18, *is* a Friday — the edge case is live on day one.)
+- Both of those moves **always overwrite an existing due date, including a manual
+  one**, and set `due_source = 'auto'`. The column move wins — see §7 **D8**.
 - → **Backlog**: clears `due` **only if `due_source = 'auto'`**, i.e. only if it was
   auto-set by one of the moves above. A date the user typed by hand survives — see §7 D1.
 - **Overdue** = `due < today AND status ≠ done`.
+- Types with **no Kanban column** (`note`, `habit`) have no legal column move and
+  therefore never get a due date this way — §7 **D9**.
 
 ### Tree, timer, habits
 
 - **Dragging moves the whole subtree** — `parent_id` + `sort_order` change; children
   keep their own status.
 - **Exactly one active timer, globally.** Moving a card to Doing opens a
-  `time_entry` and closes any open entry on any other node. On lock/sleep (D-Bus
+  `time_entry` and closes any open entry on any other node. (Stage 1 built both halves
+  — the move and the timer — but **did not wire them together**; that wiring is an
+  explicit **Stage 2** acceptance criterion, see §5.) On lock/sleep (D-Bus
   `org.freedesktop.login1` `PrepareForSleep`, plus screensaver `ActiveChanged`) the
   open entry is closed. On resume we ask "resume timer?" — we never silently
   re-open, and we never bill the user for time spent asleep.
@@ -135,7 +141,7 @@ generate the most edge-case tests:
 | type | behaviour |
 |---|---|
 | `task` | default |
-| `project` | progress bar, **no timer** |
+| `project` | progress bar, **no timer**; **never enters `doing`, even when empty** (D9) |
 | `habit` | habit strip only, never in columns |
 | `note` | no status, no due; excluded from parent derivation |
 | `bug` | extra `repro_steps` + `severity`, stored as frontmatter in `description_md` |
@@ -152,8 +158,8 @@ and stop for your "next".
 | # | Stage | Acceptance |
 |---|---|---|
 | 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) — **CLOSED, PASS** | `make check` green, empty window opens, second launch focuses the first |
-| 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions | **≥90% coverage** on `internal/domain` + `internal/service` |
-| 2 | **Kanban + Habits strip** (launch screen) — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** |
+| 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **IMPLEMENTED, NOT CLOSED** (failed first review; see below) | **≥90% coverage** on `internal/domain` + `internal/service` — **met: 100.0% / 92.5%** |
+| 2 | **Kanban + Habits strip** (launch screen) — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — **and moving a card to Doing must itself open a `time_entry`** (§4 coupling; see `TASKS.md`, "Carried into Stage 2") |
 | 3 | **Detail + Tree + Search/Archive** — slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | Every field round-trips through Go; reparent in tree shows on Kanban instantly |
 | 4 | **Quick-add + Focus mode** — frameless standalone window, Go-side NL parser (date, `!priority`, `#tag`, `>Project` fuzzy, `~estimate`, `@type`), live preview chips, Enter creates & closes, Esc closes; Focus mode (one card, large timer, Esc exits); sleep/lock timer handling | `deploy KA Avto fri 15:00 !high #work >KA Avto ~2h` parses correctly in tests **and** in the UI |
 | 5 | **Platform integration** — tray via `energye/systray`, badge = overdue + due today, menu (Open / Quick add / Start-Stop timer / Quit); `.desktop` + `install.sh` → autostart, GNOME `gsettings` shortcut Super+Space → `nexus --quick`, warn if AppIndicator missing | Reboot → app opens; Super+Space → quick-add |
@@ -186,6 +192,27 @@ the single-active timer, streaks and search. Stage 0's only migration is
 
 **Stage 1 is broken into tickets S1-01 … S1-22 in `TASKS.md`.**
 
+### Stage 1 — IMPLEMENTED, NOT CLOSED
+
+All twenty-two tickets **S1-01 … S1-22** are implemented and committed, one
+conventional commit each. The ACCEPT criterion is **met**: `internal/domain`
+**100.0%**, `internal/service` **92.5%** statement coverage, measured per package.
+
+**The stage nevertheless failed its first review.** The Reviewer returned **FAIL** with
+three blocking issues:
+
+1. illegal type/status combinations were accepted on the create path — **fixed by the
+   Dev in `fd5e31d`**;
+2. due dates were written onto types that have no Kanban column — **fixed by the Dev in
+   `f1802d7`**;
+3. **decisions D8 and D9 existed nowhere in the specification** although five source
+   files cited them as authoritative — **fixed by this commit**, which records them in
+   §7 above.
+
+**Stage 1 is therefore NOT closed.** Per §5, no stage closes without a PASS, and the
+Reviewer has not yet re-checked the three fixes. The stage closes when — and only
+when — that re-check returns **PASS**. Until then nothing in Stage 2 starts.
+
 **Final review**: fresh clone → `make check` → `wails build -tags webkit2_41` → `install.sh` →
 reboot checklist, executed and reported. `QA.md` with 25 manual scenarios covering
 every rule in §4. Known gaps reported honestly — **nothing marked done that was not
@@ -210,7 +237,11 @@ I am the **orchestrator**. Three sub-agents, delegated explicitly:
 
 The open questions are **closed**. Every answer below was given by the user and is
 authoritative — it overrides anything earlier in this document that contradicts it.
-Referenced as **D1–D7** and **E1–E3** from tickets in `TASKS.md`.
+Referenced as **D1–D9** and **E1–E3** from tickets in `TASKS.md`.
+
+**D1–D7** were settled before Stage 0. **D8** and **D9** were confirmed by the user
+*during* Stage 1, when implementation exposed two questions the earlier decisions did
+not answer; they are recorded here in the same form and carry the same authority.
 
 ### D1 — `due_source` (was Q1: due-date provenance)
 Add the column `due_source TEXT NOT NULL DEFAULT 'manual'`, values in
@@ -235,6 +266,8 @@ Parent status is **never stored**. Neither option (a) nor (b) was taken; the rul
 - **Parents never enter `doing` on their own.** Only **leaves** start a timer.
 - A node **with no children, or whose children are all notes, behaves as a leaf** —
   it has its own stored status and can be dragged and timed like a task.
+  **Except a `project`**: type beats leaf-ness, so an empty project is still never
+  dragged to Doing and never timed — see **D9**, which settles this contradiction.
 
 ### D3 — ARCHITECTURE.md (was Q3)
 The layout below is decided and is written into `ARCHITECTURE.md` during **Stage 0**:
@@ -294,11 +327,69 @@ that were checked.
 - **`note` leaves are excluded from the progress denominator**, consistent with
   status derivation.
 - **Projects can never enter `doing`.** No timer on a project. (See also D2: parents
-  in general never enter `doing`.)
+  in general never enter `doing`. And **D9**, which settles the case D7 and D2 between
+  them left open: the **empty** project, which is a project *and* a leaf.)
 - **git**: repo is initialised, branch `main`, no remote. Commits use the
   **configured git user** — `Ismat <mukhamejanov.ismat@gmail.com>`.
   **No AI author and no AI co-author trailer on any commit.**
 - **`go.mod` says `go 1.26`.** The brief's 1.23 is superseded; 1.23 is not installed.
+
+### D8 — A column move ALWAYS overwrites the due date (confirmed during Stage 1)
+A move to **Today** or **This week** overwrites **any** existing due date — including
+one the user typed by hand — and sets `due_source = 'auto'`.
+
+- **The column move always wins.** The column and the date can therefore never
+  disagree: a card sitting in Today always shows today's date.
+- The move to **Backlog** is unchanged and still reads `due_source` (**D1**): it clears
+  `due` only when the source is `auto`.
+- **Rejected alternative:** "a manual due date survives the move". It was rejected
+  because it permits a card to sit in the Today column showing a date that is not
+  today — the one state the column↔due coupling exists to make impossible.
+- **Accepted consequence, stated by the user:** a hand-typed date is *destroyed* by the
+  drag. Worse, a later move to Backlog then clears the date **entirely**, because by
+  then its source is `auto` and no longer `manual`. The user accepted this.
+
+This is a reading of **D1**, not a replacement for it. D1 defines the provenance
+column and the Backlog rule; D8 settles what the Today / This-week moves do to a date
+that is already there.
+
+**Implemented consequences (Stage 1 — do not re-derive these):**
+- `domain` applies the overwrite unconditionally on → Today and → This week, and flips
+  `due_source` to `auto` in the same operation.
+- Types with **no Kanban column** (`note`, `habit` — see D9) **never receive a due date
+  from a column move**, because for them no column move is legal in the first place.
+
+### D9 — Type beats leaf-ness; a project is NEVER timeable (confirmed during Stage 1)
+A `project` node **never enters `doing` and never starts a timer — even when it has no
+children at all.**
+
+This resolves a real contradiction found while implementing Stage 1: **D7** says
+projects can never enter `doing`, while **D2** says a node with no children, or with
+only `note` children, "behaves as a leaf" and can be dragged and timed. An *empty
+project* satisfies both descriptions at once.
+
+- **Type wins.** The per-type rule ("`project` → progress bar, **no timer**", §4) is
+  more specific than the general leaf rule, so it takes precedence. Leaf-ness decides
+  what a *task* does; type decides whether the node is a unit of work at all.
+- **Rejected alternative:** "leaf-ness wins" — an empty project would be timeable, and
+  the timer would then **silently disappear** the moment the user added the first
+  subtask. A control that vanishes on an unrelated action is worse than one that was
+  never offered.
+- **Accepted consequence, stated by the user:** a freshly created, still-empty project
+  is **inert** — it cannot be dragged to Doing and cannot be timed. *Adding a child is
+  how work becomes timeable.*
+
+**Implemented consequences (Stage 1 — do not re-derive these):**
+- `MoveToColumn(project, doing)` is refused with `ErrProjectNeverDoing`, and so is
+  creating a project directly in `doing`.
+- `PlanCascade` **skips project descendants** when cascading `doing`, and refuses a
+  project as the drag target outright.
+- A project is **not counted as a unit of work in the progress denominator**.
+  Consequently a project whose leaves are all notes — or which is empty — reports
+  `Defined() == false`: **neither 0% nor 100%**, but *no percentage at all*. A progress
+  bar with nothing to measure must not claim it measured nothing.
+- Types **without a Kanban column** (`note`, `habit`) are refused by **both** the create
+  path and `MoveToColumn`, and never receive a due date.
 
 ### FTS5 — spike it, do not guess (was Q8, unchanged)
 **Spike FTS5 on `modernc.org/sqlite` in Stage 1**, first thing. If FTS5 is not
@@ -363,5 +454,6 @@ by eye on this machine.
 
 ---
 
-**Status: decisions locked. Stage 0 is CLOSED (PASS). Stage 1 is broken into tickets
-S1-01 … S1-22 in `TASKS.md`.**
+**Status: decisions locked — D1–D9, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
+implemented (all twenty-two tickets, S1-01 … S1-22) but is NOT closed: it failed its
+first review and is awaiting a re-check. See §5, "Stage 1 — IMPLEMENTED, NOT CLOSED".**

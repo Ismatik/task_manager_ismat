@@ -3,11 +3,17 @@
 - **[Stage 0 — Scaffold](#stage-0--scaffold): DONE. Reviewer returned PASS.** All
   thirteen tickets committed, all five gates green, all seven DONE criteria met.
   Kept below as the record and as the template for ticket quality.
-- **[Stage 1 — Domain + store](#stage-1--domain--store): CURRENT.** Go only, no UI,
-  no Wails bindings. Tickets **S1-01 … S1-22**.
+- **[Stage 1 — Domain + store](#stage-1--domain--store): IMPLEMENTED, NOT CLOSED.**
+  Go only, no UI, no Wails bindings. All twenty-two tickets **S1-01 … S1-22**
+  committed; ACCEPT met at **100.0% / 92.5%**; **first review returned FAIL** on three
+  blocking issues and the stage stays open until the Reviewer re-checks and returns
+  PASS. See [Stage 1 — DONE criteria](#stage-1--done-criteria).
 
-Decisions referenced as **D1–D7 / E1–E3** and known issue **K1** live in
-[`PLAN.md` §7](./PLAN.md). Do not plan or implement beyond Stage 1.
+Decisions referenced as **D1–D9 / E1–E3** and known issue **K1** live in
+[`PLAN.md` §7](./PLAN.md). **D8** (a column move always overwrites the due date) and
+**D9** (type beats leaf-ness — a project is never timeable) were confirmed by the user
+*during* Stage 1 and are now recorded there; the tickets below already encode their
+behaviour. Do not plan or implement beyond Stage 1.
 
 ---
 
@@ -646,7 +652,13 @@ extraction beyond the locale file stubs.
 
 ## Stage 1 — Domain + store
 
-**Status: CURRENT.** Tickets `S1-01` … `S1-22`.
+**Status: IMPLEMENTED, NOT CLOSED.** Tickets `S1-01` … `S1-22`, all twenty-two
+committed. ACCEPT met — `internal/domain` **100.0%**, `internal/service` **92.5%**.
+The **first review returned FAIL** on three blocking issues: two code defects, fixed by
+the Dev in `fd5e31d` (illegal type/status combinations accepted on create) and
+`f1802d7` (due dates written onto types with no column), and the missing record of
+decisions **D8** and **D9**, fixed by the PM in `PLAN.md` §7. **The stage does not
+close until the Reviewer re-checks all three and returns PASS.**
 
 **Go only. No UI, no Wails bindings, no TypeScript.** Not one line of
 `frontend/src` changes in this stage, and no method is added to `app.go`. Stage 2 owns
@@ -655,18 +667,38 @@ binds to is finished. The only non-Go files any Stage 1 ticket may touch are the
 `Makefile` and `.gitignore` (S1-03), `go.mod` / `go.sum` (S1-11), `.sql` migrations
 under `internal/store/migrations/`, and `internal/store/migrations/README.md` (S1-01).
 
-Everything here implements **`PLAN.md` §4** under decisions **D1, D2, D5, D7**. Where
-this file and `PLAN.md` disagree, `PLAN.md` wins and the disagreement is a bug in this
-file — report it rather than guessing.
+Everything here implements **`PLAN.md` §4** under decisions **D1, D2, D5, D7** and,
+as of the Stage 1 review, **D8** and **D9**. Where this file and `PLAN.md` disagree,
+`PLAN.md` wins and the disagreement is a bug in this file — report it rather than
+guessing.
+
+**D8 and D9 were confirmed by the user mid-stage**, after implementation exposed
+questions D1–D7 did not answer. They are recorded in full in `PLAN.md` §7; in short:
+
+- **D8** — a column move to **Today** or **This week** **always** overwrites an
+  existing due date, *including a manual one*, and flips `due_source` to `auto`. The
+  column move always wins, so the column and the date can never disagree. Affects
+  **S1-08** and **S1-18**.
+- **D9** — **type beats leaf-ness**: a `project` never enters `doing` and never starts
+  a timer, **even with no children at all**, resolving the contradiction between D7
+  (projects never enter `doing`) and D2 (a childless node "behaves as a leaf").
+  Consequences already encoded below: `ErrProjectNeverDoing` from `MoveToColumn` and
+  from create; `PlanCascade` skips project descendants when cascading `doing`; a
+  project is **not a unit of work in the progress denominator**, so an empty project —
+  or one whose leaves are all notes — reports `Defined() == false`, neither 0% nor
+  100%; and types with no column (`note`, `habit`) are refused by both create and
+  `MoveToColumn` and never receive a due date. Affects **S1-07**, **S1-10**, **S1-18**,
+  **S1-19**, **S1-21**.
 
 ### What Stage 1 must deliver
 
 - Repositories for `nodes`, `tags`/`node_tags`, `time_entries`, `attachments` and
   `habit_checks`.
 - Tree operations: create, move a subtree, reorder, archive, restore.
-- Derived status and progress (**D2**, **D7**) — computed, never stored.
-- The column↔due coupling and `due_source` transitions (**D1**).
-- A timer service holding the **single-active invariant**.
+- Derived status and progress (**D2**, **D7**, **D9**) — computed, never stored.
+- The column↔due coupling and `due_source` transitions (**D1**, **D8**).
+- A timer service holding the **single-active invariant**, and refusing to time a
+  project (**D9**).
 - Habit streaks over **scheduled RRULE occurrences** (**D5**).
 - Search over `title` + `description_md`, FTS5 if it exists, `LIKE` if it does not.
 
@@ -763,8 +795,8 @@ In addition to the six rules at the top of this file:
 | [S1-04](#s1-04--feat-fts5-availability-spike--the-search-backend-decision-point) | FTS5 availability spike — decision point | `feat:` |
 | [S1-05](#s1-05--feat-migration-0002--the-core-schema) | Migration `0002` — the core schema | `feat:` |
 | [S1-06](#s1-06--feat-node-tag-timeentry-and-habitcheck-types) | `Node`, `Tag`, `TimeEntry`, `HabitCheck` types | `feat:` |
-| [S1-07](#s1-07--feat-derived-status-and-progress-d2-d7) | Derived status and progress (D2, D7) | `feat:` |
-| [S1-08](#s1-08--feat-columndue-rules-and-overdue-d1) | Column↔due rules and overdue (D1) | `feat:` |
+| [S1-07](#s1-07--feat-derived-status-and-progress-d2-d7-d9) | Derived status and progress (D2, D7, D9) | `feat:` |
+| [S1-08](#s1-08--feat-columndue-rules-and-overdue-d1-d8) | Column↔due rules and overdue (D1, D8) | `feat:` |
 | [S1-09](#s1-09--feat-tree-operations--move-cycle-rejection-reorder) | Tree ops — move, cycle rejection, reorder | `feat:` |
 | [S1-10](#s1-10--feat-the-status-cascade-plan-including-parent--done) | The status cascade plan, incl. parent → Done | `feat:` |
 | [S1-11](#s1-11--feat-rrule-occurrence-expansion--library-decision) | RRULE occurrence expansion — library decision | `feat:` |
@@ -1116,7 +1148,7 @@ Requirements:
 
 ---
 
-## S1-07 — feat: derived status and progress (D2, D7)
+## S1-07 — feat: derived status and progress (D2, D7, D9)
 
 **The central rule of the product.** Get this wrong and every column, every progress
 bar and every drag is wrong with it.
@@ -1124,7 +1156,7 @@ bar and every drag is wrong with it.
 **Scope (may touch):** `internal/domain/derive.go`, `internal/domain/derive_test.go`.
 Pure — the functions take an already-loaded set of nodes, not a database.
 
-Requirements — from **D2** and **D7**:
+Requirements — from **D2**, **D7** and **D9**:
 
 - `DeriveStatus`: a parent's status is the **least-advanced status among its non-done
   children**, and `done` **only when every child is done**. `note` children are
@@ -1142,7 +1174,12 @@ Requirements — from **D2** and **D7**:
 - `Progress`: **done leaves / total leaves**, `note` leaves **excluded from the
   denominator** (**D7**). Recursive over the subtree, counting leaves only — an
   intermediate parent is not a unit of work, its leaves are.
-- **Zero non-note leaves.** This is undefined in `PLAN.md` and the ticket decides it:
+- **A `project` is not a unit of work** and is therefore **never counted in the
+  progress denominator**, even when it is empty and would otherwise qualify as a leaf
+  by shape (**D9**). A project is the thing the bar is drawn *for*, not a thing the bar
+  counts.
+- **Zero non-note leaves.** This was undefined in `PLAN.md` when the ticket was written
+  and the ticket decided it; **D9 now records the same answer**:
   `Progress` returns `done=0, total=0` and a **`Defined() bool` that is false**. It
   does **not** return 0% and it does **not** return 100%. A project containing only
   notes has no work in it, and both 0% ("nothing done") and 100% ("all done") are
@@ -1161,7 +1198,7 @@ Requirements — from **D2** and **D7**:
       - [ ] three levels deep, the grandparent deriving from derived values
 - [ ] `Progress` subtests: 0 of 3; 2 of 3; 3 of 3; notes present and excluded from both
       numerator and denominator; nested subtree; **zero non-note leaves →
-      `Defined() == false`**.
+      `Defined() == false`**; **an empty `project` → `Defined() == false`** (D9).
 - [ ] No `time.Now()`, no I/O; purity tests still pass.
 - [ ] `make cover` green.
 - [ ] `make check` green.
@@ -1170,13 +1207,15 @@ Requirements — from **D2** and **D7**:
 
 ---
 
-## S1-08 — feat: column↔due rules and overdue (D1)
+## S1-08 — feat: column↔due rules and overdue (D1, D8)
 
 **Scope (may touch):** `internal/domain/due.go`, `internal/domain/due_test.go`.
 
-Requirements — **D1**, exactly:
+Requirements — **D1** and **D8**, exactly:
 
-- Moving to **`today`**: `due = today`, `due_source = 'auto'`.
+- Moving to **`today`**: `due = today`, `due_source = 'auto'`. Per **D8** this
+  **overwrites any existing due date, including a manual one** — the column move
+  always wins, unconditionally.
 - Moving to **`week`**: `due = the upcoming Friday`, `due_source = 'auto'`; **if today
   is Friday, `due = today`**. Today is 2026-09-18, which *is* a Friday — the edge case
   is live on day one and gets its own subtest.
@@ -1201,8 +1240,8 @@ Requirements — **D1**, exactly:
       - [ ] `auto` → backlog clears `due`
       - [ ] `manual` → backlog **keeps** `due`
       - [ ] column move (today/week) **overwrites** a `manual` due and flips it to
-            `auto` — assert whichever `PLAN.md` D1 implies and state the reading in a
-            comment; the move rules are unconditional there.
+            `auto` — this is **D8**, now recorded in `PLAN.md` §7 and no longer a
+            reading the Dev has to justify in a comment.
       - [ ] user edit of `due` sets `manual`, including the clear-to-nil case
 - [ ] `doing` / `done` moves leave `due` and `due_source` untouched.
 - [ ] `IsOverdue`: yesterday+`today` status → true; **today** → false; tomorrow →
