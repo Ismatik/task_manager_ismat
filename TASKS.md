@@ -5,15 +5,18 @@
   Kept below as the record and as the template for ticket quality.
 - **[Stage 1 — Domain + store](#stage-1--domain--store): IMPLEMENTED, NOT CLOSED.**
   Go only, no UI, no Wails bindings. All twenty-two tickets **S1-01 … S1-22**
-  committed; ACCEPT met at **100.0% / 92.5%**; **first review returned FAIL** on three
-  blocking issues and the stage stays open until the Reviewer re-checks and returns
-  PASS. See [Stage 1 — DONE criteria](#stage-1--done-criteria).
+  committed; ACCEPT met at **100.0% / 92.5%**; **review returned FAIL twice** on one
+  family of related defects. Every fix has landed, and the stage stays open until the
+  Reviewer re-checks and returns PASS. See
+  [Stage 1 — DONE criteria](#stage-1--done-criteria).
 
-Decisions referenced as **D1–D9 / E1–E3** and known issue **K1** live in
-[`PLAN.md` §7](./PLAN.md). **D8** (a column move always overwrites the due date) and
-**D9** (type beats leaf-ness — a project is never timeable) were confirmed by the user
-*during* Stage 1 and are now recorded there; the tickets below already encode their
-behaviour. Do not plan or implement beyond Stage 1.
+Decisions referenced as **D1–D11 / E1–E3** and known issues **K1–K4** live in
+[`PLAN.md` §7](./PLAN.md). Four decisions were confirmed by the user *during* Stage 1
+and are now recorded there — **D8** (a column move always overwrites the due date),
+**D9** (type beats leaf-ness — a project is never timeable), **D10** (a node with no
+Kanban column is excluded from parent derivation, generalising §4) and **D11** (an
+empty project is one unfinished work leaf in its parent). The tickets below encode
+their behaviour. Do not plan or implement beyond Stage 1.
 
 ---
 
@@ -654,11 +657,25 @@ extraction beyond the locale file stubs.
 
 **Status: IMPLEMENTED, NOT CLOSED.** Tickets `S1-01` … `S1-22`, all twenty-two
 committed. ACCEPT met — `internal/domain` **100.0%**, `internal/service` **92.5%**.
-The **first review returned FAIL** on three blocking issues: two code defects, fixed by
-the Dev in `fd5e31d` (illegal type/status combinations accepted on create) and
-`f1802d7` (due dates written onto types with no column), and the missing record of
-decisions **D8** and **D9**, fixed by the PM in `PLAN.md` §7. **The stage does not
-close until the Reviewer re-checks all three and returns PASS.**
+
+**Review returned FAIL twice**, both times on the same family of defects: the rule
+"a type with no Kanban column is not a unit of work" was spelled in four divergent
+places, and each divergence was a door illegal rows walked through.
+
+- **First review** — two code defects, fixed by the Dev in `fd5e31d` (illegal
+  type/status combinations accepted on create) and `f1802d7` (due dates written onto
+  types with no column), plus the missing record of decisions **D8** and **D9**, fixed
+  by the PM in `PLAN.md` §7.
+- **Second review** — the remaining doors of the same rule: `1cbe582` (the rule routed
+  through `domain.NodeType.HasColumn()` everywhere, one spelling), `f266bf5` (a due
+  date refused on a `note`; D9's wording corrected — a `habit` may have a date),
+  `81fb6e4` (**every** no-column type excluded from derivation — **D10**), and
+  `d5a170b` (an empty project counted as one unfinished work leaf — **D11**).
+
+**All fixes have landed.** The two user decisions the last two commits required are
+recorded in `PLAN.md` §7 as **D10** and **D11**, and §4's derivation rule has been
+generalised to match. **The stage does not close until the Reviewer re-checks
+everything above and returns PASS.**
 
 **Go only. No UI, no Wails bindings, no TypeScript.** Not one line of
 `frontend/src` changes in this stage, and no method is added to `app.go`. Stage 2 owns
@@ -668,12 +685,13 @@ binds to is finished. The only non-Go files any Stage 1 ticket may touch are the
 under `internal/store/migrations/`, and `internal/store/migrations/README.md` (S1-01).
 
 Everything here implements **`PLAN.md` §4** under decisions **D1, D2, D5, D7** and,
-as of the Stage 1 review, **D8** and **D9**. Where this file and `PLAN.md` disagree,
-`PLAN.md` wins and the disagreement is a bug in this file — report it rather than
-guessing.
+as of the Stage 1 reviews, **D8**, **D9**, **D10** and **D11**. Where this file and
+`PLAN.md` disagree, `PLAN.md` wins and the disagreement is a bug in this file — report
+it rather than guessing.
 
-**D8 and D9 were confirmed by the user mid-stage**, after implementation exposed
-questions D1–D7 did not answer. They are recorded in full in `PLAN.md` §7; in short:
+**D8, D9, D10 and D11 were confirmed by the user mid-stage**, after implementation
+exposed questions D1–D7 did not answer. They are recorded in full in `PLAN.md` §7; in
+short:
 
 - **D8** — a column move to **Today** or **This week** **always** overwrites an
   existing due date, *including a manual one*, and flips `due_source` to `auto`. The
@@ -689,13 +707,33 @@ questions D1–D7 did not answer. They are recorded in full in `PLAN.md` §7; in
   100%; and types with no column (`note`, `habit`) are refused by both create and
   `MoveToColumn` and never receive a due date. Affects **S1-07**, **S1-10**, **S1-18**,
   **S1-19**, **S1-21**.
+- **D10** — **a node with no Kanban column is excluded from parent status derivation**,
+  exactly as a `note` already was. This **generalises `PLAN.md` §4's derivation rule**,
+  which is now worded as "nodes with no Kanban column are excluded" rather than "note
+  nodes are excluded". D9's principle: a type with no column cannot contribute to a
+  column-derived status. Encoded as: `DeriveStatus` skips any child where
+  `!child.Type.HasColumn()`; `Node.IsLeaf` treats a node whose children all lack a
+  column as a leaf; `walkProgress` cuts at the same predicate (forced — cutting
+  derivation without cutting progress rebuilds the same bug one level down); everything
+  routes through `domain.NodeType.HasColumn()`. Affects **S1-06**, **S1-07**,
+  **S1-10**, **S1-21**.
+- **D11** — **an empty project counts as one unfinished work leaf in its parent's
+  progress denominator**, reversing part of D9's "a project is never a unit of work"
+  for the empty case only. Two questions, two answers, both true and both binding on
+  Stage 2: a project's **own** progress is still `Defined() == false` when nothing
+  under it is work (**unchanged**, S1-07's reasoning still binds), while a **leaf**
+  project (no children with a column, per D10) counts as **one work leaf** in its
+  **parent's** denominator, done iff its own stored status is `done` (**the change**).
+  A project with real children is still not a unit itself; its children are counted.
+  Derivation needed no change. Affects **S1-07**, **S1-21**.
 
 ### What Stage 1 must deliver
 
 - Repositories for `nodes`, `tags`/`node_tags`, `time_entries`, `attachments` and
   `habit_checks`.
 - Tree operations: create, move a subtree, reorder, archive, restore.
-- Derived status and progress (**D2**, **D7**, **D9**) — computed, never stored.
+- Derived status and progress (**D2**, **D7**, **D9**, **D10**, **D11**) — computed,
+  never stored.
 - The column↔due coupling and `due_source` transitions (**D1**, **D8**).
 - A timer service holding the **single-active invariant**, and refusing to time a
   project (**D9**).
@@ -795,7 +833,7 @@ In addition to the six rules at the top of this file:
 | [S1-04](#s1-04--feat-fts5-availability-spike--the-search-backend-decision-point) | FTS5 availability spike — decision point | `feat:` |
 | [S1-05](#s1-05--feat-migration-0002--the-core-schema) | Migration `0002` — the core schema | `feat:` |
 | [S1-06](#s1-06--feat-node-tag-timeentry-and-habitcheck-types) | `Node`, `Tag`, `TimeEntry`, `HabitCheck` types | `feat:` |
-| [S1-07](#s1-07--feat-derived-status-and-progress-d2-d7-d9) | Derived status and progress (D2, D7, D9) | `feat:` |
+| [S1-07](#s1-07--feat-derived-status-and-progress-d2-d7-d9) | Derived status and progress (D2, D7, D9; amended by D10, D11) | `feat:` |
 | [S1-08](#s1-08--feat-columndue-rules-and-overdue-d1-d8) | Column↔due rules and overdue (D1, D8) | `feat:` |
 | [S1-09](#s1-09--feat-tree-operations--move-cycle-rejection-reorder) | Tree ops — move, cycle rejection, reorder | `feat:` |
 | [S1-10](#s1-10--feat-the-status-cascade-plan-including-parent--done) | The status cascade plan, incl. parent → Done | `feat:` |
@@ -1137,6 +1175,8 @@ Requirements:
 - [ ] `IsLeaf` subtests: no children; one `task` child; one `note` child; mixed
       `note` + `task`; several notes only. **The all-notes case returns true** — it is
       the case D2 calls out and the one that will otherwise be got wrong.
+      **Amended by D10:** the predicate is `!child.Type.HasColumn()`, not "is it a
+      note", so the **all-habits** and **mixed note+habit** cases return true as well.
 - [ ] `DefaultActivity` covers all five node types, `habit` returning nil.
 - [ ] `TimeEntry.Duration` is tested with a fixed injected clock for an open entry and
       with `EndedAt` for a closed one.
@@ -1204,6 +1244,37 @@ Requirements — from **D2**, **D7** and **D9**:
 - [ ] `make check` green.
 
 **Commit:** `feat(domain): derive parent status and subtree progress (S1-07)`
+
+### Amended after the second review — D10 and D11
+
+The ticket as written above shipped, and the second review found the rule it encodes
+was too narrow in two places. Both amendments were confirmed by the user as decisions
+and are recorded in full in [`PLAN.md` §7](./PLAN.md) — **D10** and **D11**. They
+supersede the corresponding lines above; the follow-up commits are `81fb6e4` and
+`d5a170b`.
+
+- **D10 supersedes "`note` children are excluded"** in both the `DeriveStatus` and the
+  `Progress` requirements. The exclusion is **every type with no Kanban column**, i.e.
+  `!Type.HasColumn()` — `note` **and** `habit`. `Node.IsLeaf` follows the same
+  predicate, so a node whose children all lack a column is a leaf reporting its own
+  stored status, and `walkProgress` cuts at the same predicate. `project{task:done,
+  habit}` used to derive `backlog` behind a 100% bar; it derives `done` now. The same
+  fix closed a pre-existing bug where a task whose only children were habits derived
+  `done` while stored at `backlog`. `PLAN.md` §4's derivation rule has been reworded to
+  match.
+- **D11 supersedes "a `project` is … never counted in the progress denominator"** for
+  the leaf case only. A **leaf** project — nothing under it has a column — is **one
+  work leaf in its parent's denominator**, done iff its own stored status is `done`.
+  `project{empty sub-project, task:done}` read 100% behind a `backlog` column; it reads
+  **1 of 2** now. **The "zero non-note leaves" requirement above is unchanged**: asked
+  about *itself*, a project with no work beneath it still reports
+  `Defined() == false`, neither 0% nor 100%, and the caller still draws no bar. A
+  project **with** children that have columns is still not a unit itself. Derivation
+  was already correct and did not change.
+
+**Stage 2 must not re-derive either of these.** See also known issues **K2**, **K3**
+and **K4** in `PLAN.md`, which this pair of decisions created or exposed and which are
+**recorded, not scheduled**.
 
 ---
 
@@ -1333,6 +1404,9 @@ Requirements:
 - The cascade never puts a **parent** into `doing`; only leaves. Dragging a parent to
   Doing cascades `doing` onto its non-done, non-note **leaf** descendants, and the
   parent derives Doing from them. Intermediate parents get no stored status.
+  **Amended by D9/D10:** "non-note" is really `Type.HasColumn()` — every type with no
+  Kanban column is skipped as a descendant, and `project` descendants are skipped when
+  the cascaded status is `doing`. Read every "non-note" below the same way.
 - The plan is a **plan**: a deterministic, ordered slice the service applies in one
   transaction (S1-18). Pure, no I/O, injected clock.
 
@@ -1835,7 +1909,10 @@ Requirements:
 - [ ] Archived nodes never appear.
 - [ ] `overdue` is true for a node due yesterday and not done, false for one due today
       — computed in Go, present on the DTO.
-- [ ] A project whose leaves are all notes reports progress with `Defined == false`.
+- [ ] A project whose leaves are all notes reports progress with `Defined == false`
+      **when that project is the node being asked about** — this is D11 part 1 and is
+      *not* superseded. Asked about its **parent**, the same project is one work leaf
+      in the denominator (**D11** part 2).
 - [ ] A 200-node tree is assembled without per-node queries (assert with a counting
       driver wrapper or by the shape of the calls).
 - [ ] Fixed clock throughout.
@@ -1890,8 +1967,9 @@ Stage 1 closes only when **all** of these hold:
    off the `total:` line of `go tool cover -func=…`.
 4. Every rule in `PLAN.md` §4 has table-driven tests, and specifically these four named
    edge cases each have a findable, named subtest:
-   - **parent → Done cascades** to every unfinished non-note descendant, sets
-     `completed_at`, and the parent then **derives** `done` (S1-10, S1-18),
+   - **parent → Done cascades** to every unfinished descendant **that has a Kanban
+     column** (D10 — `note` and `habit` descendants are skipped), sets `completed_at`,
+     and the parent then **derives** `done` (S1-10, S1-18),
    - **circular parent** is rejected and the transaction rolls back (S1-09, S1-18),
    - **overlapping timers** are impossible — exactly one open entry, enforced by the
      service *and* by the schema (S1-05, S1-15, S1-19),
@@ -1906,9 +1984,17 @@ Stage 1 closes only when **all** of these hold:
    `*.db` and no `coverage*.out` in the tree.
 9. `git log` shows no AI author and no co-author trailer on any commit.
 10. `0001_settings.sql` is byte-identical to its Stage 0 state.
+11. **The Reviewer re-checks the two failed reviews' fixes and returns PASS.** This one
+    has **not** happened. Criteria 1–10 hold today and the stage is still **NOT
+    CLOSED**: per `PLAN.md` §5, no stage closes without a PASS. Nothing in Stage 2
+    starts before it.
 
 **Out of Stage 1 scope** (do not start): any Wails binding or `app.go` method, any
 `frontend/` change, Kanban, the habit strip, quick-add, the command palette, the tray,
 D-Bus sleep/lock handling, attachment file copying, backup/export, the PMP timelog
-generator, the calendar, stats and Gantt. Also **not** in scope: the K1 locale
-workaround — that decision belongs to Stage 2.
+generator, the calendar, stats and Gantt. Also **not** in scope: the **K1** locale
+workaround, and the three issues **K2** (a leaf project's stale stored status now
+decides whether it counts as done), **K3** (an empty project stored `done` renders in
+Done with no bar) and **K4** (`ValidateMove` refuses only a `note` as a parent, so a
+habit can still have children and park work where the board never shows it). All four
+are **recorded, not scheduled** — those decisions belong to Stage 2.

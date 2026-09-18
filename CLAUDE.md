@@ -2,7 +2,7 @@
 
 Read this first. It is the short list of things that are easy to get wrong here.
 It does not restate the plan: [`PLAN.md`](./PLAN.md) is the brief and the decisions
-(D1–D7, E1–E3), [`ARCHITECTURE.md`](./ARCHITECTURE.md) is the layout,
+(D1–D11, E1–E3), [`ARCHITECTURE.md`](./ARCHITECTURE.md) is the layout,
 [`TASKS.md`](./TASKS.md) is the ticket breakdown, and
 [`design/README.md`](./design/README.md) is the token handoff.
 
@@ -157,7 +157,7 @@ the tree in a working state: the gates that exist at that point still pass.
 
 ## See also
 
-- [`PLAN.md`](./PLAN.md) — the brief, the data model, decisions D1–D7 and E1–E3.
+- [`PLAN.md`](./PLAN.md) — the brief, the data model, decisions D1–D11 and E1–E3.
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — package layout, dependency direction, build
   constraints, data and runtime paths.
 - [`TASKS.md`](./TASKS.md) — tickets, acceptance criteria, stage DONE criteria.

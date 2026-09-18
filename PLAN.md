@@ -97,8 +97,14 @@ habit_checks(node_id, date)      settings(key, value)
 ### Derived state — never stored
 
 - A parent's status is the **least-advanced status among its non-done children**;
-  `done` only when **all** children are done. `note` children are excluded.
-- Progress % = **done leaves / total leaves**.
+  `done` only when **all** children are done. **Children whose type has no Kanban
+  column (`note`, `habit`) are excluded entirely** — from the "least advanced" scan
+  and from the "all done" test. A node whose children *all* lack a column is therefore
+  a **leaf** and reports its own stored status. See §7 **D10**.
+- Progress % = **done work leaves / total work leaves**. A type with no Kanban column
+  is never work and never counts (§7 **D7**, **D10**); a `project` is not a unit of
+  work either — **except a *leaf* project, which counts as one work leaf in its
+  parent's denominator**, done iff its own stored status is `done` (§7 **D9**, **D11**).
 
 Because this is derived, it can never drift from the children. Dragging a parent is
 therefore a **cascade**, not a write to the parent — see §7 D2.
@@ -142,8 +148,8 @@ generate the most edge-case tests:
 |---|---|
 | `task` | default |
 | `project` | progress bar, **no timer**; **never enters `doing`, even when empty** (D9) |
-| `habit` | habit strip only, never in columns |
-| `note` | no status, no due; excluded from parent derivation |
+| `habit` | habit strip only, never in columns; excluded from parent derivation and from progress (D10) |
+| `note` | no status, no due; excluded from parent derivation and from progress (D7, D10) |
 | `bug` | extra `repro_steps` + `severity`, stored as frontmatter in `description_md` |
 
 ## 5. Stages
@@ -158,7 +164,7 @@ and stop for your "next".
 | # | Stage | Acceptance |
 |---|---|---|
 | 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) — **CLOSED, PASS** | `make check` green, empty window opens, second launch focuses the first |
-| 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **IMPLEMENTED, NOT CLOSED** (failed first review; see below) | **≥90% coverage** on `internal/domain` + `internal/service` — **met: 100.0% / 92.5%** |
+| 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **IMPLEMENTED, NOT CLOSED** (failed review twice, all fixes landed, awaiting re-check; see below) | **≥90% coverage** on `internal/domain` + `internal/service` — **met: 100.0% / 92.5%** |
 | 2 | **Kanban + Habits strip** (launch screen) — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — **and moving a card to Doing must itself open a `time_entry`** (§4 coupling; see `TASKS.md`, "Carried into Stage 2") |
 | 3 | **Detail + Tree + Search/Archive** — slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | Every field round-trips through Go; reparent in tree shows on Kanban instantly |
 | 4 | **Quick-add + Focus mode** — frameless standalone window, Go-side NL parser (date, `!priority`, `#tag`, `>Project` fuzzy, `~estimate`, `@type`), live preview chips, Enter creates & closes, Esc closes; Focus mode (one card, large timer, Esc exits); sleep/lock timer handling | `deploy KA Avto fri 15:00 !high #work >KA Avto ~2h` parses correctly in tests **and** in the UI |
@@ -198,20 +204,39 @@ All twenty-two tickets **S1-01 … S1-22** are implemented and committed, one
 conventional commit each. The ACCEPT criterion is **met**: `internal/domain`
 **100.0%**, `internal/service` **92.5%** statement coverage, measured per package.
 
-**The stage nevertheless failed its first review.** The Reviewer returned **FAIL** with
-three blocking issues:
+**The stage nevertheless failed review twice**, both times on the same family of
+defects: the rule "a type with no Kanban column is not a unit of work" was spelled in
+four divergent places, and each divergence was a door illegal rows could walk through.
+
+First review — **FAIL**, three blocking issues:
 
 1. illegal type/status combinations were accepted on the create path — **fixed by the
    Dev in `fd5e31d`**;
 2. due dates were written onto types that have no Kanban column — **fixed by the Dev in
    `f1802d7`**;
 3. **decisions D8 and D9 existed nowhere in the specification** although five source
-   files cited them as authoritative — **fixed by this commit**, which records them in
-   §7 above.
+   files cited them as authoritative — **fixed in §7 above**.
+
+Second review — **FAIL**, on the remaining doors of the same rule. All fixes have
+landed:
+
+- `1cbe582` — the no-column rule routed through `domain.NodeType.HasColumn()`
+  everywhere, so it has exactly one spelling;
+- `f266bf5` — a due date refused on a `note`, and D9's wording corrected (a `habit`
+  may have a date; it is denied a *column*, not a *date*);
+- `81fb6e4` — **every** no-column type excluded from status derivation, not just
+  `note` — the generalisation now recorded as **D10**, which also closed a second,
+  pre-existing bug: a task whose only children were habits derived `done` while
+  stored at `backlog`;
+- `d5a170b` — an empty project counted as one unfinished work leaf in its parent's
+  denominator — recorded as **D11**.
+
+The two user decisions those last two commits required are recorded in §7 as **D10**
+and **D11**, and §4's derivation rule has been generalised to match them.
 
 **Stage 1 is therefore NOT closed.** Per §5, no stage closes without a PASS, and the
-Reviewer has not yet re-checked the three fixes. The stage closes when — and only
-when — that re-check returns **PASS**. Until then nothing in Stage 2 starts.
+Reviewer has not yet re-checked the fixes. The stage closes when — and only when —
+that re-check returns **PASS**. Until then nothing in Stage 2 starts.
 
 **Final review**: fresh clone → `make check` → `wails build -tags webkit2_41` → `install.sh` →
 reboot checklist, executed and reported. `QA.md` with 25 manual scenarios covering
@@ -237,11 +262,13 @@ I am the **orchestrator**. Three sub-agents, delegated explicitly:
 
 The open questions are **closed**. Every answer below was given by the user and is
 authoritative — it overrides anything earlier in this document that contradicts it.
-Referenced as **D1–D9** and **E1–E3** from tickets in `TASKS.md`.
+Referenced as **D1–D11** and **E1–E3** from tickets in `TASKS.md`.
 
-**D1–D7** were settled before Stage 0. **D8** and **D9** were confirmed by the user
-*during* Stage 1, when implementation exposed two questions the earlier decisions did
-not answer; they are recorded here in the same form and carry the same authority.
+**D1–D7** were settled before Stage 0. **D8**, **D9**, **D10** and **D11** were
+confirmed by the user *during* Stage 1, when implementation exposed questions the
+earlier decisions did not answer; they are recorded here in the same form and carry the
+same authority. D10 and D11 came out of the second review, and **D10 generalises the
+derivation rule in §4**, which has been amended accordingly.
 
 ### D1 — `due_source` (was Q1: due-date provenance)
 Add the column `due_source TEXT NOT NULL DEFAULT 'manual'`, values in
@@ -325,7 +352,9 @@ that were checked.
 
 ### D7 — Smaller ambiguities, now settled (was Q7)
 - **`note` leaves are excluded from the progress denominator**, consistent with
-  status derivation.
+  status derivation. (**Generalised by D10**: *every* type with no Kanban column is
+  excluded, from both the denominator and the derivation. The habit was already
+  excluded from the denominator in practice; D10 is what made derivation agree.)
 - **Projects can never enter `doing`.** No timer on a project. (See also D2: parents
   in general never enter `doing`. And **D9**, which settles the case D7 and D2 between
   them left open: the **empty** project, which is a project *and* a leaf.)
@@ -388,6 +417,10 @@ project* satisfies both descriptions at once.
   Consequently a project whose leaves are all notes — or which is empty — reports
   `Defined() == false`: **neither 0% nor 100%**, but *no percentage at all*. A progress
   bar with nothing to measure must not claim it measured nothing.
+  **Amended by D11** for one case only: a project's *own* progress is still undefined
+  when nothing under it is work, but a **leaf** project now counts as **one work leaf
+  in its parent's denominator**. The two statements answer different questions and are
+  both true — see D11.
 - Types **without a Kanban column** (`note`, `habit`) are refused a **column status** by
   every door: the create path refuses anything but the inert `backlog`, `MoveToColumn`
   refuses the drag outright, and `PlanCascade` skips them as descendants, so a drag on
@@ -399,6 +432,92 @@ project* satisfies both descriptions at once.
   otherwise for both types; the code was never written that way and the restriction is
   not invented now. The predicate is `NodeType.HasDue`, deliberately separate from
   `HasColumn` because the two questions have different answers for a habit.
+
+### D10 — A node with no Kanban column is excluded from parent derivation (confirmed during Stage 1)
+**Nodes whose type has no Kanban column are excluded from parent status derivation,
+exactly as notes already were.**
+
+This **generalises §4's earlier wording**, which excluded only `note` children. The
+principle is **D9**'s: a type that has no Kanban column cannot contribute to a
+**column-derived** status. It also makes derivation consistent with the progress
+denominator, which already excluded both notes and habits.
+
+- **Motivating case:** `project{task:done, habit}` derived **backlog** while its
+  progress bar read **100%**. The habit, parked for ever at its inert `backlog`, was
+  scanned as real work and could never become done, so the parent could never derive
+  `done` — a card sitting in the Backlog column with a full bar drawn on it. It now
+  derives **done** with a 100% bar: the column and the bar agree.
+- **Rejected alternatives:** (a) keep §4 literal and exclude only notes — this is the
+  state that produced the defect, and it leaves the column and the bar visibly
+  disagreeing on the same card; (b) forbid habits as children entirely — this removes
+  the ability to group habits under a project, which is a legitimate way to organise
+  them, in order to fix a derivation bug that has nothing to do with the tree shape.
+- **Accepted consequence, stated by the user:** a subtree made only of no-column types
+  contributes **nothing** to its parent — not to the column, not to the bar. The parent
+  of such a subtree is a leaf and answers with its own stored status.
+
+**Implemented consequences (Stage 1 — do not re-derive these):**
+- `DeriveStatus` **skips any child where `!child.Type.HasColumn()`** — it is not
+  scanned for "least advanced" and not descended into.
+- `Node.IsLeaf` treats a node **whose children all lack a column** as a leaf, so it
+  reports its own stored status.
+- `walkProgress` **cuts at the same predicate**. This was forced, not optional: cutting
+  derivation without cutting progress reintroduces the identical class of bug one level
+  down, which is exactly how the original defect was written.
+- Everything routes through **`domain.NodeType.HasColumn()`**. The rule has one
+  spelling; a second spelling is a bug by construction.
+- This also closed a **second, pre-existing bug**: a task whose only children were
+  habits derived `done` while its stored status was `backlog`.
+
+### D11 — An empty project is one unfinished work leaf in its parent (confirmed during Stage 1)
+**An empty project counts as one unfinished work leaf in its parent's progress
+denominator.** It is real work that has not been broken down yet.
+
+The user accepted that this **reverses part of D9's "a project is never a unit of
+work" for the empty case specifically**.
+
+- **Motivating case:** `project{empty sub-project, task:done}` derived **backlog**
+  while its bar read **100%** — the same defect shape as D10. Derivation was already
+  right (the empty sub-project has a column and is not done, so it holds the parent
+  back); the **denominator** was wrong, because the sub-project was skipped entirely.
+  It now reads **1 of 2 = 50%**, and both halves say "not done". **Derivation needed no
+  change.**
+
+**The distinction that keeps D11 consistent with S1-07 — Stage 2 must not re-derive it:**
+
+1. **A project's OWN progress**, when you ask about *that project itself*: if it
+   contains no work beneath it, it stays **`Defined() == false`** — neither 0% nor
+   100%, and no bar is drawn. **UNCHANGED.** S1-07's reasoning still binds: *"a project
+   containing only notes has no work in it, and both 0% and 100% are lies the UI would
+   render as a bar."*
+2. **A project's contribution to its PARENT's denominator**: a project that is a
+   **leaf** (no children with a column, per **D10** — so an empty one, an all-notes one
+   and an all-habits one alike) counts as **one work leaf**, **done iff its own stored
+   status is `done`**. **THIS is the change.**
+
+So an empty project **shows no bar of its own while counting as one unfinished unit
+inside its parent**. Both are true at once: the first question is "what is inside this
+project?" (nothing), the second is "is this project finished?" (no).
+
+- A project **with real children is still not counted as a unit itself**; its children
+  are counted. Nesting adds levels, not units — a chain of empty projects is one leaf,
+  at the bottom.
+- **Rejected alternatives:** (a) exclude the empty project from derivation too, so it
+  stops holding the parent back — the parent would then read fully done while
+  containing an unplanned project, which hides unstarted work, the one thing a plan
+  must not do; (b) leave the disagreement in place — a 100% bar on a card in Backlog is
+  a defect whichever half you believe.
+- **Accepted consequence, stated by the user:** part of **D9** is reversed for the
+  empty case. "A project is never a unit of work" now holds only while the project has
+  work under it.
+
+**Implemented consequences (Stage 1 — do not re-derive these):**
+- `ComputeProgress` threads a single "this is the node we were asked about" flag
+  through `walkProgress`, applied at the one leaf site. `countsAsWork`, `HasColumn`
+  and `IsLeaf` are untouched — **position in the walk is not a property of the type**,
+  so it deliberately did not become a fourth spelling of the type rule.
+- A leaf project is counted **done by its own stored status**, not by derivation —
+  there is nothing under it to derive from. See known issue **K2**.
 
 ### FTS5 — spike it, do not guess (was Q8, unchanged)
 **Spike FTS5 on `modernc.org/sqlite` in Stage 1**, first thing. If FTS5 is not
@@ -461,8 +580,31 @@ Alpha is 0–255, so `A: 1` is ~0.4% opacity — a real bug of ours, fixed in St
 ticket **S1-02**. Fixing it does not fix K1, and K1 is why the fix cannot be verified
 by eye on this machine.
 
+**K2 — a leaf project's stale stored status now has teeth.**
+Since **D11**, a leaf project's *stored* status decides whether it counts as done in
+its parent's denominator. Archiving the last real child of a project that an earlier
+cascade had written `done` leaves it counted as a **done** unit on a status nobody set
+deliberately. The state is self-consistent — column and bar agree — so this is not a
+contradiction and **is not scheduled now**. It may want a rule about **re-inspecting a
+project's stored status when its last child is archived**. That ruling belongs to
+**Stage 2**.
+
+**K3 — an empty project stored `done` renders in the Done column with no bar at all.**
+Its own progress is undefined (**D11**, part 1), so no bar is drawn, while its status
+puts the card in Done. Not a contradiction, but it is **the one place a finished card
+shows nothing**. Recorded for the Stage 2 card-chrome work to decide what, if anything,
+a done-but-unmeasurable card should render.
+
+**K4 — `ValidateMove` refuses only a `note` as a parent, so a habit can still have
+children.** After **D10** that subtree is **fully inert**: invisible to derivation and
+invisible to progress. It is coherent — nothing lies — but **work can be parked where
+the board will never show it**. Worth a **§4 ruling in Stage 2**: either refuse every
+no-column type as a parent (the `HasColumn` predicate already exists), or state
+explicitly that such subtrees are intentional and how the UI surfaces them.
+
 ---
 
-**Status: decisions locked — D1–D9, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
-implemented (all twenty-two tickets, S1-01 … S1-22) but is NOT closed: it failed its
-first review and is awaiting a re-check. See §5, "Stage 1 — IMPLEMENTED, NOT CLOSED".**
+**Status: decisions locked — D1–D11, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
+implemented (all twenty-two tickets, S1-01 … S1-22) but is NOT closed: it failed review
+twice, every fix has landed, and it is awaiting a re-check. See §5, "Stage 1 —
+IMPLEMENTED, NOT CLOSED".**

@@ -43,7 +43,8 @@ frontend never computes:
 
 - a node's **status** (derived from its children — see D2),
 - a **streak** (derived from scheduled RRULE occurrences — see D5),
-- **progress** (completed / total, with `note` leaves excluded from the denominator),
+- **progress** (completed / total, with leaves whose type has no Kanban column —
+  `note`, `habit` — excluded from the denominator; see D7, D10, D11),
 - an **overdue** flag,
 - a **due date** (including the column↔due coupling — see D1).
 
@@ -209,6 +210,6 @@ Nexus is **local-only**: no network calls, no telemetry, no cloud sync.
 
 ## 8. See also
 
-- [`PLAN.md`](./PLAN.md) — the brief, the data model and decisions D1–D7 / E1–E3.
+- [`PLAN.md`](./PLAN.md) — the brief, the data model and decisions D1–D11 / E1–E3.
 - [`TASKS.md`](./TASKS.md) — the ticket breakdown.
 - [`design/README.md`](./design/README.md) — token and palette handoff (read-only).
