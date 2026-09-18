@@ -53,7 +53,16 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		// Every field of options.RGBA is a uint8 in 0..255, alpha included, so
+		// an opaque window is A: 255. It read A: 1 — roughly 0.4% opacity, not
+		// "opaque".
+		//
+		// The corrected value is not observable on this machine: under a
+		// comma-decimal locale Wails formats the alpha with the process locale
+		// and emits "rgba(27, 38, 54, 0,0)", which GTK's CSS parser discards
+		// whole. That is K1 in PLAN.md — an upstream bug, recorded and deferred
+		// to Stage 2, and deliberately not worked around here.
+		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 255},
 		OnStartup:        app.startup,
 		Bind: []interface{}{
 			app,
