@@ -337,11 +337,39 @@ func TestComputeProgress(t *testing.T) {
 			id: "p", wantDone: 2, wantTotal: 3, wantDefined: true,
 		},
 		{
-			name: "a parent whose children are all notes is itself the leaf",
+			name: "a TASK whose children are all notes is itself the leaf",
+			nodes: []domain.Node{
+				project("p", "", domain.StatusBacklog),
+				task("t1", "p", domain.StatusDone),
+				note("n", "t1"),
+			},
+			id: "p", wantDone: 1, wantTotal: 1, wantDefined: true,
+		},
+		{
+			// D9 in the denominator: a project is what the bar is drawn for,
+			// never a unit it measures, so a project shaped like a leaf is not
+			// counted and the subtree has no work in it at all.
+			name: "a PROJECT whose children are all notes is not a unit of work",
 			nodes: []domain.Node{
 				project("p", "", domain.StatusBacklog),
 				project("p1", "p", domain.StatusDone),
 				note("n", "p1"),
+			},
+			id: "p", wantDone: 0, wantTotal: 0, wantDefined: false,
+		},
+		{
+			name: "an empty project is undefined, not zero per cent",
+			nodes: []domain.Node{
+				project("p", "", domain.StatusBacklog),
+			},
+			id: "p", wantDone: 0, wantTotal: 0, wantDefined: false,
+		},
+		{
+			name: "an empty project among real tasks counts for nothing",
+			nodes: []domain.Node{
+				project("p", "", domain.StatusBacklog),
+				project("empty", "p", domain.StatusBacklog),
+				task("t", "p", domain.StatusDone),
 			},
 			id: "p", wantDone: 1, wantTotal: 1, wantDefined: true,
 		},
@@ -359,9 +387,9 @@ func TestComputeProgress(t *testing.T) {
 				note("n1", "p"),
 				note("n2", "p"),
 			},
-			// p is a leaf here (all children are notes) but p is a project, so
-			// it counts: see the next case for the truly empty one.
-			id: "p", wantDone: 0, wantTotal: 1, wantDefined: true,
+			// p is a leaf here (all children are notes) and p is a project, so
+			// it is NOT counted: there is no work in this subtree to measure.
+			id: "p", wantDone: 0, wantTotal: 0, wantDefined: false,
 		},
 		{
 			name: "a note asked about itself is undefined",
@@ -410,8 +438,8 @@ func TestProgressWithZeroNonNoteLeavesIsUndefined(t *testing.T) {
 		note("n1", "sub"),
 	}
 
-	// "sub" is a leaf (all-notes children) and is itself a project, so it is
-	// counted. The undefined case is a note-rooted subtree.
+	// "sub" is a leaf (all-notes children) and is itself a project, so it is not
+	// counted either; this case asserts the note-rooted subtree.
 	got, err := domain.ComputeProgress(nodes, "n1")
 	if err != nil {
 		t.Fatalf("ComputeProgress() = %v", err)

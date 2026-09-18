@@ -188,6 +188,13 @@ func (p Progress) Percent() int {
 // both the numerator and the denominator, consistent with status derivation, and
 // a note's subtree is not descended into at all.
 //
+// A PROJECT is excluded as well, even when it has no children or only note
+// children and is therefore a leaf by shape (D7, D9). A project is the thing a
+// progress bar is drawn FOR; it is not one of the units the bar measures. An
+// empty project and a project holding only notes both report an UNDEFINED
+// progress — no work in it to measure — which is what the type's documentation
+// above promises and what the board and the tree render as no bar at all.
+//
 // A leaf's own stored status decides whether it is done; nothing is derived
 // here, because a leaf is where the stored status is the truth.
 func ComputeProgress(nodes []Node, id string) (Progress, error) {
@@ -218,6 +225,15 @@ func walkProgress(byID map[string]Node, kids map[string][]Node, id string, visit
 
 	children := kids[id]
 	if n.IsLeaf(children) {
+		// D9, applied to the denominator: a PROJECT is a container with a
+		// progress bar, never a unit of work itself, so it is not counted even
+		// when it is shaped like a leaf — empty, or holding only notes. Type
+		// wins over the leaf rule, exactly as it does for doing and for the
+		// timer (see Node.CanEnterDoing). Counting it would give an empty
+		// project a progress bar reading 0% of 1, which is a bar about nothing.
+		if n.Type == NodeTypeProject {
+			return nil
+		}
 		p.Total++
 		if n.Status == StatusDone {
 			p.Done++
