@@ -57,6 +57,17 @@ BIN_DIR      := build/bin
 # a recipe runs, i.e. after $(DIST_DIR) exists and package main can be loaded.
 GOPKGS = $(shell go list ./... | grep -v /node_modules/)
 
+# A gate that can pass while checking nothing is worse than no gate at all.
+#
+# `$(shell ...)` swallows a failing `go list` and hands back the empty string,
+# and `go test` / `go vet` with no package argument quietly falls back to the
+# package in the current directory — so an empty $(GOPKGS) would turn gates 1
+# and 2 into green no-ops that verified nothing. Gates therefore use
+# $(CHECKED_GOPKGS), which is $(GOPKGS) when it is non-empty and a hard make
+# error otherwise. Recursively expanded (=, not :=) so the $(error) fires only
+# when a gate recipe actually runs, not on every parse of this file.
+CHECKED_GOPKGS = $(if $(strip $(GOPKGS)),$(GOPKGS),$(error the Go package list is empty: `go list ./...` failed or matched nothing (see its error above). Refusing to run this gate — a bare `go test` / `go vet` would silently check only the current directory and report success))
+
 .DEFAULT_GOAL := help
 
 # The gates are ordered on purpose and must stay ordered even under `make -j`.
@@ -121,11 +132,11 @@ apt-hint:
 
 .PHONY: test
 test: $(DIST_DIR) ## Gate 1 — run the Go test suite
-	go test $(GOPKGS)
+	go test $(CHECKED_GOPKGS)
 
 .PHONY: vet
 vet: $(DIST_DIR) ## Gate 2 — run go vet
-	go vet $(GOPKGS)
+	go vet $(CHECKED_GOPKGS)
 
 .PHONY: lint
 lint: $(NODE_MODULES) ## Gate 3 — run ESLint over the frontend
