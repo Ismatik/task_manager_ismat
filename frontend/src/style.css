@@ -1,26 +1,54 @@
-html {
-    background-color: rgba(27, 38, 54, 1);
-    text-align: center;
-    color: white;
-}
+/* Nexus — entry stylesheet.
+ *
+ * Order matters:
+ *   1. the design tokens, imported straight from the read-only handoff,
+ *   2. the font faces, served from node_modules and bundled into dist,
+ *   3. Tailwind, whose theme resolves every colour/radius/shadow/font/duration
+ *      back to the custom properties declared in step 1.
+ *
+ * `design/tokens.css` is the single source of truth. It is imported, never copied:
+ * there must be no second place where a palette value is written down.
+ */
+@import '../../design/tokens.css';
 
-body {
+/* Fonts are LOCAL. Nexus is an offline, local-only application, so there is no
+ * <link> to Google Fonts and no CDN at runtime — these packages ship the woff2/woff
+ * files themselves and Vite fingerprints them into dist/assets at build time.
+ *   Space Grotesk  — Aurora UI  (--font-ui)
+ *   Figtree        — Studio UI  (--font-ui)
+ *   JetBrains Mono — numbers, dates, timers, shortcuts (--font-mono)
+ */
+@import '@fontsource/space-grotesk/400.css';
+@import '@fontsource/space-grotesk/500.css';
+@import '@fontsource/space-grotesk/700.css';
+@import '@fontsource/figtree/400.css';
+@import '@fontsource/figtree/500.css';
+@import '@fontsource/figtree/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Base UI size 13px on an 8px grid — design/README.md. */
+  html {
+    font-size: 13px;
+  }
+
+  body {
+    @apply bg-bg font-ui text-ink;
     margin: 0;
-    color: white;
-    font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
-}
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
 
-@font-face {
-    font-family: "Nunito";
-    font-style: normal;
-    font-weight: 400;
-    src: local(""),
-    url("assets/fonts/nunito-v16-latin-regular.woff2") format("woff2");
-}
-
-#app {
-    height: 100vh;
-    text-align: center;
+  /* accent is the focus ring everywhere — design/README.md § Semantics. */
+  :focus-visible {
+    @apply outline-accent;
+    outline-style: solid;
+    outline-width: 2px;
+    outline-offset: 2px;
+  }
 }

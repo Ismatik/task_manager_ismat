@@ -1,3 +1,7 @@
+/* Wails template scaffolding, kept only until Stage 1 replaces the demo view.
+   Its colours were hard-coded literals; they now resolve through the design
+   tokens like everything else — see design/README.md. */
+
 #app {
     height: 100vh;
     text-align: center;
@@ -22,6 +26,7 @@
 }
 
 .input-box .btn {
+    @apply bg-elevated text-ink;
     width: 60px;
     height: 30px;
     line-height: 30px;
@@ -33,27 +38,22 @@
 }
 
 .input-box .btn:hover {
-    background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
-    color: #333333;
+    @apply bg-accent text-on-accent;
 }
 
 .input-box .input {
+    @apply bg-surface text-ink;
     border: none;
     border-radius: 3px;
     outline: none;
     height: 30px;
     line-height: 30px;
     padding: 0 10px;
-    background-color: rgba(240, 240, 240, 1);
     -webkit-font-smoothing: antialiased;
 }
 
-.input-box .input:hover {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
-}
-
+.input-box .input:hover,
 .input-box .input:focus {
+    @apply bg-elevated;
     border: none;
-    background-color: rgba(255, 255, 255, 1);
 }
