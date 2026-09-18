@@ -1,5 +1,12 @@
 # Nexus — build entrypoints.
 #
+# `make check` is the single entry point: it runs the five gate commands in
+# order and stops at the first failure.
+#
+#   1  go test     (repo root)      4  npm run typecheck   (frontend/)
+#   2  go vet      (repo root)      5  wails build -tags webkit2_41
+#   3  npm run lint (frontend/)
+#
 # ---------------------------------------------------------------------------
 # SYSTEM PREREQUISITES (sudo required, installed once by the user):
 #
@@ -37,9 +44,23 @@ export CGO_ENABLED = 0
 
 FRONTEND_DIR := frontend
 DIST_DIR     := $(FRONTEND_DIR)/dist
+NODE_MODULES := $(FRONTEND_DIR)/node_modules
 BIN_DIR      := build/bin
 
+# The Go packages that are actually ours.
+#
+# `./...` is WRONG for this repo: frontend/node_modules contains real Go source
+# — the `flatted` npm package ships golang/pkg/flatted — so `go list ./...`
+# yields nexus/frontend/node_modules/flatted/golang/pkg/flatted and gates 1 and
+# 2 would be testing and vetting somebody else's vendored code, which we neither
+# own nor can fix. Recursively expanded (=, not :=) so that it is evaluated when
+# a recipe runs, i.e. after $(DIST_DIR) exists and package main can be loaded.
+GOPKGS = $(shell go list ./... | grep -v /node_modules/)
+
 .DEFAULT_GOAL := help
+
+# The gates are ordered on purpose and must stay ordered even under `make -j`.
+.NOTPARALLEL:
 
 # Fail early and legibly if the Wails CLI is not where we expect it.
 define require_wails
@@ -66,19 +87,53 @@ help: ## Show this help
 	@echo
 	@echo "  Prerequisite: sudo apt install pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev"
 
+.PHONY: check
+check: test vet lint typecheck build ## Run all five gates in order, stopping at the first failure
+	@echo
+	@echo "All five gates passed."
+
 .PHONY: dev
 dev: ## Run the app in live-development mode (needs GTK/WebKit)
 	$(require_wails)
-	$(WAILS) dev -tags $(TAGS)
+	@$(WAILS) dev -tags $(TAGS) || { $(MAKE) --no-print-directory apt-hint; exit 1; }
 
 .PHONY: build
-build: ## Build the production binary into build/bin (needs GTK/WebKit)
+build: $(DIST_DIR) ## Gate 5 — build the production binary into build/bin (needs GTK/WebKit)
 	$(require_wails)
-	$(WAILS) build -tags $(TAGS)
+	@$(WAILS) build -tags $(TAGS) || { $(MAKE) --no-print-directory apt-hint; exit 1; }
+
+# Not a gate and not meant to be run directly: printed after a failed wails
+# invocation, and only when the GTK/WebKit development packages really are the
+# reason. There is no point shouting about apt when the build broke on a Go
+# compile error.
+.PHONY: apt-hint
+apt-hint:
+	@command -v pkg-config >/dev/null 2>&1 \
+		&& pkg-config --exists gtk+-3.0 \
+		&& pkg-config --exists webkit2gtk-4.1 \
+		&& exit 0; \
+	echo ""; \
+	echo "  The GTK/WebKit development packages are missing, which is why this"; \
+	echo "  failed. Install them with:"; \
+	echo ""; \
+	echo "    sudo apt install pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev"; \
+	echo ""
 
 .PHONY: test
-test: $(DIST_DIR) ## Run the Go test suite
-	go test ./...
+test: $(DIST_DIR) ## Gate 1 — run the Go test suite
+	go test $(GOPKGS)
+
+.PHONY: vet
+vet: $(DIST_DIR) ## Gate 2 — run go vet
+	go vet $(GOPKGS)
+
+.PHONY: lint
+lint: $(NODE_MODULES) ## Gate 3 — run ESLint over the frontend
+	cd $(FRONTEND_DIR) && npm run lint
+
+.PHONY: typecheck
+typecheck: $(NODE_MODULES) ## Gate 4 — type-check the frontend
+	cd $(FRONTEND_DIR) && npm run typecheck
 
 .PHONY: clean
 clean: ## Remove build/bin and frontend/dist
@@ -91,3 +146,10 @@ clean: ## Remove build/bin and frontend/dist
 # safety net for a fresh clone, where frontend/dist is gitignored and absent.
 $(DIST_DIR):
 	@mkdir -p $(DIST_DIR) && touch $(DIST_DIR)/.gitkeep
+
+# Gates 3 and 4 need the dev dependencies. On a fresh clone node_modules is
+# absent and `npm run lint` would fail with something unhelpful about a missing
+# eslint, so install first. `npm ci` rather than `npm install`: it installs
+# exactly what package-lock.json pins and never rewrites the lockfile.
+$(NODE_MODULES):
+	cd $(FRONTEND_DIR) && npm ci
