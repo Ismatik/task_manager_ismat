@@ -129,6 +129,89 @@ func TestBoardExcludesHabits(t *testing.T) {
 	}
 }
 
+// D10, end to end: a project holding one done task and one habit is placed in
+// the DONE column, and its bar reads 100%.
+//
+// This is the motivating case of the decision, asserted where the user actually
+// sees it. The project rendered in Backlog before D10 — DeriveStatus scanned the
+// habit, which is parked at the inert backlog its NOT NULL column needs and can
+// never leave — while ComputeProgress, which had already generalised the rule to
+// NodeType.HasColumn, drew a full bar on the same card. The column and the bar
+// are asserted in one test so that neither can go green alone.
+func TestBoardPlacesAProjectWithADoneTaskAndAHabitInDone(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	p := f.create(draft("project", domain.NodeTypeProject, nil))
+	task := f.create(draft("the only work in it", domain.NodeTypeTask, &p.ID))
+
+	d := draft("stretch every morning", domain.NodeTypeHabit, &p.ID)
+	d.Recurrence = ptr("FREQ=DAILY")
+	h := f.create(d)
+
+	if _, err := f.tasks.MoveToColumn(ctx, task.ID, domain.StatusDone); err != nil {
+		t.Fatalf("MoveToColumn(task, done): %v", err)
+	}
+	// The habit really is sitting at backlog, which is the whole point: it is
+	// "no column", not "in the Backlog column".
+	if got := f.get(h.ID).Status; got != domain.StatusBacklog {
+		t.Fatalf("the habit's stored status = %q, want backlog", got)
+	}
+
+	board, err := f.tasks.Board(ctx)
+	if err != nil {
+		t.Fatalf("Board: %v", err)
+	}
+
+	v := find(board, p.ID)
+	if v == nil {
+		t.Fatal("the project is not on the board at all")
+	}
+	if v.Status != domain.StatusDone {
+		t.Errorf("the project derives %q and sits in that column; want done — the habit has no "+
+			"column and cannot hold it back", v.Status)
+	}
+	if got := titles(column(t, board, domain.StatusBacklog)); len(got) != 0 {
+		t.Errorf("the backlog column holds %v, want nothing", got)
+	}
+
+	if !v.Progress.Defined || v.Progress.Done != 1 || v.Progress.Total != 1 || v.Progress.Percent != 100 {
+		t.Errorf("progress = %+v, want 1/1 at 100%% and defined", v.Progress)
+	}
+	if (v.Status == domain.StatusDone) != (v.Progress.Percent == 100) {
+		t.Errorf("the column (%q) and the bar (%d%%) disagree on the same card",
+			v.Status, v.Progress.Percent)
+	}
+	// The task child DOES have a column, so the project is still a parent. Only
+	// the habit is invisible to the leaf rule.
+	if v.IsLeaf {
+		t.Error("IsLeaf = true, but this project has a task child, which has a column")
+	}
+
+	t.Run("archive the task and the habit alone leaves a leaf", func(t *testing.T) {
+		if _, err := f.tasks.ArchiveNode(ctx, task.ID); err != nil {
+			t.Fatalf("ArchiveNode: %v", err)
+		}
+		board, err := f.tasks.Board(ctx)
+		if err != nil {
+			t.Fatalf("Board: %v", err)
+		}
+		v := find(board, p.ID)
+		if v == nil {
+			t.Fatal("the project left the board")
+		}
+		if !v.IsLeaf {
+			t.Error("IsLeaf = false: the project's only remaining child is a habit, which has " +
+				"no column")
+		}
+		// A leaf reports its own stored status, and nothing has ever written a
+		// column onto this project, so it falls back to backlog.
+		if v.Status != domain.StatusBacklog {
+			t.Errorf("the project derives %q, want its own stored backlog", v.Status)
+		}
+	})
+}
+
 // Notes have no column, and they are not work: they count in no denominator.
 func TestBoardAndProgressExcludeNotes(t *testing.T) {
 	ctx := context.Background()

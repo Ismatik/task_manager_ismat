@@ -70,16 +70,31 @@ func groupByParent(nodes []Node) map[string][]Node {
 //
 // # The rule
 //
-//   - A leaf — no children, or children that are all notes — reports its own
-//     stored status. Derivation is for parents only.
+//   - A leaf — no children, or children none of which has a column — reports its
+//     own stored status. Derivation is for parents only.
 //   - A parent reports the least-advanced status among its non-done children,
 //     and done only when every one of those children is done.
-//   - note children are excluded entirely: from the "least advanced" scan and
-//     from the "all done" test. A project whose only unfinished child is a note
-//     is done.
+//   - A child whose TYPE has no Kanban column is excluded entirely: from the
+//     "least advanced" scan and from the "all done" test. A project whose only
+//     unfinished child is a note or a habit is done.
 //   - Derivation is recursive. A grandparent derives from its children's
 //     DERIVED statuses, not from whatever their status column happens to hold —
 //     a parent's stored status is meaningless and is never written.
+//
+// # Why the exclusion is NodeType.HasColumn and not "is it a note" (D10)
+//
+// §4's rule was written for the note alone, and derivation obeyed it literally,
+// so a habit child — which has no column, sits inert at backlog and can never
+// become done — dragged its parent down for ever: a project holding one done
+// task and one habit rendered in the Backlog column while its progress bar read
+// 100%. The column and the bar disagreed, and the bar was right, because
+// ComputeProgress had already generalised the rule.
+//
+// D10 settles it the way D9 settled the cascade: a type with no column cannot
+// contribute to a column-derived status. NodeType.HasColumn is the one place
+// that rule lives — the same predicate PlanCascade, CanEnterDoing, CheckStatus
+// and the board's onTheBoard start from — so derivation cannot drift from them
+// about a type the way it just did about a habit.
 //
 // # This function can return doing, and that is not a contradiction
 //
@@ -121,7 +136,12 @@ func deriveStatus(byID map[string]Node, kids map[string][]Node, id string, visit
 	least := Status("")
 	allDone := true
 	for _, c := range children {
-		if c.Type == NodeTypeNote {
+		// D10: a child with no column contributes nothing to a column-derived
+		// status, and neither does anything under it — the subtree is not
+		// descended into at all. The test is NodeType.HasColumn rather than a
+		// list of type constants; it named the note alone until D10, which is
+		// how a habit child came to hold its parent at backlog for ever.
+		if !c.Type.HasColumn() {
 			continue
 		}
 		s, err := deriveStatus(byID, kids, c.ID, visiting)
@@ -186,8 +206,11 @@ func (p Progress) Percent() int {
 // are — so counting it would make a project with one deeply nested task look
 // half finished the moment that task was done. Which leaf types are units of
 // work is countsAsWork's answer: not a note, not a habit — neither has a column
-// to be finished in — and not a project, which is what the bar is drawn FOR. A
-// note's subtree is not descended into at all.
+// to be finished in — and not a project, which is what the bar is drawn FOR. The
+// subtree of a type with no column is not descended into at all, which is the
+// same cut DeriveStatus makes (D10): work parked under a habit is off the board,
+// so counting it here would put a bar on screen that the derived column
+// contradicts — the very disagreement D10 exists to remove.
 //
 // An empty project, a project holding only notes and a project holding only
 // habits therefore all report an UNDEFINED progress — no work in them to
@@ -215,6 +238,10 @@ func ComputeProgress(nodes []Node, id string) (Progress, error) {
 // become done: counting a habit would leave a project whose every task is
 // finished reporting 1 of 2 for ever. The rule is NodeType.HasColumn's, the same
 // one the cascade and CheckStatus use, rather than a second list of types.
+// Since D10 walkProgress stops at such a node before it ever gets here, so that
+// half of the condition no longer fires in practice. It stays anyway: this
+// predicate has to be right on its own terms, not only at the one call site that
+// happens to filter for it first.
 //
 // A PROJECT is not counted either, even though it has a column (D7, D9): a
 // project is the thing a progress bar is drawn FOR, not one of the units the bar
@@ -235,7 +262,11 @@ func walkProgress(byID map[string]Node, kids map[string][]Node, id string, visit
 	visiting[id] = true
 	defer delete(visiting, id)
 
-	if n.Type == NodeTypeNote {
+	// A type with no column is not work and hides none: the whole subtree is
+	// skipped, matching the cut deriveStatus makes over the same predicate. This
+	// said `== NodeTypeNote` before D10, so a task under a habit was counted in
+	// the bar while the derived column ignored it.
+	if !n.Type.HasColumn() {
 		return nil
 	}
 

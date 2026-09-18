@@ -180,8 +180,28 @@ func TestNodeIsLeaf(t *testing.T) {
 			child(domain.NodeTypeTask), child(domain.NodeTypeNote),
 		}, false},
 		{"one project child", []domain.Node{child(domain.NodeTypeProject)}, false},
-		{"one habit child", []domain.Node{child(domain.NodeTypeHabit)}, false},
+		// D10. The old expectation here was `false`, and it was wrong for the
+		// same reason the note case is `true`: a habit has no Kanban column
+		// (PLAN.md §4), so it can never be finished and there is nothing
+		// underneath this parent for a column-derived answer to come from. Under
+		// the old answer a parent of one habit was a non-leaf that derived
+		// backlog for ever and produced an empty cascade plan, while the
+		// identically shaped all-notes parent was a leaf. Nothing about a habit
+		// justified the difference.
+		{"one habit child", []domain.Node{child(domain.NodeTypeHabit)}, true},
+		{"several habits only", []domain.Node{
+			child(domain.NodeTypeHabit), child(domain.NodeTypeHabit),
+		}, true},
+		{"mixed notes and habits, neither has a column", []domain.Node{
+			child(domain.NodeTypeNote), child(domain.NodeTypeHabit),
+		}, true},
+		{"a habit and a task is not a leaf: the task has a column", []domain.Node{
+			child(domain.NodeTypeHabit), child(domain.NodeTypeTask),
+		}, false},
 		{"one bug child", []domain.Node{child(domain.NodeTypeBug)}, false},
+		// An unknown type has no column either (NodeType.HasColumn), so it
+		// cannot make a parent a non-leaf. Rejecting it as a type is Validate's.
+		{"one child of an unknown type", []domain.Node{child(domain.NodeType("gizmo"))}, true},
 	}
 
 	for _, tt := range tests {
@@ -503,6 +523,11 @@ func TestNodeCanEnterDoingAndCanStartTimer(t *testing.T) {
 		{"a childless task is both", node(domain.NodeTypeTask), nil, true, true},
 		{"a task with only note children is both", node(domain.NodeTypeTask),
 			[]domain.Node{child(domain.NodeTypeNote)}, true, true},
+		// D10: a habit child has no column, so it cannot make its parent a
+		// parent. The task is still the leaf the work happens on and is still
+		// timeable — the same answer the all-notes row above gets.
+		{"a task with only habit children is both", node(domain.NodeTypeTask),
+			[]domain.Node{child(domain.NodeTypeHabit)}, true, true},
 		{"a task with a task child is neither", node(domain.NodeTypeTask),
 			[]domain.Node{child(domain.NodeTypeTask)}, false, false},
 		{"a childless bug is both", node(domain.NodeTypeBug), nil, true, true},

@@ -2,6 +2,7 @@ package domain_test
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -408,6 +409,47 @@ func TestPlanCascadeHabits(t *testing.T) {
 			}
 			if len(plan) != 0 {
 				t.Errorf("plan = %v, want empty — a habit has no column", changeIDs(plan))
+			}
+		})
+	}
+}
+
+// D10: a task whose only children are habits is a LEAF and gets a row of its
+// own, exactly as one whose only children are notes always did.
+//
+// The two shapes used to part company here. Node.IsLeaf named the note type
+// literally, so the all-habits task fell through to the descendant loop, that
+// loop skipped the habits for having no column, and the drag produced an empty
+// plan: the card did not move and nothing said why.
+func TestPlanCascadeATaskWhoseChildrenAreAllHabitsIsALeaf(t *testing.T) {
+	withHabits := []domain.Node{
+		task("root", "", domain.StatusBacklog),
+		habit("h1", "root"),
+		habit("h2", "root"),
+	}
+	withNotes := []domain.Node{
+		task("root", "", domain.StatusBacklog),
+		note("n1", "root"),
+		note("n2", "root"),
+	}
+
+	for _, target := range domain.Statuses() {
+		t.Run("to "+target.String(), func(t *testing.T) {
+			plan, err := domain.PlanCascade(withHabits, "root", target, cascadeNow)
+			if err != nil {
+				t.Fatalf("PlanCascade() = %v", err)
+			}
+			if len(plan) != 1 || plan[0].NodeID != "root" || plan[0].Status != target {
+				t.Fatalf("plan = %+v, want exactly one change writing %q onto the root", plan, target)
+			}
+
+			notesPlan, err := domain.PlanCascade(withNotes, "root", target, cascadeNow)
+			if err != nil {
+				t.Fatalf("PlanCascade(all notes) = %v", err)
+			}
+			if !reflect.DeepEqual(plan, notesPlan) {
+				t.Errorf("all-habits plan %+v differs from the all-notes plan %+v; neither type "+
+					"has a column, so the two shapes must plan the same thing", plan, notesPlan)
 			}
 		})
 	}

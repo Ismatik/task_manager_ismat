@@ -40,8 +40,11 @@ type StatusChange struct {
 //
 // # What the plan contains, and what it deliberately does not
 //
-//   - A leaf — no children, or children that are all notes — is the one node
-//     the plan writes when the drag lands on a leaf. Exactly one change.
+//   - A leaf — no children, or children none of which has a column (Node.IsLeaf,
+//     D10) — is the one node the plan writes when the drag lands on a leaf.
+//     Exactly one change. A task whose only children are habits is such a leaf
+//     and gets its own row, where before D10 it fell through to the descendant
+//     loop, which then skipped the habits and produced an empty plan.
 //   - A parent that is not a leaf gets NO ROW OF ITS OWN, at any depth of the
 //     drag. Its status is derived by DeriveStatus after the plan is applied.
 //     Writing a status onto a parent is precisely the drift D2 exists to

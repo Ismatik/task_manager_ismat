@@ -240,18 +240,29 @@ func (n Node) Validate() error {
 
 // IsLeaf reports whether n behaves as a leaf, given its direct children.
 //
-// A node is a leaf when it has no children **or every child is a note** (D2).
-// This is the predicate the rest of the package is built on: status derivation,
-// progress, the cascade and "only leaves start a timer" all ask it, so the
-// all-notes case is decided here once instead of being re-derived — and
+// A node is a leaf when it has no children **or no child of it has a Kanban
+// column** (D2, D10). This is the predicate the rest of the package is built on:
+// status derivation, progress, the cascade and "only leaves start a timer" all
+// ask it, so the case is decided here once instead of being re-derived — and
 // re-fumbled — in four places.
+//
+// # Why the test is NodeType.HasColumn and not "is it a note"
+//
+// It named the note type literally until D10, and a habit child therefore made
+// its parent a non-leaf. That is the same divergence PlanCascade, CanEnterDoing
+// and onTheBoard each had: a habit has no column (PLAN.md §4), so it can neither
+// be finished nor be dragged, and a parent holding nothing but habits has
+// nothing underneath it that a column-derived answer could come from. Such a
+// parent is a leaf and reports its own stored status, exactly as an all-notes
+// parent already did — which is what stopped a task whose only children are
+// habits from producing an empty cascade plan.
 //
 // children must be n's direct children; nothing else in the slice is filtered
 // out, and archived children are counted like any other. Callers load the node
 // set they mean.
 func (n Node) IsLeaf(children []Node) bool {
 	for _, c := range children {
-		if c.Type != NodeTypeNote {
+		if c.Type.HasColumn() {
 			return false
 		}
 	}

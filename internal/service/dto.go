@@ -34,9 +34,9 @@ type NodeView struct {
 	// the injected clock.
 	Overdue bool
 
-	// IsLeaf reports whether the node behaves as a leaf — no children, or only
-	// note children (D2). It is what the UI needs to decide between a progress
-	// bar and a timer button.
+	// IsLeaf reports whether the node behaves as a leaf — no children, or no
+	// child with a Kanban column, which is notes and habits (D2, D10). It is
+	// what the UI needs to decide between a progress bar and a timer button.
 	IsLeaf bool
 
 	// Tags are the node's labels, already resolved; the UI never joins.

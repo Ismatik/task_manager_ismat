@@ -167,6 +167,80 @@ func TestDeriveStatus(t *testing.T) {
 			},
 			id: "g", want: domain.StatusWeek,
 		},
+		{
+			// D10, the motivating case. The habit sits inert at backlog and can
+			// never leave it, so before D10 this project rendered in Backlog
+			// while its progress bar read 100%.
+			name: "a done child and a habit derive done, the habit does not hold it back",
+			nodes: []domain.Node{
+				project("p", "", domain.StatusBacklog),
+				task("a", "p", domain.StatusDone),
+				habit("h", "p"),
+			},
+			id: "p", want: domain.StatusDone,
+		},
+		{
+			// The mirror of the all-notes row above: a parent with nothing but
+			// habits under it is a leaf and reports its own stored status, not
+			// the backlog its habits are parked at.
+			name: "only habit children makes it a leaf reporting its own stored status",
+			nodes: []domain.Node{
+				project("p", "", domain.StatusToday),
+				habit("h1", "p"),
+				habit("h2", "p"),
+			},
+			id: "p", want: domain.StatusToday,
+		},
+		{
+			name: "mixed notes and habits with one real task derive from the task alone",
+			nodes: []domain.Node{
+				project("p", "", domain.StatusDone),
+				note("n1", "p"),
+				habit("h1", "p"),
+				note("n2", "p"),
+				habit("h2", "p"),
+				task("t", "p", domain.StatusWeek),
+			},
+			id: "p", want: domain.StatusWeek,
+		},
+		{
+			// Depth changes nothing: a habit is skipped as a child of a child,
+			// so the grandparent derives from the real work only.
+			name: "a habit grandchild does not touch the grandparent",
+			nodes: []domain.Node{
+				project("g", "", domain.StatusBacklog),
+				project("p", "g", domain.StatusBacklog),
+				task("pa", "p", domain.StatusDone),
+				habit("ph", "p"),
+				task("t", "g", domain.StatusDone),
+			},
+			id: "g", want: domain.StatusDone,
+		},
+		{
+			// The habit is skipped whole: the task parked underneath it is off
+			// the board too, so it cannot hold the project back either.
+			name: "a task under a habit is not reached, the habit subtree is cut",
+			nodes: []domain.Node{
+				project("p", "", domain.StatusBacklog),
+				task("a", "p", domain.StatusDone),
+				habit("h", "p"),
+				task("buried", "h", domain.StatusBacklog),
+			},
+			id: "p", want: domain.StatusDone,
+		},
+		{
+			// An all-habits parent nested under a grandparent behaves exactly as
+			// the all-notes one does: it is a leaf and contributes its own
+			// stored status.
+			name: "a nested all-habits parent is a leaf and contributes its stored status",
+			nodes: []domain.Node{
+				project("g", "", domain.StatusDone),
+				project("p", "g", domain.StatusWeek),
+				habit("h", "p"),
+				task("t", "g", domain.StatusDone),
+			},
+			id: "g", want: domain.StatusWeek,
+		},
 	}
 
 	for _, tt := range tests {
@@ -180,6 +254,101 @@ func TestDeriveStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+// D10's headline: the derived column and the progress bar agree about a project
+// holding one done task and one habit.
+//
+// This is the defect the decision was taken for. DeriveStatus excluded the note
+// type by name, so the habit — which has no column, sits at the backlog its NOT
+// NULL column needs and can never become done — was scanned like real work and
+// held the project at backlog for ever. ComputeProgress had already generalised
+// the rule to NodeType.HasColumn, so the same project reported 100%. The card
+// sat in Backlog with a full bar on it.
+//
+// Both halves are asserted together on purpose: either one alone would pass
+// again if the two rules drifted apart a second time.
+func TestDeriveStatusAndProgressAgreeAboutAHabitSibling(t *testing.T) {
+	nodes := []domain.Node{
+		project("p", "", domain.StatusBacklog),
+		task("t", "p", domain.StatusDone),
+		habit("h", "p"),
+	}
+
+	status, err := domain.DeriveStatus(nodes, "p")
+	if err != nil {
+		t.Fatalf("DeriveStatus() = %v", err)
+	}
+	if status != domain.StatusDone {
+		t.Errorf("DeriveStatus(p) = %q, want %q: every child with a column is done and "+
+			"a habit has none", status, domain.StatusDone)
+	}
+
+	got, err := domain.ComputeProgress(nodes, "p")
+	if err != nil {
+		t.Fatalf("ComputeProgress() = %v", err)
+	}
+	if got.Done != 1 || got.Total != 1 {
+		t.Fatalf("ComputeProgress(p) = %d/%d, want 1/1", got.Done, got.Total)
+	}
+	if !got.Defined() {
+		t.Errorf("Defined() = false, want true: there is one unit of work in this project")
+	}
+	if got.Percent() != 100 {
+		t.Errorf("Percent() = %d, want 100", got.Percent())
+	}
+
+	if (status == domain.StatusDone) != (got.Percent() == 100) {
+		t.Errorf("the column (%q) and the bar (%d%%) disagree", status, got.Percent())
+	}
+}
+
+// The progress walk cuts a no-column subtree off entirely, which is the cut
+// DeriveStatus makes over the same predicate (D10).
+//
+// Before D10 the walk stopped at a note only, so a task parked under a habit was
+// counted in the denominator while the derived column ignored it — the same
+// column-versus-bar disagreement one level down. A habit cannot hold children
+// that matter to the board: everything under it is off the board too.
+func TestComputeProgressCutsOffAHabitSubtree(t *testing.T) {
+	// p ├── t (task, done)
+	//   └── h (habit)
+	//       └── buried (task, week)  <- off the board, so out of the bar
+	nodes := []domain.Node{
+		project("p", "", domain.StatusBacklog),
+		task("t", "p", domain.StatusDone),
+		habit("h", "p"),
+		task("buried", "h", domain.StatusWeek),
+	}
+
+	got, err := domain.ComputeProgress(nodes, "p")
+	if err != nil {
+		t.Fatalf("ComputeProgress() = %v", err)
+	}
+	if got.Done != 1 || got.Total != 1 {
+		t.Fatalf("ComputeProgress(p) = %d/%d, want 1/1 — the habit subtree is not descended into",
+			got.Done, got.Total)
+	}
+
+	status, err := domain.DeriveStatus(nodes, "p")
+	if err != nil {
+		t.Fatalf("DeriveStatus() = %v", err)
+	}
+	if (status == domain.StatusDone) != (got.Percent() == 100) {
+		t.Errorf("the column (%q) and the bar (%d%%) disagree about a task under a habit",
+			status, got.Percent())
+	}
+
+	t.Run("a habit asked about itself is undefined, like a note", func(t *testing.T) {
+		got, err := domain.ComputeProgress(nodes, "h")
+		if err != nil {
+			t.Fatalf("ComputeProgress(h) = %v", err)
+		}
+		if got.Defined() {
+			t.Errorf("Defined() = true (%d/%d), want false — a habit has no column to finish in",
+				got.Done, got.Total)
+		}
+	})
 }
 
 // "Parents never enter doing" (D2) is about starting a timer, not about
