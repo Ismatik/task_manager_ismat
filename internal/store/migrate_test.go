@@ -84,11 +84,11 @@ func TestMigrateEmbeddedSetIsApplicableAndIdempotent(t *testing.T) {
 	}
 }
 
-// embeddedMigrationCount is how many migrations ship today: 0001_settings and
-// 0002_core_schema. It is asserted rather than derived so that adding a
-// migration is a deliberate act with a test change attached, not something that
-// slips in unnoticed.
-const embeddedMigrationCount = 2
+// embeddedMigrationCount is how many migrations ship today: 0001_settings,
+// 0002_core_schema and 0003_search. It is asserted rather than derived so that
+// adding a migration is a deliberate act with a test change attached, not
+// something that slips in unnoticed.
+const embeddedMigrationCount = 3
 
 // A fresh database applies every shipped migration; a database that has seen
 // some of them applies only the rest. The second half is the one that matters
