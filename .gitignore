@@ -9,6 +9,9 @@
 # deps
 /frontend/node_modules/
 
+# coverage profiles written by `make cover`
+coverage*.out
+
 # local data
 *.db
 *.db-shm

@@ -95,6 +95,7 @@ help: ## Show this help
 	@echo
 	@echo "  WAILS = $(WAILS)"
 	@echo "  TAGS  = $(TAGS)   (mandatory on every wails invocation — see E1 above)"
+	@echo "  COVER_MIN = $(COVER_MIN)   (make cover only; the five gates of make check are unchanged)"
 	@echo
 	@echo "  Prerequisite: sudo apt install pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev"
 
@@ -102,6 +103,43 @@ help: ## Show this help
 check: test vet lint typecheck build ## Run all five gates in order, stopping at the first failure
 	@echo
 	@echo "All five gates passed."
+
+# ---------------------------------------------------------------------------
+# COVERAGE — a measurement, NOT a sixth gate.
+#
+# `cover` is deliberately not a prerequisite of `check`. The gate definition is
+# the five commands above and stays exactly five; Stage 1's >=90% ACCEPT is a
+# separate, separately-run number. Adding cover to check would quietly redefine
+# what "green" means in every earlier ticket and every review note.
+#
+# The two packages are measured SEPARATELY and each must clear the bar on its
+# own — not combined, not averaged, not "the repo overall". internal/store is
+# not measured here on purpose: rules live in domain and orchestration in
+# service, so store is thin by design and its remaining error paths are
+# driver-dependent.
+#
+# The comparison runs under LC_ALL=C. awk parses numbers with the locale's
+# decimal separator, and under a comma-decimal locale — which this machine has
+# — `awk` reads a coverage total of 77.5 as 77, silently measuring the wrong
+# number against the threshold. This is a measurement concern internal to this
+# target and is unrelated to K1's deferral, which is about the GTK window.
+COVER_MIN  ?= 90.0
+COVER_PKGS := domain service
+
+.PHONY: cover
+cover: ## Measure internal/domain and internal/service against COVER_MIN (not a gate)
+	@status=0; \
+	for pkg in $(COVER_PKGS); do \
+		go test -covermode=atomic -coverprofile=coverage.$$pkg.out ./internal/$$pkg/... || exit 1; \
+		total=$$(go tool cover -func=coverage.$$pkg.out | tail -1 | awk '{ print $$NF }' | tr -d '%'); \
+		LC_ALL=C awk -v pkg="internal/$$pkg" -v total="$$total" -v min="$(COVER_MIN)" 'BEGIN { if (total + 0 < min + 0) { printf "  FAIL  %s is at %.1f%% statement coverage, below the required %.1f%% (short by %.1f points)\n", pkg, total, min, min - total; exit 1 } printf "  ok    %s is at %.1f%% statement coverage (required %.1f%%)\n", pkg, total, min }' || status=1; \
+	done; \
+	echo; \
+	if [ $$status -ne 0 ]; then \
+		echo "make cover FAILED: see the FAIL line(s) above. Threshold COVER_MIN = $(COVER_MIN)%."; \
+		exit 1; \
+	fi; \
+	echo "Coverage threshold met: every measured package is at or above $(COVER_MIN)%."
 
 .PHONY: dev
 dev: ## Run the app in live-development mode (needs GTK/WebKit)
