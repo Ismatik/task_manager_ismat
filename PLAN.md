@@ -129,6 +129,10 @@ generate the most edge-case tests:
 
 - **Dragging moves the whole subtree** — `parent_id` + `sort_order` change; children
   keep their own status.
+- **A type with no Kanban column cannot be a parent.** A `note` and a `habit` take no
+  children at all: a move onto one is refused (`ErrTypeHasNoChildren`, predicate
+  `NodeType.HasColumn`). They may still *be* children — a habit grouped under a project
+  is legal, it just contributes nothing to that project's column or bar (**D10**).
 - **Exactly one active timer, globally.** Moving a card to Doing opens a
   `time_entry` and closes any open entry on any other node. (Stage 1 built both halves
   — the move and the timer — but **did not wire them together**; that wiring is an
@@ -164,7 +168,7 @@ and stop for your "next".
 | # | Stage | Acceptance |
 |---|---|---|
 | 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) — **CLOSED, PASS** | `make check` green, empty window opens, second launch focuses the first |
-| 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **IMPLEMENTED, NOT CLOSED** (failed review twice, all fixes landed, awaiting re-check; see below) | **≥90% coverage** on `internal/domain` + `internal/service` — **met: 100.0% / 92.5%** |
+| 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **IMPLEMENTED, NOT CLOSED** (failed review three times, all fixes landed, awaiting re-check; see below) | **≥90% coverage** on `internal/domain` + `internal/service` — **met: 100.0% / 92.9%** |
 | 2 | **Kanban + Habits strip** (launch screen) — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — **and moving a card to Doing must itself open a `time_entry`** (§4 coupling; see `TASKS.md`, "Carried into Stage 2") |
 | 3 | **Detail + Tree + Search/Archive** — slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | Every field round-trips through Go; reparent in tree shows on Kanban instantly |
 | 4 | **Quick-add + Focus mode** — frameless standalone window, Go-side NL parser (date, `!priority`, `#tag`, `>Project` fuzzy, `~estimate`, `@type`), live preview chips, Enter creates & closes, Esc closes; Focus mode (one card, large timer, Esc exits); sleep/lock timer handling | `deploy KA Avto fri 15:00 !high #work >KA Avto ~2h` parses correctly in tests **and** in the UI |
@@ -202,11 +206,12 @@ the single-active timer, streaks and search. Stage 0's only migration is
 
 All twenty-two tickets **S1-01 … S1-22** are implemented and committed, one
 conventional commit each. The ACCEPT criterion is **met**: `internal/domain`
-**100.0%**, `internal/service` **92.5%** statement coverage, measured per package.
+**100.0%**, `internal/service` **92.9%** statement coverage, measured per package.
+(`internal/store` is at **86.4%** and is not gated.)
 
-**The stage nevertheless failed review twice**, both times on the same family of
-defects: the rule "a type with no Kanban column is not a unit of work" was spelled in
-four divergent places, and each divergence was a door illegal rows could walk through.
+**The stage nevertheless failed review three times**, every time on the same family of
+defects: a type rule spelled in more than one place, with one copy diverging. Each
+divergence was a door illegal rows could walk through.
 
 First review — **FAIL**, three blocking issues:
 
@@ -233,6 +238,43 @@ landed:
 
 The two user decisions those last two commits required are recorded in §7 as **D10**
 and **D11**, and §4's derivation rule has been generalised to match them.
+
+Third review — **FAIL**, one blocking issue: the last surviving divergence, the one
+this plan had written off as harmless in **K4**. `ValidateMove` refused only a `note`
+as a parent, so a habit could still take children. The Reviewer showed end-to-end that
+the two claims K4 made were both false: a task parked under a habit made the **habit
+itself render in a Kanban column** — §4 says habits never appear in columns — and made
+its ancestor project read `done` behind a **100% bar** while the unfinished task was
+visible on the board at the same time. A 200,000-forest sweep traced roughly **32,300**
+column violations and **800** derivation/progress violations to that single door.
+
+Fixed by the Dev in `9664506`:
+
+- `ValidateMove` now refuses **every** parent whose type has no Kanban column, not just
+  a `note`, through the existing `NodeType.HasColumn` predicate;
+- `deriveStatus` gained a **self-cut**: a no-column node derives `backlog` even if
+  corrupt data somehow gives it children, so the invariant no longer rests on the
+  validator alone;
+- the sentinel `ErrNoteParent` was **renamed to `ErrTypeHasNoChildren`** ("domain: this
+  node type cannot have children") **with no alias left behind** — an alias would have
+  been a second spelling of the rule, which is the defect class itself.
+
+**The structural fix — Stage 2 must not undo it.** The same commit folded the four
+separate spellings of "a project never enters `doing`" (`CanEnterDoing`,
+`CheckStatus`'s sentinel selection, `PlanCascade`, `canBeTimed`) onto a single
+predicate, **`domain.DoingRefusal(NodeType) error`**, with `NodeType.CanBeDoing()`
+defined in terms of it; the richer, caller-specific error messages were kept. The
+resulting type-rule inventory has **no rule spelled twice**: `HasColumn`, `HasDue`,
+`DoingRefusal`/`CanBeDoing`, `countsAsWork`, the habit-requires-recurrence check and
+`DefaultActivity` are each the single definition of their rule. Three review failures
+came from a rule written down twice and then edited once; a new duplicate spelling is
+the one thing this stage must not gain.
+
+One honest caveat, recorded so nobody "tidies" it later: `countsAsWork`
+(`HasColumn() && != NodeTypeProject`) and `DoingRefusal` admit **the same set of types
+today**, but they answer **different questions** — "is this a unit of work?" (**D7**,
+**D11**) versus "may this node be doing?" (**D9**). They were kept separate
+deliberately, so that a future change to one does not silently move the other.
 
 **Stage 1 is therefore NOT closed.** Per §5, no stage closes without a PASS, and the
 Reviewer has not yet re-checked the fixes. The stage closes when — and only when —
@@ -409,6 +451,10 @@ project* satisfies both descriptions at once.
   how work becomes timeable.*
 
 **Implemented consequences (Stage 1 — do not re-derive these):**
+- The rule has **one spelling**: `domain.DoingRefusal(NodeType) error`, with
+  `NodeType.CanBeDoing()` defined in terms of it. `CanEnterDoing`, `CheckStatus`'s
+  choice of sentinel, `PlanCascade` and `canBeTimed` all ask it rather than restating
+  it (see §5, Stage 1 history, for why).
 - `MoveToColumn(project, doing)` is refused with `ErrProjectNeverDoing`, and so is
   creating a project directly in `doing`.
 - `PlanCascade` **skips project descendants** when cascading `doing`, and refuses a
@@ -595,16 +641,29 @@ puts the card in Done. Not a contradiction, but it is **the one place a finished
 shows nothing**. Recorded for the Stage 2 card-chrome work to decide what, if anything,
 a done-but-unmeasurable card should render.
 
-**K4 — `ValidateMove` refuses only a `note` as a parent, so a habit can still have
-children.** After **D10** that subtree is **fully inert**: invisible to derivation and
-invisible to progress. It is coherent — nothing lies — but **work can be parked where
-the board will never show it**. Worth a **§4 ruling in Stage 2**: either refuse every
-no-column type as a parent (the `HasColumn` predicate already exists), or state
-explicitly that such subtrees are intentional and how the UI surfaces them.
+**K4 — RESOLVED in `9664506`, not an open issue. A no-column type cannot have
+children at all.**
+K4 used to read that `ValidateMove` refused only a `note` as a parent, so a habit could
+still have children, and that the resulting subtree was "fully inert — nothing lies".
+**Both claims were false.** The third review demonstrated it end-to-end: a task parked
+under a habit made the **habit render in a Kanban column**, contradicting §4's "habits
+never appear in Kanban columns", and made its ancestor project read `done` with a
+**100% bar** while the unfinished task was still visible on the board. A
+200,000-forest sweep attributed roughly **32,300** column violations and **800**
+derivation/progress violations to this one door.
+
+The fix: `ValidateMove` refuses **every** parent whose type has no Kanban column via
+`NodeType.HasColumn`, and `deriveStatus` cuts at the node itself, so a no-column node
+derives `backlog` even if corrupt data gives it children. The sentinel `ErrNoteParent`
+became **`ErrTypeHasNoChildren`**, with no alias, because an alias is a second spelling
+of the rule. Nothing is parked out of sight because nothing can be parked there.
+Recorded here rather than deleted so the failure mode stays on the record; **K1–K3
+remain the open ones.**
 
 ---
 
 **Status: decisions locked — D1–D11, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
 implemented (all twenty-two tickets, S1-01 … S1-22) but is NOT closed: it failed review
-twice, every fix has landed, and it is awaiting a re-check. See §5, "Stage 1 —
-IMPLEMENTED, NOT CLOSED".**
+three times, every fix has landed — including `9664506`, which resolved **K4** and
+folded the "may be doing" rule onto one predicate — and it is awaiting a re-check.
+See §5, "Stage 1 — IMPLEMENTED, NOT CLOSED".**

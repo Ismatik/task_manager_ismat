@@ -5,12 +5,13 @@
   Kept below as the record and as the template for ticket quality.
 - **[Stage 1 — Domain + store](#stage-1--domain--store): IMPLEMENTED, NOT CLOSED.**
   Go only, no UI, no Wails bindings. All twenty-two tickets **S1-01 … S1-22**
-  committed; ACCEPT met at **100.0% / 92.5%**; **review returned FAIL twice** on one
-  family of related defects. Every fix has landed, and the stage stays open until the
-  Reviewer re-checks and returns PASS. See
+  committed; ACCEPT met at **100.0% / 92.9%**; **review returned FAIL three times** on
+  one family of related defects. Every fix has landed, and the stage stays open until
+  the Reviewer re-checks and returns PASS. See
   [Stage 1 — DONE criteria](#stage-1--done-criteria).
 
-Decisions referenced as **D1–D11 / E1–E3** and known issues **K1–K4** live in
+Decisions referenced as **D1–D11 / E1–E3** and known issues **K1–K3** (plus **K4**,
+now **RESOLVED** in `9664506`) live in
 [`PLAN.md` §7](./PLAN.md). Four decisions were confirmed by the user *during* Stage 1
 and are now recorded there — **D8** (a column move always overwrites the due date),
 **D9** (type beats leaf-ness — a project is never timeable), **D10** (a node with no
@@ -656,11 +657,12 @@ extraction beyond the locale file stubs.
 ## Stage 1 — Domain + store
 
 **Status: IMPLEMENTED, NOT CLOSED.** Tickets `S1-01` … `S1-22`, all twenty-two
-committed. ACCEPT met — `internal/domain` **100.0%**, `internal/service` **92.5%**.
+committed. ACCEPT met — `internal/domain` **100.0%**, `internal/service` **92.9%**
+(`internal/store` is 86.4% and not gated).
 
-**Review returned FAIL twice**, both times on the same family of defects: the rule
-"a type with no Kanban column is not a unit of work" was spelled in four divergent
-places, and each divergence was a door illegal rows walked through.
+**Review returned FAIL three times**, every time on the same family of defects: a type
+rule spelled in more than one place, with one copy diverging. Each divergence was a
+door illegal rows walked through.
 
 - **First review** — two code defects, fixed by the Dev in `fd5e31d` (illegal
   type/status combinations accepted on create) and `f1802d7` (due dates written onto
@@ -671,11 +673,29 @@ places, and each divergence was a door illegal rows walked through.
   date refused on a `note`; D9's wording corrected — a `habit` may have a date),
   `81fb6e4` (**every** no-column type excluded from derivation — **D10**), and
   `d5a170b` (an empty project counted as one unfinished work leaf — **D11**).
+- **Third review** — the last surviving divergence, the one `PLAN.md` had written off
+  as harmless in **K4**: `ValidateMove` refused only a `note` as a parent, so a habit
+  could take children. That made the habit itself render in a Kanban column and made an
+  ancestor project read `done` behind a 100% bar with the unfinished task still on the
+  board — ~32,300 + ~800 invariant violations in a 200,000-forest sweep. Fixed by the
+  Dev in `9664506`: every no-column parent refused via `NodeType.HasColumn`,
+  `deriveStatus` cut at the node itself, and `ErrNoteParent` renamed to
+  **`ErrTypeHasNoChildren`** with **no alias** (an alias would be a second spelling).
+  The same commit folded `CanEnterDoing`, `CheckStatus`'s sentinel selection,
+  `PlanCascade` and `canBeTimed` onto one predicate, **`domain.DoingRefusal`**, with
+  `NodeType.CanBeDoing()` defined in terms of it. **K4 is resolved**, not deferred.
 
-**All fixes have landed.** The two user decisions the last two commits required are
-recorded in `PLAN.md` §7 as **D10** and **D11**, and §4's derivation rule has been
-generalised to match. **The stage does not close until the Reviewer re-checks
-everything above and returns PASS.**
+**No type rule is spelled twice any more** — `HasColumn`, `HasDue`,
+`DoingRefusal`/`CanBeDoing`, `countsAsWork`, the habit-requires-recurrence check and
+`DefaultActivity` are each the single definition of their rule. `countsAsWork` and
+`DoingRefusal` admit the same types today but answer different questions (D7/D11 vs
+D9) and are kept separate on purpose. **Stage 2 must not reintroduce a second
+spelling of any of them.**
+
+**All fixes have landed.** The two user decisions the D10/D11 commits required are
+recorded in `PLAN.md` §7, and §4's derivation rule has been generalised to match.
+**The stage does not close until the Reviewer re-checks everything above and returns
+PASS.**
 
 **Go only. No UI, no Wails bindings, no TypeScript.** Not one line of
 `frontend/src` changes in this stage, and no method is added to `app.go`. Stage 2 owns
@@ -1272,9 +1292,11 @@ supersede the corresponding lines above; the follow-up commits are `81fb6e4` and
   project **with** children that have columns is still not a unit itself. Derivation
   was already correct and did not change.
 
-**Stage 2 must not re-derive either of these.** See also known issues **K2**, **K3**
-and **K4** in `PLAN.md`, which this pair of decisions created or exposed and which are
-**recorded, not scheduled**.
+**Stage 2 must not re-derive either of these.** See also known issues **K2** and **K3**
+in `PLAN.md`, which this pair of decisions created or exposed and which are
+**recorded, not scheduled**. **K4** — the fourth one this pair exposed — is **not**
+deferred: it was a real defect and is **resolved** in `9664506`, which refuses every
+no-column type as a parent.
 
 ---
 
@@ -1341,7 +1363,12 @@ Requirements:
     grandchild`), at depth ≥ 3.
   - a `newParentID` that does not exist,
   - a `nodeID` that does not exist,
-  - a parent that is a `note` (notes hold no children) — decide, document, test.
+  - **any parent whose type has no Kanban column** — `note` **and** `habit` — with
+    `ErrTypeHasNoChildren`, through `NodeType.HasColumn`. Refusing only a `note` here
+    was the third review's blocking defect (see the Stage 1 history above and **K4**,
+    now resolved): a habit with children rendered in a Kanban column and corrupted its
+    ancestors' derived status and progress. The sentinel has **no alias** — the former
+    `ErrNoteParent` name is gone, because an alias is a second spelling of the rule.
 - **Moving a node moves its whole subtree**: children keep their own `parent_id`,
   their own status, and come along. The plan changes exactly one `parent_id` — the
   moved node's — and the `sort_order` of the affected sibling ranges. Assert that
@@ -1362,6 +1389,10 @@ Requirements:
       (`errors.Is(err, domain.ErrCircularParent)`).
 - [ ] `ValidateMove` **accepts** a move to a sibling, to the root (`nil` parent), and
       to an unrelated subtree.
+- [ ] `ValidateMove` **rejects a `note` parent and a `habit` parent alike**, each
+      asserting `errors.Is(err, domain.ErrTypeHasNoChildren)`, and `deriveStatus`
+      returns `backlog` for a no-column node even when handed children (the self-cut,
+      so the invariant does not rest on the validator alone).
 - [ ] Moving a subtree: descendants' `parent_id` and `status` are unchanged; only the
       moved node's `parent_id` changes.
 - [ ] `Reorder` yields a gapless `0..n-1` sequence; moving to the first, last and
@@ -1984,7 +2015,7 @@ Stage 1 closes only when **all** of these hold:
    `*.db` and no `coverage*.out` in the tree.
 9. `git log` shows no AI author and no co-author trailer on any commit.
 10. `0001_settings.sql` is byte-identical to its Stage 0 state.
-11. **The Reviewer re-checks the two failed reviews' fixes and returns PASS.** This one
+11. **The Reviewer re-checks the three failed reviews' fixes and returns PASS.** This one
     has **not** happened. Criteria 1–10 hold today and the stage is still **NOT
     CLOSED**: per `PLAN.md` §5, no stage closes without a PASS. Nothing in Stage 2
     starts before it.
@@ -1993,8 +2024,8 @@ Stage 1 closes only when **all** of these hold:
 `frontend/` change, Kanban, the habit strip, quick-add, the command palette, the tray,
 D-Bus sleep/lock handling, attachment file copying, backup/export, the PMP timelog
 generator, the calendar, stats and Gantt. Also **not** in scope: the **K1** locale
-workaround, and the three issues **K2** (a leaf project's stale stored status now
-decides whether it counts as done), **K3** (an empty project stored `done` renders in
-Done with no bar) and **K4** (`ValidateMove` refuses only a `note` as a parent, so a
-habit can still have children and park work where the board never shows it). All four
-are **recorded, not scheduled** — those decisions belong to Stage 2.
+workaround, and the two issues **K2** (a leaf project's stale stored status now
+decides whether it counts as done) and **K3** (an empty project stored `done` renders
+in Done with no bar). All three are **recorded, not scheduled** — those decisions
+belong to Stage 2. **K4 is not on this list**: a no-column type taking children was a
+real defect, and it is **fixed** in `9664506`, not deferred.
