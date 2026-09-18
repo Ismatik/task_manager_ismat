@@ -318,9 +318,10 @@ func samePointer(a, b *string) bool {
 //
 //  1. domain.PlanCascade decides the status and completed_at of every node the
 //     drag touches (D2), including refusing a project dragged to Doing (D9),
-//  2. domain.DueForColumnMove decides the due date and its provenance (D1),
-//  3. the due date is written, then the cascade is applied in one statement,
-//  4. updated_at is stamped on everything either of them touched.
+//  2. a node whose TYPE has no column is refused outright (PLAN.md §4),
+//  3. domain.DueForColumnMove decides the due date and its provenance (D1),
+//  4. the due date is written, then the cascade is applied in one statement,
+//  5. updated_at is stamped on everything either of them touched.
 //
 // Either all of it lands or none of it does.
 //
@@ -347,6 +348,24 @@ func (s *TaskService) MoveToColumn(ctx context.Context, nodeID string, target do
 		node, err := nodes.Get(ctx, nodeID)
 		if err != nil {
 			return err
+		}
+		// A type with no column has nothing to be dragged to, and the due write
+		// below does not know that: it used to stamp due = today and
+		// due_source = auto onto a note that PlanCascade had just deliberately
+		// refused to touch, and onto a habit that never appears in a column at
+		// all. The cascade and the due write disagreed about the same row.
+		//
+		// The reading is REFUSE, not silently do nothing. PlanCascade's answer
+		// for these types is "no change", and both readings honour that — but a
+		// drag that reports success while the card stays where it was leaves the
+		// user with nothing to explain it, which is the same argument D9 already
+		// makes for refusing a project dragged to Doing outright. So the state
+		// matches PlanCascade and the outcome is visible.
+		//
+		// The type rule itself is the domain's: NodeType.HasColumn.
+		if !node.Type.HasColumn() {
+			return fmt.Errorf("service: moving %s %q to %s: %w",
+				node.Type, nodeID, target, domain.ErrTypeHasNoColumn)
 		}
 
 		now := s.clock()

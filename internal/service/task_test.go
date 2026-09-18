@@ -530,6 +530,106 @@ func TestMoveToColumnProjectNeverEntersDoing(t *testing.T) {
 	})
 }
 
+// Every node type against every target column, on a real database.
+//
+// MoveToColumn used to run PlanCascade — which correctly plans NO change for a
+// note — and then write DueForColumnMove's answer unconditionally, so a type
+// with no column came out of a drag in a state nothing had agreed to:
+//
+//	note   after MoveToColumn(today): status=backlog due=2026-09-18 due_source=auto
+//	habit  after MoveToColumn(today): status=today   due=2026-09-18 due_source=auto
+//
+// The clock is moved on before every move, so a write that survived would show
+// up in updated_at even if it wrote the same due date twice.
+func TestMoveToColumnEveryTypeAgainstEveryColumn(t *testing.T) {
+	ctx := context.Background()
+
+	want := func(typ domain.NodeType, target domain.Status) error {
+		switch {
+		case !typ.HasColumn():
+			return domain.ErrTypeHasNoColumn
+		case typ == domain.NodeTypeProject && target == domain.StatusDoing:
+			return domain.ErrProjectNeverDoing
+		}
+		return nil
+	}
+
+	for _, typ := range domain.NodeTypes() {
+		for _, target := range domain.Statuses() {
+			t.Run(typ.String()+" to "+target.String(), func(t *testing.T) {
+				f := newFixture(t)
+
+				d := draft("x", typ, nil)
+				if typ == domain.NodeTypeHabit {
+					d.Recurrence = ptr("FREQ=DAILY")
+				}
+				n := f.create(d)
+
+				before := f.all()
+				f.now = testNow.Add(time.Hour)
+
+				moved, err := f.tasks.MoveToColumn(ctx, n.ID, target)
+
+				if wantErr := want(typ, target); wantErr != nil {
+					if !errors.Is(err, wantErr) {
+						t.Fatalf("MoveToColumn(%s, %s) = %v, want %v", typ, target, err, wantErr)
+					}
+					// Every field of every row, not just the ones the reviewer
+					// caught: status, due, due_source and updated_at included.
+					if after := f.all(); !reflect.DeepEqual(before, after) {
+						t.Errorf("the database changed on a refused move:\n got %+v\nwant %+v", after, before)
+					}
+					return
+				}
+
+				if err != nil {
+					t.Fatalf("MoveToColumn(%s, %s) = %v, want it to move", typ, target, err)
+				}
+				if moved.Status != target {
+					t.Errorf("status = %q, want %q", moved.Status, target)
+				}
+			})
+		}
+	}
+}
+
+// The reviewer's exact reproduction, field by field: the two types with no
+// column come out of a drag to Today with the due date they went in with.
+func TestMoveToColumnDoesNotDateATypeWithNoColumn(t *testing.T) {
+	ctx := context.Background()
+
+	for _, typ := range []domain.NodeType{domain.NodeTypeNote, domain.NodeTypeHabit} {
+		t.Run(typ.String(), func(t *testing.T) {
+			f := newFixture(t)
+
+			d := draft("x", typ, nil)
+			if typ == domain.NodeTypeHabit {
+				d.Recurrence = ptr("FREQ=DAILY")
+			}
+			n := f.create(d)
+			f.now = testNow.Add(time.Hour)
+
+			if _, err := f.tasks.MoveToColumn(ctx, n.ID, domain.StatusToday); !errors.Is(err, domain.ErrTypeHasNoColumn) {
+				t.Fatalf("MoveToColumn(%s, today) = %v, want domain.ErrTypeHasNoColumn", typ, err)
+			}
+
+			got := f.get(n.ID)
+			if got.Due != nil {
+				t.Errorf("due = %v, want it still unset — a %s has no column to date it by", got.Due, typ)
+			}
+			if got.DueSource != domain.DueSourceManual {
+				t.Errorf("due_source = %q, want manual", got.DueSource)
+			}
+			if got.Status != domain.StatusBacklog {
+				t.Errorf("status = %q, want the inert backlog it was created with", got.Status)
+			}
+			if !got.UpdatedAt.Equal(testNow) {
+				t.Errorf("updated_at = %v, want the original %v — nothing was written", got.UpdatedAt, testNow)
+			}
+		})
+	}
+}
+
 // ---------------------------------------------------------------------------
 // The column <-> due coupling (D1, D8) and all four due_source transitions.
 
