@@ -174,6 +174,10 @@ func deriveStatus(byID map[string]Node, kids map[string][]Node, id string, visit
 // contains nothing but notes has no work in it; the honest answer is that the
 // question does not apply, and the caller draws no bar at all. Every consumer
 // must check Defined before reading Fraction or Percent.
+//
+// This is the answer to "what is inside this project?", and D11 does not touch
+// it. Whether that same project is itself a unit in its PARENT's denominator is
+// a different question with a different answer; see ComputeProgress.
 type Progress struct {
 	Done  int
 	Total int
@@ -206,16 +210,37 @@ func (p Progress) Percent() int {
 // are — so counting it would make a project with one deeply nested task look
 // half finished the moment that task was done. Which leaf types are units of
 // work is countsAsWork's answer: not a note, not a habit — neither has a column
-// to be finished in — and not a project, which is what the bar is drawn FOR. The
-// subtree of a type with no column is not descended into at all, which is the
-// same cut DeriveStatus makes (D10): work parked under a habit is off the board,
-// so counting it here would put a bar on screen that the derived column
-// contradicts — the very disagreement D10 exists to remove.
+// to be finished in. The subtree of a type with no column is not descended into
+// at all, which is the same cut DeriveStatus makes (D10): work parked under a
+// habit is off the board, so counting it here would put a bar on screen that the
+// derived column contradicts — the very disagreement D10 exists to remove.
 //
-// An empty project, a project holding only notes and a project holding only
-// habits therefore all report an UNDEFINED progress — no work in them to
-// measure — which is what the type's documentation above promises and what the
-// board and the tree render as no bar at all.
+// # The two questions about a project, and why they differ (D11)
+//
+// A project is asked about twice, and the answers are not the same:
+//
+//   - "What is inside this project?" — asked when the project itself is the node
+//     being measured. A project with no work beneath it reports an UNDEFINED
+//     progress: an empty project, a project holding only notes and a project
+//     holding only habits all draw no bar, because both 0% and 100% would be
+//     lies. This is the Progress type's promise above and D7's, and D11 leaves
+//     it exactly as it was.
+//
+//   - "Is this project finished?" — asked when the project is found BELOW the
+//     node being measured. A project that is a leaf (nothing under it has a
+//     column) is one unit of work in its parent's denominator, done iff its own
+//     stored status is done. D11: an empty project is real work that has not
+//     been broken down yet, so it is counted rather than wished away.
+//
+// Both hold at once for the same node and they do not conflict: the first looks
+// down and finds nothing, the second looks at the project itself and finds it
+// unfinished. So project{empty sub-project, task:done} derives backlog and
+// reads 1 of 2 — the column and the bar agree that it is not done — while the
+// empty sub-project's own bar is still not drawn at all.
+//
+// A project WITH children that have columns is not a unit either way: its
+// children are counted, exactly as before. D11 is about the leaf case only, and
+// it is the only part of D9's "a project is never a unit of work" it reverses.
 //
 // A leaf's own stored status decides whether it is done; nothing is derived
 // here, because a leaf is where the stored status is the truth.
@@ -224,7 +249,9 @@ func ComputeProgress(nodes []Node, id string) (Progress, error) {
 	kids := groupByParent(nodes)
 
 	var p Progress
-	if err := walkProgress(byID, kids, id, make(map[string]bool, len(nodes)), &p); err != nil {
+	// measured = true: the walk starts AT the node being asked about, which is
+	// the one position where a leaf project counts for nothing (D11, above).
+	if err := walkProgress(byID, kids, id, make(map[string]bool, len(nodes)), &p, true); err != nil {
 		return Progress{}, err
 	}
 	return p, nil
@@ -245,13 +272,23 @@ func ComputeProgress(nodes []Node, id string) (Progress, error) {
 //
 // A PROJECT is not counted either, even though it has a column (D7, D9): a
 // project is the thing a progress bar is drawn FOR, not one of the units the bar
-// measures, so an empty project or one holding only notes reports an UNDEFINED
-// progress rather than 0% of 1 — a bar about nothing.
+// measures, so a project asked about ITSELF and holding no work reports an
+// UNDEFINED progress rather than 0% of 1 — a bar about nothing.
+//
+// That last paragraph is a statement about the node being MEASURED, and it is
+// all this predicate answers. D11 added the other half — a leaf project counts
+// as one unit inside its PARENT — and that half is deliberately not here: it is
+// not a property of the type, it depends on where the node was found, so it
+// lives at walkProgress's single leaf site instead of becoming a second,
+// position-blind spelling of the project rule.
 func countsAsWork(t NodeType) bool {
 	return t.HasColumn() && t != NodeTypeProject
 }
 
-func walkProgress(byID map[string]Node, kids map[string][]Node, id string, visiting map[string]bool, p *Progress) error {
+// walkProgress accumulates the subtree rooted at id into p. measured is true
+// only for the node ComputeProgress was asked about, and false everywhere below
+// it; it is what tells the two D11 questions apart.
+func walkProgress(byID map[string]Node, kids map[string][]Node, id string, visiting map[string]bool, p *Progress, measured bool) error {
 	n, ok := byID[id]
 	if !ok {
 		return fmt.Errorf("domain: progress of %q: %w", id, ErrNodeNotFound)
@@ -272,7 +309,12 @@ func walkProgress(byID map[string]Node, kids map[string][]Node, id string, visit
 
 	children := kids[id]
 	if n.IsLeaf(children) {
-		if !countsAsWork(n.Type) {
+		// A leaf of a type that IS work counts wherever it is found. A leaf
+		// project counts too, but only below the node being measured (D11): the
+		// project a bar is being drawn for is not one of the units on its own
+		// bar. Everything with no column has already returned above, so the
+		// !measured half admits exactly the leaf project and nothing else.
+		if !countsAsWork(n.Type) && measured {
 			return nil
 		}
 		p.Total++
@@ -283,7 +325,7 @@ func walkProgress(byID map[string]Node, kids map[string][]Node, id string, visit
 	}
 
 	for _, c := range children {
-		if err := walkProgress(byID, kids, c.ID, visiting, p); err != nil {
+		if err := walkProgress(byID, kids, c.ID, visiting, p, false); err != nil {
 			return err
 		}
 	}

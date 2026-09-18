@@ -503,6 +503,9 @@ func TestComputeProgress(t *testing.T) {
 			name: "a nested subtree counts only its leaves",
 			nodes: []domain.Node{
 				// p has two sub-projects; neither of them is a unit of work.
+				// D11 does not change this: a project is counted as a unit only
+				// when it is a LEAF, and both of these have children with
+				// columns, so their children are what the bar measures.
 				project("p", "", domain.StatusBacklog),
 				project("p1", "p", domain.StatusBacklog),
 				task("p1a", "p1", domain.StatusDone),
@@ -523,32 +526,51 @@ func TestComputeProgress(t *testing.T) {
 			id: "p", wantDone: 1, wantTotal: 1, wantDefined: true,
 		},
 		{
-			// D9 in the denominator: a project is what the bar is drawn for,
-			// never a unit it measures, so a project shaped like a leaf is not
-			// counted and the subtree has no work in it at all.
-			name: "a PROJECT whose children are all notes is not a unit of work",
+			// CHANGED BY D11. This case read 0/0 undefined, on the D9 amendment's
+			// reasoning that "a project is never a unit of work" — so p1, a leaf
+			// project, was skipped and p came out with nothing in it at all.
+			//
+			// That expectation was wrong about the question being asked. Nobody is
+			// drawing a bar for p1 here; we are drawing one for p, and p1 is real
+			// work under it that has simply not been broken down. Asserting 0/0
+			// made p claim to contain no work while holding a finished sub-project
+			// — the bar could not even show that something below it was done.
+			// Under D11 p1 is one work leaf, done because its own stored status is
+			// done. p1's OWN progress is still undefined; that is the other
+			// question and TestEmptyProjectCountsInItsParent pins it.
+			name: "a PROJECT whose children are all notes counts as one work leaf in its parent",
 			nodes: []domain.Node{
 				project("p", "", domain.StatusBacklog),
 				project("p1", "p", domain.StatusDone),
 				note("n", "p1"),
 			},
-			id: "p", wantDone: 0, wantTotal: 0, wantDefined: false,
+			id: "p", wantDone: 1, wantTotal: 1, wantDefined: true,
 		},
 		{
-			name: "an empty project is undefined, not zero per cent",
+			// UNCHANGED BY D11, and the regression guard for the first of D11's two
+			// questions: p is the node being MEASURED, and a project with no work
+			// beneath it draws no bar rather than an honest-looking 0%.
+			name: "an empty project asked about itself is undefined, not zero per cent",
 			nodes: []domain.Node{
 				project("p", "", domain.StatusBacklog),
 			},
 			id: "p", wantDone: 0, wantTotal: 0, wantDefined: false,
 		},
 		{
-			name: "an empty project among real tasks counts for nothing",
+			// CHANGED BY D11 — the motivating case. This read 1/1 at 100%: the
+			// empty sub-project was skipped entirely, so a project that plainly
+			// still had work in it reported itself finished, while DeriveStatus
+			// put the same card in Backlog. The column and the bar contradicted
+			// each other on one card, which is the defect D11 was decided on.
+			// An empty project is unfinished work, so it is in the denominator:
+			// 1 of 2, and both halves now say "not done".
+			name: "an empty project among real tasks is one unfinished unit",
 			nodes: []domain.Node{
 				project("p", "", domain.StatusBacklog),
 				project("empty", "p", domain.StatusBacklog),
 				task("t", "p", domain.StatusDone),
 			},
-			id: "p", wantDone: 1, wantTotal: 1, wantDefined: true,
+			id: "p", wantDone: 1, wantTotal: 2, wantDefined: true,
 		},
 		{
 			name: "a leaf asked about itself",
@@ -564,8 +586,10 @@ func TestComputeProgress(t *testing.T) {
 				note("n1", "p"),
 				note("n2", "p"),
 			},
-			// p is a leaf here (all children are notes) and p is a project, so
-			// it is NOT counted: there is no work in this subtree to measure.
+			// UNCHANGED BY D11. p is a leaf here (all children are notes) and p
+			// is the node being MEASURED, so it is NOT counted: there is no work
+			// inside this subtree to draw a bar from. The same p one level down,
+			// under a parent, IS one unit — see the all-notes case above.
 			id: "p", wantDone: 0, wantTotal: 0, wantDefined: false,
 		},
 		{
@@ -604,6 +628,213 @@ func TestComputeProgress(t *testing.T) {
 			}
 		})
 	}
+}
+
+// D11, the motivating case: project{empty sub-project, task:done} derives
+// backlog and its bar reads 1 of 2.
+//
+// Before D11 the derivation and the bar disagreed on this one card. The empty
+// sub-project has a column and is not done, so DeriveStatus held the project at
+// backlog — correctly — while ComputeProgress skipped the sub-project entirely
+// as "not a unit of work" and reported 1/1 at 100%: a card sitting in Backlog
+// with a full bar on it, the same defect shape D10 was decided on.
+//
+// The user's decision is that an empty project IS unfinished work: it is work
+// that has not been broken down yet, not an absence of work. Both halves are
+// asserted in one test so that neither can go green alone if the two rules drift
+// apart again.
+func TestEmptyProjectIsOneUnfinishedUnitInItsParent(t *testing.T) {
+	nodes := []domain.Node{
+		project("p", "", domain.StatusBacklog),
+		project("empty", "p", domain.StatusBacklog),
+		task("t", "p", domain.StatusDone),
+	}
+
+	status, err := domain.DeriveStatus(nodes, "p")
+	if err != nil {
+		t.Fatalf("DeriveStatus() = %v", err)
+	}
+	if status != domain.StatusBacklog {
+		t.Errorf("DeriveStatus(p) = %q, want %q: the empty sub-project has a column and is not "+
+			"done, so it holds the parent back", status, domain.StatusBacklog)
+	}
+
+	got, err := domain.ComputeProgress(nodes, "p")
+	if err != nil {
+		t.Fatalf("ComputeProgress() = %v", err)
+	}
+	if got.Done != 1 || got.Total != 2 || !got.Defined() || got.Percent() != 50 {
+		t.Errorf("ComputeProgress(p) = {Done:%d Total:%d Percent:%d Defined:%v}, "+
+			"want {Done:1 Total:2 Percent:50 Defined:true} — the empty sub-project is one "+
+			"unfinished unit", got.Done, got.Total, got.Percent(), got.Defined())
+	}
+
+	if (status == domain.StatusDone) != (got.Percent() == 100) {
+		t.Errorf("the column (%q) and the bar (%d%%) disagree", status, got.Percent())
+	}
+}
+
+// The other half of D11, and the regression guard for S1-07: the very same empty
+// project, asked about ITSELF, still has no bar.
+//
+// "A project containing only notes has no work in it, and both 0% ('nothing
+// done') and 100% ('all done') are lies the UI would render as a bar." That is
+// still binding. The two answers are not in conflict — the question here is
+// "what is inside this project?" (nothing), and the question in the test above
+// is "is this project finished?" (no).
+func TestEmptyProjectAskedAboutItselfIsStillUndefined(t *testing.T) {
+	cases := []struct {
+		name  string
+		nodes []domain.Node
+	}{
+		{
+			name: "an empty sub-project",
+			nodes: []domain.Node{
+				project("p", "", domain.StatusBacklog),
+				project("sub", "p", domain.StatusBacklog),
+				task("t", "p", domain.StatusDone),
+			},
+		},
+		{
+			name: "a sub-project holding only notes",
+			nodes: []domain.Node{
+				project("p", "", domain.StatusBacklog),
+				project("sub", "p", domain.StatusBacklog),
+				note("n1", "sub"),
+				note("n2", "sub"),
+				task("t", "p", domain.StatusDone),
+			},
+		},
+		{
+			name: "a sub-project holding only habits",
+			nodes: []domain.Node{
+				project("p", "", domain.StatusBacklog),
+				project("sub", "p", domain.StatusBacklog),
+				habit("h", "sub"),
+				task("t", "p", domain.StatusDone),
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			own, err := domain.ComputeProgress(tt.nodes, "sub")
+			if err != nil {
+				t.Fatalf("ComputeProgress(sub) = %v", err)
+			}
+			if own.Defined() {
+				t.Errorf("ComputeProgress(sub).Defined() = true (%d/%d), want false — there is no "+
+					"work inside it, and 0%% and 100%% would both be lies", own.Done, own.Total)
+			}
+
+			// ... and the same node is one undone unit in its parent, at the same
+			// time, from the same node set.
+			parent, err := domain.ComputeProgress(tt.nodes, "p")
+			if err != nil {
+				t.Fatalf("ComputeProgress(p) = %v", err)
+			}
+			if parent.Done != 1 || parent.Total != 2 {
+				t.Errorf("ComputeProgress(p) = %d/%d, want 1/2 — sub is one undone work leaf",
+					parent.Done, parent.Total)
+			}
+		})
+	}
+}
+
+// A leaf project is counted as DONE when its own stored status says so. Its
+// stored status is the truth for the same reason any other leaf's is: there is
+// nothing underneath it to derive from.
+func TestLeafProjectStoredDoneCountsAsDone(t *testing.T) {
+	nodes := []domain.Node{
+		project("p", "", domain.StatusBacklog),
+		project("empty", "p", domain.StatusDone),
+		task("t", "p", domain.StatusDone),
+	}
+
+	got, err := domain.ComputeProgress(nodes, "p")
+	if err != nil {
+		t.Fatalf("ComputeProgress() = %v", err)
+	}
+	if got.Done != 2 || got.Total != 2 || got.Percent() != 100 {
+		t.Errorf("ComputeProgress(p) = {Done:%d Total:%d Percent:%d}, want {Done:2 Total:2 "+
+			"Percent:100} — a leaf project stored as done is a done unit",
+			got.Done, got.Total, got.Percent())
+	}
+
+	status, err := domain.DeriveStatus(nodes, "p")
+	if err != nil {
+		t.Fatalf("DeriveStatus() = %v", err)
+	}
+	if (status == domain.StatusDone) != (got.Percent() == 100) {
+		t.Errorf("the column (%q) and the bar (%d%%) disagree", status, got.Percent())
+	}
+}
+
+// D11 is about LEAF projects only. A project with real children under it is
+// still not a unit of work itself — its children are what the bar measures — so
+// the denominator must not grow by one per level of nesting.
+func TestProjectWithRealChildrenIsNotCountedAsAUnit(t *testing.T) {
+	// p ├── p1 ├── p1a (done)
+	//   │      └── p1b (week)
+	//   └── p2 └── p2a (done)
+	nodes := []domain.Node{
+		project("p", "", domain.StatusBacklog),
+		project("p1", "p", domain.StatusBacklog),
+		task("p1a", "p1", domain.StatusDone),
+		task("p1b", "p1", domain.StatusWeek),
+		project("p2", "p", domain.StatusBacklog),
+		task("p2a", "p2", domain.StatusDone),
+	}
+
+	got, err := domain.ComputeProgress(nodes, "p")
+	if err != nil {
+		t.Fatalf("ComputeProgress() = %v", err)
+	}
+	if got.Done != 2 || got.Total != 3 {
+		t.Errorf("ComputeProgress(p) = %d/%d, want 2/3 — p1 and p2 have children with columns, "+
+			"so they are measured through those children and never counted themselves",
+			got.Done, got.Total)
+	}
+}
+
+// Nesting adds levels, not units: a chain of empty projects is ONE work leaf at
+// the bottom, however many projects are stacked above it.
+//
+// Counting per level instead of per leaf is the obvious way to get D11 wrong,
+// and it would make a project look less finished the more deeply somebody had
+// filed an empty folder.
+func TestNestedEmptyProjectsCountOncePerLeaf(t *testing.T) {
+	// p ├── a ── b ── c        (three projects deep, c is empty -> ONE leaf)
+	//   ├── e                  (empty -> one leaf)
+	//   └── t (task, done)     (one leaf, done)
+	nodes := []domain.Node{
+		project("p", "", domain.StatusBacklog),
+		project("a", "p", domain.StatusBacklog),
+		project("b", "a", domain.StatusBacklog),
+		project("c", "b", domain.StatusBacklog),
+		project("e", "p", domain.StatusBacklog),
+		task("t", "p", domain.StatusDone),
+	}
+
+	got, err := domain.ComputeProgress(nodes, "p")
+	if err != nil {
+		t.Fatalf("ComputeProgress() = %v", err)
+	}
+	if got.Done != 1 || got.Total != 3 {
+		t.Errorf("ComputeProgress(p) = %d/%d, want 1/3 — the a-b-c chain is one work leaf (c), "+
+			"not three", got.Done, got.Total)
+	}
+
+	t.Run("and the chain measured from the middle is the same one leaf", func(t *testing.T) {
+		got, err := domain.ComputeProgress(nodes, "a")
+		if err != nil {
+			t.Fatalf("ComputeProgress(a) = %v", err)
+		}
+		if got.Done != 0 || got.Total != 1 {
+			t.Errorf("ComputeProgress(a) = %d/%d, want 0/1 — a is measured, b is not a leaf, "+
+				"c is the single work leaf beneath it", got.Done, got.Total)
+		}
+	})
 }
 
 // A habit is not a unit of work, so it is not in the progress denominator.
@@ -653,8 +884,10 @@ func TestProgressWithZeroNonNoteLeavesIsUndefined(t *testing.T) {
 		note("n1", "sub"),
 	}
 
-	// "sub" is a leaf (all-notes children) and is itself a project, so it is not
-	// counted either; this case asserts the note-rooted subtree.
+	// The subtree asserted here is rooted at the NOTE: a note has no column, so
+	// the walk stops on it at once and there is nothing to measure. ("sub" is a
+	// leaf project, which since D11 is one unit inside p's denominator — but p
+	// is not what is being asked about here.)
 	got, err := domain.ComputeProgress(nodes, "n1")
 	if err != nil {
 		t.Fatalf("ComputeProgress() = %v", err)
