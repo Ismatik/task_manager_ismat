@@ -70,6 +70,32 @@ func TestNodeTypesIsTheCompleteSet(t *testing.T) {
 	}
 }
 
+// PLAN.md §4: a note has no status and no due, and a habit never appears in a
+// Kanban column. Everything else does have one.
+func TestNodeTypeHasColumn(t *testing.T) {
+	tests := []struct {
+		name string
+		in   domain.NodeType
+		want bool
+	}{
+		{"a task has a column", domain.NodeTypeTask, true},
+		{"a project has a column — D9 is about doing, not about having one", domain.NodeTypeProject, true},
+		{"a bug has a column", domain.NodeTypeBug, true},
+		{"a note has none: no status, no due", domain.NodeTypeNote, false},
+		{"a habit has none: the habit strip, never a column", domain.NodeTypeHabit, false},
+		{"an unknown type has none", domain.NodeType("epic"), false},
+		{"the empty type has none", domain.NodeType(""), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.in.HasColumn(); got != tt.want {
+				t.Errorf("NodeType(%q).HasColumn() = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestStatusValid(t *testing.T) {
 	tests := []struct {
 		name string

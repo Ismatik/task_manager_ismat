@@ -301,6 +301,102 @@ func TestCreateNode(t *testing.T) {
 	})
 }
 
+// The whole type x status matrix on the create path, against a real database.
+//
+// Creating is the second door into a stored status and it used to be unlocked:
+// CreateNode{project, doing} stored a project with status = doing and the Board
+// then rendered it in the Doing column, while MoveToColumn(project, doing) had
+// always refused the identical state (D9). The same holds, less loudly, for a
+// note or a habit given a column: PLAN.md §4 gives a note "no status, no due"
+// and keeps a habit out of the columns entirely.
+//
+// Every case asserts the DATABASE, not just the returned error: a create that
+// is refused must leave no row behind, and a create that is allowed must store
+// the status it was asked for.
+func TestCreateNodeTypeAndStatusCombinations(t *testing.T) {
+	ctx := context.Background()
+
+	// A habit needs a recurrence to get past Validate, which is a different
+	// rule and not the one under test here.
+	newDraft := func(typ domain.NodeType, status domain.Status) service.NewNode {
+		d := draft("x", typ, nil)
+		d.Status = status
+		if typ == domain.NodeTypeHabit {
+			d.Recurrence = ptr("FREQ=DAILY")
+		}
+		return d
+	}
+
+	// wantErr nil means the combination is legal and must be stored.
+	want := func(typ domain.NodeType, status domain.Status) error {
+		switch {
+		case typ == domain.NodeTypeNote || typ == domain.NodeTypeHabit:
+			if status != domain.StatusBacklog {
+				return domain.ErrTypeHasNoColumn
+			}
+		case typ == domain.NodeTypeProject && status == domain.StatusDoing:
+			return domain.ErrProjectNeverDoing
+		}
+		return nil
+	}
+
+	for _, typ := range domain.NodeTypes() {
+		for _, status := range domain.Statuses() {
+			t.Run(typ.String()+" in "+status.String(), func(t *testing.T) {
+				f := newFixture(t)
+
+				n, err := f.tasks.CreateNode(ctx, newDraft(typ, status))
+				wantErr := want(typ, status)
+
+				if wantErr != nil {
+					if !errors.Is(err, wantErr) {
+						t.Fatalf("CreateNode(%s, %s) = %v, want %v", typ, status, err, wantErr)
+					}
+					// The database, not the return value: the bug was a row.
+					if got := f.all(); len(got) != 0 {
+						t.Fatalf("%d rows written by a refused create, want 0: %+v", len(got), got)
+					}
+					return
+				}
+
+				if err != nil {
+					t.Fatalf("CreateNode(%s, %s) = %v, want it stored", typ, status, err)
+				}
+				if got := f.get(n.ID).Status; got != status {
+					t.Errorf("stored status = %q, want %q", got, status)
+				}
+			})
+		}
+	}
+}
+
+// The reviewer's exact reproduction, kept as its own named case: the project
+// must not reach the board through the create path either.
+func TestCreateNodeProjectInDoingNeverReachesTheBoard(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	d := draft("ship it", domain.NodeTypeProject, nil)
+	d.Status = domain.StatusDoing
+
+	if _, err := f.tasks.CreateNode(ctx, d); !errors.Is(err, domain.ErrProjectNeverDoing) {
+		t.Fatalf("CreateNode(project, doing) = %v, want domain.ErrProjectNeverDoing", err)
+	}
+	if got := f.all(); len(got) != 0 {
+		t.Fatalf("%d rows written, want 0: %+v", len(got), got)
+	}
+
+	board, err := f.tasks.Board(ctx)
+	if err != nil {
+		t.Fatalf("Board: %v", err)
+	}
+	for _, col := range board {
+		if len(col.Nodes) != 0 {
+			t.Errorf("the %s column has %d cards, want none", col.Status, len(col.Nodes))
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // MoveToColumn — the cascade
 

@@ -298,6 +298,55 @@ func (n Node) CanStartTimer(children []Node) bool {
 	return n.CanEnterDoing(children)
 }
 
+// ErrTypeHasNoColumn is returned when a node whose TYPE has no Kanban column —
+// a note or a habit — is given a column's status, by any door: a drag, the
+// create path, or whatever is written next (PLAN.md §4, Type.HasColumn).
+var ErrTypeHasNoColumn = errors.New("domain: this node type has no kanban column")
+
+// CheckStatus reports whether n may be STORED carrying n.Status, given its
+// direct children, and names the rule that refuses it when it may not.
+//
+// # Why this is not part of Validate
+//
+// Validate answers "is this a well-formed row?", one field at a time and with
+// reference to nothing else. This asks a question about the TYPE and the
+// children — D2, D7 and D9 — which is not a question about a field. Keeping it
+// separate also keeps Validate usable on a node read back out of the database,
+// where the children are not to hand.
+//
+// Every door into a stored status is meant to come through here. The defect
+// that put it in the package was exactly the absence of that: CreateNode stored
+// a project as doing while MoveToColumn refused the very same state, so an
+// illegal row was one call away from a rule that was working.
+//
+// The three refusals:
+//
+//   - A note or a habit has no column (Type.HasColumn), so the only status it
+//     may carry is backlog — the value its NOT NULL column needs, not a claim
+//     that it sits in the Backlog column. Note that CanEnterDoing alone would
+//     not catch a habit: that predicate answers the timer question, and a habit
+//     is excluded from columns for a different reason.
+//   - A project never enters doing, empty or not (D9) — the same sentinel the
+//     drag returns, because it is the same rule.
+//   - Anything else that is not a leaf may not be stored as doing either, since
+//     doing means a timer and only leaves run one (D2). Such a parent RENDERS
+//     in Doing through DeriveStatus instead; nothing is written.
+func (n Node) CheckStatus(children []Node) error {
+	if !n.Type.HasColumn() {
+		if n.Status != StatusBacklog {
+			return fmt.Errorf("domain: a %s cannot carry the status %q: %w", n.Type, n.Status, ErrTypeHasNoColumn)
+		}
+		return nil
+	}
+	if n.Status == StatusDoing && !n.CanEnterDoing(children) {
+		if n.Type == NodeTypeProject {
+			return fmt.Errorf("domain: node %q: %w", n.ID, ErrProjectNeverDoing)
+		}
+		return invalid("node", "status", "only a leaf is stored as doing, and %q has children that are not notes", n.ID)
+	}
+	return nil
+}
+
 // DefaultActivity returns the PMP activity a new node of type t starts with
 // (D4), or nil when the type has no sensible default. The user may override it
 // at any time, which is why this is a starting value in the domain rather than

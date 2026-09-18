@@ -528,3 +528,102 @@ func TestNodeCanEnterDoingAndCanStartTimer(t *testing.T) {
 		})
 	}
 }
+
+// CheckStatus is the one gate every door into a stored status goes through, so
+// the table is the whole type x status matrix plus the child shapes that change
+// the answer.
+func TestNodeCheckStatus(t *testing.T) {
+	child := func(tp domain.NodeType) domain.Node {
+		n := validNode()
+		n.ID = "c1"
+		n.Type = tp
+		return n
+	}
+	node := func(tp domain.NodeType, s domain.Status) domain.Node {
+		n := validNode()
+		n.Type = tp
+		n.Status = s
+		return n
+	}
+
+	tests := []struct {
+		name     string
+		node     domain.Node
+		children []domain.Node
+		wantErr  error // nil means the combination is legal
+	}{
+		// The types that do have a column may hold any of the five, doing
+		// included, as long as they are leaves.
+		{"a leaf task may hold backlog", node(domain.NodeTypeTask, domain.StatusBacklog), nil, nil},
+		{"a leaf task may hold week", node(domain.NodeTypeTask, domain.StatusWeek), nil, nil},
+		{"a leaf task may hold today", node(domain.NodeTypeTask, domain.StatusToday), nil, nil},
+		{"a leaf task may hold doing", node(domain.NodeTypeTask, domain.StatusDoing), nil, nil},
+		{"a leaf task may hold done", node(domain.NodeTypeTask, domain.StatusDone), nil, nil},
+		{"a bug is a task for this purpose", node(domain.NodeTypeBug, domain.StatusDoing), nil, nil},
+		{"a task whose children are all notes is still a leaf", node(domain.NodeTypeTask, domain.StatusDoing),
+			[]domain.Node{child(domain.NodeTypeNote)}, nil},
+
+		// D2: doing means a timer, and only a leaf runs one.
+		{"a task with a task child may not hold doing", node(domain.NodeTypeTask, domain.StatusDoing),
+			[]domain.Node{child(domain.NodeTypeTask)}, domain.ErrInvalid},
+		{"a task with a task child may still hold today", node(domain.NodeTypeTask, domain.StatusToday),
+			[]domain.Node{child(domain.NodeTypeTask)}, nil},
+
+		// D9: a project never enters doing, empty or not — the same sentinel
+		// the drag returns.
+		{"D9: an EMPTY project may not hold doing", node(domain.NodeTypeProject, domain.StatusDoing),
+			nil, domain.ErrProjectNeverDoing},
+		{"D9: a project with note children may not hold doing", node(domain.NodeTypeProject, domain.StatusDoing),
+			[]domain.Node{child(domain.NodeTypeNote)}, domain.ErrProjectNeverDoing},
+		{"D9: a project with children may not hold doing", node(domain.NodeTypeProject, domain.StatusDoing),
+			[]domain.Node{child(domain.NodeTypeTask)}, domain.ErrProjectNeverDoing},
+		{"a project may hold today", node(domain.NodeTypeProject, domain.StatusToday), nil, nil},
+		{"a project may hold done", node(domain.NodeTypeProject, domain.StatusDone), nil, nil},
+
+		// PLAN.md §4: a note has no status and a habit is never in a column.
+		// Backlog is the inert NOT NULL default and is the only value either
+		// may carry.
+		{"a note may hold the default backlog", node(domain.NodeTypeNote, domain.StatusBacklog), nil, nil},
+		{"a note may not hold week", node(domain.NodeTypeNote, domain.StatusWeek), nil, domain.ErrTypeHasNoColumn},
+		{"a note may not hold today", node(domain.NodeTypeNote, domain.StatusToday), nil, domain.ErrTypeHasNoColumn},
+		{"a note may not hold doing", node(domain.NodeTypeNote, domain.StatusDoing), nil, domain.ErrTypeHasNoColumn},
+		{"a note may not hold done", node(domain.NodeTypeNote, domain.StatusDone), nil, domain.ErrTypeHasNoColumn},
+		{"a habit may hold the default backlog", node(domain.NodeTypeHabit, domain.StatusBacklog), nil, nil},
+		{"a habit may not hold week", node(domain.NodeTypeHabit, domain.StatusWeek), nil, domain.ErrTypeHasNoColumn},
+		{"a habit may not hold today", node(domain.NodeTypeHabit, domain.StatusToday), nil, domain.ErrTypeHasNoColumn},
+		{"a habit may not hold doing, which CanEnterDoing alone would allow",
+			node(domain.NodeTypeHabit, domain.StatusDoing), nil, domain.ErrTypeHasNoColumn},
+		{"a habit may not hold done", node(domain.NodeTypeHabit, domain.StatusDone), nil, domain.ErrTypeHasNoColumn},
+
+		// An unrecognised type is refused the same way; Validate is what names
+		// the type itself as the problem.
+		{"an unknown type has no column either", node(domain.NodeType("epic"), domain.StatusToday),
+			nil, domain.ErrTypeHasNoColumn},
+		{"an unknown type carrying backlog passes this gate", node(domain.NodeType("epic"), domain.StatusBacklog),
+			nil, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.node.CheckStatus(tt.children)
+			switch {
+			case tt.wantErr == nil && err != nil:
+				t.Fatalf("CheckStatus() = %v, want nil", err)
+			case tt.wantErr == nil:
+			case !errors.Is(err, tt.wantErr):
+				t.Fatalf("CheckStatus() = %v, want an error matching %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// The non-leaf refusal names the field, so that a caller can report which
+// column of which row the rule objected to.
+func TestNodeCheckStatusNamesTheStatusField(t *testing.T) {
+	parent := validNode()
+	parent.Status = domain.StatusDoing
+	child := validNode()
+	child.ID = "c1"
+
+	assertValidationError(t, parent.CheckStatus([]domain.Node{child}), "node", "status")
+}

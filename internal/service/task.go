@@ -138,10 +138,10 @@ type NewNode struct {
 // and appends the node after its existing siblings. A due date supplied here is
 // the user's (D1), so it is stored with due_source = manual.
 //
-// The node is validated by domain.Validate before anything is written, and the
-// parent — if there is one — is validated by domain.ValidateMove, so that a
-// parent that does not exist or a note used as a parent is refused by the rules
-// rather than by a foreign key.
+// The node is validated by domain.Validate before anything is written, its
+// type/status combination by domain.CheckStatus, and the parent — if there is
+// one — by domain.ValidateMove, so that a parent that does not exist or a note
+// used as a parent is refused by the rules rather than by a foreign key.
 func (s *TaskService) CreateNode(ctx context.Context, draft NewNode) (domain.Node, error) {
 	now := s.clock()
 
@@ -171,6 +171,14 @@ func (s *TaskService) CreateNode(ctx context.Context, draft NewNode) (domain.Nod
 		n.Activity = domain.DefaultActivity(n.Type)
 	}
 	if err := n.Validate(); err != nil {
+		return domain.Node{}, fmt.Errorf("service: creating a node: %w", err)
+	}
+	// Creating is the second door into a stored status, and until this line it
+	// was an unlocked one: a project could be created straight into doing, which
+	// D9 forbids and which MoveToColumn has always refused. The same domain rule
+	// answers both, so the two doors cannot drift apart. A node that is being
+	// created has no children yet, hence the empty child set.
+	if err := n.CheckStatus(nil); err != nil {
 		return domain.Node{}, fmt.Errorf("service: creating a node: %w", err)
 	}
 

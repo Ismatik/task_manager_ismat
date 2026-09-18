@@ -39,6 +39,34 @@ func (t NodeType) Valid() bool {
 	}
 }
 
+// HasColumn reports whether a node of type t belongs in a Kanban column at all
+// (PLAN.md §4, "Behaviour by type").
+//
+// Two types do not. A note has "no status, no due" and is excluded from parent
+// derivation; a habit lives in the habit strip and "never appears in Kanban
+// columns". Neither can be dragged to a column and neither may be STORED
+// carrying one — which is the rule PlanCascade already applies to a note when
+// it plans no change for one.
+//
+// Such a node still holds a status, because the column is NOT NULL: it is
+// backlog, the schema's inert default, and it means "no column", not "in the
+// Backlog column".
+//
+// task, project and bug do have columns. Whether a node that has a column may
+// enter doing is a different and narrower question — that one is about running
+// a timer and is answered by Node.CanEnterDoing (D2, D9).
+//
+// An unknown type has no column either: a type nobody recognises is not one
+// this rule can vouch for. Rejecting it as a type is Node.Validate's job.
+func (t NodeType) HasColumn() bool {
+	switch t {
+	case NodeTypeTask, NodeTypeProject, NodeTypeBug:
+		return true
+	default:
+		return false
+	}
+}
+
 // Status is a node's Kanban column. It is stored on leaves only: a parent's
 // status is derived from its children and is never written (Stage 1, D2).
 type Status string
