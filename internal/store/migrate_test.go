@@ -84,6 +84,74 @@ func TestMigrateEmbeddedSetIsApplicableAndIdempotent(t *testing.T) {
 	}
 }
 
+// embeddedMigrationCount is how many migrations ship today: 0001_settings and
+// 0002_core_schema. It is asserted rather than derived so that adding a
+// migration is a deliberate act with a test change attached, not something that
+// slips in unnoticed.
+const embeddedMigrationCount = 2
+
+// A fresh database applies every shipped migration; a database that has seen
+// some of them applies only the rest. The second half is the one that matters
+// as the set grows: an upgrade must not re-run 0001 on a machine that has been
+// carrying real data since Stage 0.
+func TestMigrateAppliesOnlyWhatADatabaseHasNotSeen(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("a fresh database applies the whole set", func(t *testing.T) {
+		db := openTestDB(t)
+
+		applied, err := Migrate(ctx, db)
+		if err != nil {
+			t.Fatalf("Migrate: %v", err)
+		}
+		if applied != embeddedMigrationCount {
+			t.Errorf("a fresh database applied %d migrations, want %d", applied, embeddedMigrationCount)
+		}
+
+		again, err := Migrate(ctx, db)
+		if err != nil {
+			t.Fatalf("Migrate (second run): %v", err)
+		}
+		if again != 0 {
+			t.Errorf("the second run applied %d migrations, want 0", again)
+		}
+	})
+
+	t.Run("a database already at 0001 applies only the rest", func(t *testing.T) {
+		db := openTestDB(t)
+
+		// Bring it to exactly 0001 by running a set that contains only that
+		// file, taken verbatim from the embedded one.
+		settings, err := fs.ReadFile(migrationsFS, migrationsDir+"/0001_settings.sql")
+		if err != nil {
+			t.Fatalf("reading 0001_settings.sql: %v", err)
+		}
+		seeded, err := migrateFS(ctx, db, migrationSet(map[string]string{
+			"0001_settings.sql": string(settings),
+		}))
+		if err != nil {
+			t.Fatalf("seeding the database at 0001: %v", err)
+		}
+		if seeded != 1 {
+			t.Fatalf("seeding applied %d migrations, want 1", seeded)
+		}
+
+		applied, err := Migrate(ctx, db)
+		if err != nil {
+			t.Fatalf("Migrate: %v", err)
+		}
+		if applied != embeddedMigrationCount-1 {
+			t.Errorf("a database at 0001 applied %d migrations, want %d", applied, embeddedMigrationCount-1)
+		}
+		if got := countRows(t, db, "schema_migrations"); got != embeddedMigrationCount {
+			t.Errorf("schema_migrations has %d rows, want %d", got, embeddedMigrationCount)
+		}
+		if !tableExists(t, db, "nodes") {
+			t.Error("0002 did not run: there is no nodes table")
+		}
+	})
+}
+
 func TestMigrateAppliesEachMigrationOnce(t *testing.T) {
 	ctx := context.Background()
 	db := openTestDB(t)
