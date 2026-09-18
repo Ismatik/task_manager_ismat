@@ -14,11 +14,13 @@ import (
 // read from disk at runtime: a Nexus binary copied to a machine with no source
 // tree still knows how to bring a database up to date.
 //
-// The directory rather than the migrations/*.sql glob is embedded because Go
-// rejects an embed pattern that matches no files, and the migration set is
-// legitimately empty at this point in Stage 0 — the settings table arrives in
-// S0-09. loadMigrations applies the migrations/*.sql glob itself, so anything
-// in the directory that is not a .sql file (the README) is not a migration.
+// The directory rather than the migrations/*.sql glob is embedded. The glob
+// would work today — the set is not empty — but Go rejects an embed pattern
+// that matches no files, so the glob form would turn an empty migration
+// directory from a runtime no-op into a compile error. Embedding the directory
+// costs nothing in exchange: loadMigrations applies the migrations/*.sql glob
+// itself, so anything in the directory that is not a .sql file (the README) is
+// carried in the binary but is never mistaken for a migration.
 //
 //go:embed migrations
 var migrationsFS embed.FS

@@ -2,8 +2,14 @@
 // schema migrations, the repositories that read and write nodes, tags, time
 // entries and settings, and the search index.
 //
-// Stage 0 delivers only a placeholder; the connection and the migration runner
-// arrive in S0-08 and the settings repository in S0-09.
+// What is here today: Open, which connects to the SQLite file and verifies its
+// pragmas; Migrate, which applies the embedded schema migrations; and
+// SettingsRepo, the key/value store behind the palette, theme, accent and
+// language preferences.
+//
+// Still to come in this stage: the node, tag, time-entry, attachment and
+// habit-check repositories, and the search backend over titles and
+// descriptions.
 //
 // # Imports
 //
