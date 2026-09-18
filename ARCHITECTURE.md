@@ -175,6 +175,24 @@ Colours, radii, shadows and fonts resolve **only** through the Tailwind token na
 defined in `design/tailwind.config.js` / `design/tokens.css`. There are no hex
 literals in components, and **`design/` is read-only**.
 
+### Priority → chip mapping (authoritative)
+
+`design/README.md` talks about `P0/P1/P2` chips while `domain.Priority` is `1..4`.
+The mapping between the two is fixed here so that Stage 2 does not re-decide it:
+
+| `domain.Priority` | Chip | Token |
+|---|---|---|
+| 1 | `P0` | `danger` |
+| 2 | `P1` | `danger` |
+| 3 | `P2` | `warning` |
+| 4 | *(no chip)* | — |
+
+This is a **rendering** mapping only. The domain stores and reasons about `1..4`; Go
+remains the only place that decides anything, and the chip label is presentation. It
+lines up with the existing design semantics (`design/README.md` "Semantics", `PLAN.md`
+§3): `danger` is used for overdue and **P0/P1**, `warning` for **P2**. Priority 4 is
+the unremarkable default and renders **no chip at all** — not a grey "P3".
+
 ---
 
 ## 7. Data and runtime paths

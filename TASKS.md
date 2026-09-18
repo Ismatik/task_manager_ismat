@@ -60,11 +60,17 @@ shells. The Makefile must resolve it explicitly.
 
 | # | Command | Run from |
 |---|---|---|
-| 1 | `go test ./...` | repo root |
-| 2 | `go vet ./...` | repo root |
+| 1 | `go test` over `./...` **excluding `node_modules`** | repo root |
+| 2 | `go vet` over `./...` **excluding `node_modules`** | repo root |
 | 3 | `npm run lint` | `frontend/` |
 | 4 | `npm run typecheck` | `frontend/` |
 | 5 | `wails build -tags webkit2_41` | repo root |
+
+Gates 1 and 2 exclude `node_modules` because a JS dependency ships Go source
+(`flatted` ships `golang/pkg/flatted`), and the gates must cover only this project's
+packages. The Makefile expands the list as
+`GOPKGS = $(shell go list ./... | grep -v /node_modules/)` and aborts loudly if that
+list ever comes back empty, so an empty expansion can never pass vacuously.
 
 **`make check` is introduced by ticket [S0-11](#s0-11--build-make-check-the-five-gates).**
 Earlier tickets add the individual pieces; S0-11 is the ticket that wires all five
@@ -480,8 +486,8 @@ needs aligning).
 
 | # | Command | Run from |
 |---|---|---|
-| 1 | `go test ./...` | repo root |
-| 2 | `go vet ./...` | repo root |
+| 1 | `go test` over `./...` **excluding `node_modules`** | repo root |
+| 2 | `go vet` over `./...` **excluding `node_modules`** | repo root |
 | 3 | `npm run lint` | `frontend/` |
 | 4 | `npm run typecheck` | `frontend/` |
 | 5 | `wails build -tags webkit2_41` | repo root |
@@ -490,6 +496,10 @@ Requirements:
 
 - Individual targets `test`, `vet`, `lint`, `typecheck`, `build` exist and are
   runnable alone; `check` depends on them in that order.
+- Gates 1 and 2 run over `$(GOPKGS) = $(shell go list ./... | grep -v /node_modules/)`,
+  not a literal `./...` — `frontend/node_modules` contains real Go source. The
+  expansion must abort with a hard error when the list is empty, so that a broken
+  `go list` cannot degrade the gate into a bare `go test` of the root directory.
 - Gate 5 goes through `$(WAILS)` and `$(TAGS)` from S0-04 — **never** a bare `wails`.
 - If `frontend/node_modules` is missing, gates 3–4 must `npm ci` first rather than
   fail confusingly.

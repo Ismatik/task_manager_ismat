@@ -29,8 +29,8 @@ at the first failure:
 
 | # | Command | Run from |
 |---|---|---|
-| 1 | `go test ./...` | repo root |
-| 2 | `go vet ./...` | repo root |
+| 1 | `go test` over `./...` **excluding `node_modules`** | repo root |
+| 2 | `go vet` over `./...` **excluding `node_modules`** | repo root |
 | 3 | `npm run lint` | `frontend/` |
 | 4 | `npm run typecheck` | `frontend/` |
 | 5 | `wails build -tags webkit2_41` | repo root |
@@ -39,9 +39,11 @@ Each is also a target on its own: `make test`, `make vet`, `make lint`,
 `make typecheck`, `make build`. "Green" means `make check` exited 0 — not that a
 selected subset looked fine.
 
-Gates 1 and 2 run over the project's own packages only. `frontend/node_modules`
-contains real Go source (`flatted` ships `golang/pkg/flatted`), so a literal
-`go list ./...` picks up third-party code; the Makefile filters it out.
+Gates 1 and 2 are specified over this project's own packages, not a literal `./...`:
+a JS dependency ships Go source (`flatted` ships `golang/pkg/flatted`), so `./...`
+would drag third-party code into the gates. The Makefile expands
+`GOPKGS = $(shell go list ./... | grep -v /node_modules/)` and fails loudly if that
+list is ever empty, so the gate cannot pass vacuously.
 
 ---
 
