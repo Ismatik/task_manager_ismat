@@ -185,6 +185,10 @@ export function createFakeClient(initial: Partial<FakeClientState> = {}): FakeCl
     MoveToColumn: () => record('MoveToColumn', () => node()),
     MoveNode: () => record('MoveNode', () => node()),
     SetDue: () => record('SetDue', () => node()),
+    // The only write in this fake that reads one of its arguments: the priority
+    // is the whole claim of the palette's four rows, so the node that comes
+    // back carries the value that was sent.
+    SetPriority: (_nodeID, priority) => record('SetPriority', () => node({ priority })),
     ArchiveNode: () => record('ArchiveNode', () => 1),
     RestoreNode: () => record('RestoreNode', () => 1),
 

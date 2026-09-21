@@ -76,6 +76,14 @@ export interface Client {
   MoveToColumn(nodeID: string, target: string): Promise<domain.Node>;
   MoveNode(nodeID: string, newParentID: string, toIndex: number): Promise<domain.Node>;
   SetDue(nodeID: string, due: string): Promise<domain.Node>;
+  // `number`, and deliberately NOT a union of 1 | 2 | 3 | 4. Which numbers are
+  // priorities is domain.Priority.Valid's answer, asked in Go through
+  // domain.Node.Validate; a union here would be that range written a second
+  // time, in the one language that cannot see the domain, and it is the copy
+  // that would go stale. The generator says the same thing —
+  // wailsjs/go/main/App.d.ts declares `arg2:number` — and so does models.ts,
+  // where domain.Node.priority has always been a `number`.
+  SetPriority(nodeID: string, priority: number): Promise<domain.Node>;
   ArchiveNode(nodeID: string): Promise<number>;
   RestoreNode(nodeID: string): Promise<number>;
 
@@ -113,6 +121,7 @@ export const wailsClient: Client = {
   MoveToColumn: App.MoveToColumn,
   MoveNode: App.MoveNode,
   SetDue: App.SetDue,
+  SetPriority: App.SetPriority,
   ArchiveNode: App.ArchiveNode,
   RestoreNode: App.RestoreNode,
 

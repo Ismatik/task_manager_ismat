@@ -40,6 +40,7 @@ describe('the Go client', () => {
       'SetDue',
       'SetLanguage',
       'SetPalette',
+      'SetPriority',
       'SetTheme',
       'Settings',
       'TimerCurrent',

@@ -550,6 +550,65 @@ func (s *TaskService) SetDue(ctx context.Context, nodeID string, due *domain.Dat
 	return updated, nil
 }
 
+// SetPriority is the user changing a node's priority, and it is SetDue's shape
+// on purpose: read the node, apply the one field, let the domain say whether
+// what came out is a node, write it, read it back.
+//
+// # The range lives in exactly one place, and it is not here
+//
+// Priority is 1..4, lower is more urgent — and that sentence is
+// domain.Priority.Valid's, reached through domain.Node.Validate below. There is
+// deliberately no `if priority < 1 || priority > 4` in this method, none in
+// app.go, none in the TypeScript client and none in the command palette: the
+// range would then be written five times and corrected once. A caller that
+// sends 0 or 9 gets a *domain.ValidationError naming the field and the value,
+// which is the same error CreateNode has always produced for the same mistake.
+//
+// Note what a ZERO does NOT mean here. NewNode reads a zero priority as "the
+// default", 4, because a draft is a form with blanks in it. An edit is not a
+// form: 0 is a value the user could not have chosen, so it is refused rather
+// than quietly turned into 4. Two different readings of the same number would
+// be two rules; these are two different questions with one rule each.
+//
+// # No type is excluded
+//
+// Unlike a due date (PLAN.md §4 gives a note none) and unlike a column, every
+// type carries a priority — the column is NOT NULL and defaults to 4 — so there
+// is no CheckDue-shaped companion to call and no predicate to add. A note and a
+// habit may be prioritised like anything else.
+//
+// Nothing is written when the value is refused: Validate runs before
+// nodes.Update, inside the transaction, so a rejected edit leaves the stored row
+// exactly as it was.
+func (s *TaskService) SetPriority(ctx context.Context, nodeID string, priority domain.Priority) (domain.Node, error) {
+	var updated domain.Node
+
+	err := s.inTx(ctx, func(exec store.Executor) error {
+		nodes := s.nodes.WithExecutor(exec)
+
+		node, err := nodes.Get(ctx, nodeID)
+		if err != nil {
+			return err
+		}
+
+		node.Priority = priority
+		node.UpdatedAt = s.clock()
+		if err := node.Validate(); err != nil {
+			return fmt.Errorf("service: setting the priority of %q: %w", nodeID, err)
+		}
+		if err := nodes.Update(ctx, node); err != nil {
+			return err
+		}
+
+		updated, err = nodes.Get(ctx, nodeID)
+		return err
+	})
+	if err != nil {
+		return domain.Node{}, err
+	}
+	return updated, nil
+}
+
 // ArchiveNode hides nodeID and its whole subtree, and reports how many rows it
 // archived.
 //

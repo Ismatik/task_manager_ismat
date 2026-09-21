@@ -170,6 +170,26 @@ func (a *App) SetDue(nodeID string, due string) (domain.Node, error) {
 	return a.svc.Tasks.SetDue(a.context(), nodeID, &parsed)
 }
 
+// SetPriority is the user changing a card's priority — 1..4, lower is more
+// urgent. It is what the command palette's four priority rows call.
+//
+// # Why the parameter is a plain int
+//
+// For MoveToColumn's reason, one type along. A domain.Priority parameter would
+// be written into frontend/wailsjs/go/main/App.d.ts as `arg2: domain.Priority`,
+// a name the generator never emits into models.ts — exactly the failure S2-02
+// records for domain.Status, where the generated client did not compile. A
+// number is also what a priority IS on the wire: models.ts has always described
+// Node.priority as one.
+//
+// The conversion below is a cast and not a check. Which numbers are priorities
+// is domain.Priority.Valid's answer, asked by domain.Node.Validate inside
+// TaskService.SetPriority, which refuses an out-of-range one with the message
+// naming it. No rule moves up here.
+func (a *App) SetPriority(nodeID string, priority int) (domain.Node, error) {
+	return a.svc.Tasks.SetPriority(a.context(), nodeID, domain.Priority(priority))
+}
+
 // ArchiveNode hides a node and its subtree, and reports how many rows it
 // archived.
 func (a *App) ArchiveNode(nodeID string) (int, error) {

@@ -117,6 +117,30 @@ export interface DataSlice {
   moveToColumn(nodeId: string, status: string): Promise<boolean>;
 
   /**
+   * Sets a card's priority and re-reads the board.
+   *
+   * `priority` is a plain number and NOTHING CHECKS IT HERE. Which numbers are
+   * priorities is `domain.Priority.Valid`'s answer — 1..4, lower is more
+   * urgent — asked in Go through `domain.Node.Validate`, and a range test in
+   * this file would be that rule written a second time. So an impossible value
+   * goes to Go and comes back refused, exactly as an impossible column does.
+   *
+   * Returns whether Go accepted; a refusal has already raised its one toast in
+   * callGo, and NOTHING IS WRITTEN LOCALLY either way — there is no optimistic
+   * edit here (TASKS.md names exactly two, the drag and the habit tick), so a
+   * rejected change never appears on screen even for a frame.
+   *
+   * The board is what is re-read, because the priority chip is drawn from
+   * `NodeView.node.priority` on a card and the board is the only place a card
+   * is drawn. The habit strip renders no chip.
+   *
+   * This is the ONE place SetPriority is called from, for the reason
+   * moveToColumn gives: a second call site would be a second spelling of the
+   * re-read that has to follow it.
+   */
+  setPriority(nodeId: string, priority: number): Promise<boolean>;
+
+  /**
    * Moves a card one column left (-1) or right (+1), and re-reads the board.
    *
    * Returns whether the board moved, which is what the caller needs to know to
@@ -319,6 +343,18 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
     // due date (D8), cascades to the subtree (D2) and opens or closes a
     // time_entry (D13), and a local edit that tried to keep up would be a
     // second implementation of all three.
+    await get().loadBoard();
+    return true;
+  },
+
+  async setPriority(nodeId, priority) {
+    if ((await callGo(get(), () => get().client.SetPriority(nodeId, priority))) === null) {
+      // Refused — a value outside 1..4, or a node that is no longer there.
+      // callGo already raised the one toast, and nothing local was touched, so
+      // there is nothing on screen claiming the change happened.
+      return false;
+    }
+
     await get().loadBoard();
     return true;
   },

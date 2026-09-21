@@ -31,6 +31,8 @@ export function SetLanguage(arg1:string):Promise<service.SettingsView>;
 
 export function SetPalette(arg1:string):Promise<service.SettingsView>;
 
+export function SetPriority(arg1:string,arg2:number):Promise<domain.Node>;
+
 export function SetTheme(arg1:string):Promise<service.SettingsView>;
 
 export function Settings():Promise<service.SettingsView>;

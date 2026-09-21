@@ -36,28 +36,31 @@ import { adjacentColumn, KEYS } from './keyboard';
 // table is presentation; a status list in code is a rule". Where Go publishes a
 // set — the columns — the set comes from Go and the table only names it.
 //
-// # Two groups are registered UNAVAILABLE, with a reason, and why
+// # One group is registered UNAVAILABLE, with a reason, and why
 //
 // TASKS.md S2-20 rules on the view switcher in so many words: the views that do
 // not exist yet are "registered as disabled with a localised 'coming in stage
 // N', or omitted. Pick one and be consistent — a dead entry that silently does
-// nothing is the worse option." Registered-with-a-reason is the choice, and it
-// is applied consistently to BOTH groups that cannot act today:
+// nothing is the worse option." Registered-with-a-reason is the choice:
 //
-//   set priority   THERE IS NO BINDING. app.go exposes CreateNode, MoveToColumn,
-//                  MoveNode, SetDue, Archive/Restore, Search, the habit calls,
-//                  the timer calls and the four settings setters — and no
-//                  priority setter. Adding one is a Go change, which is outside
-//                  this ticket's Scope, and TASKS.md separately lists "the
-//                  tag/due/priority/estimate editors" as OUT of Stage 2 scope.
-//                  So the entries exist, say why they cannot run, and do not
-//                  pretend. This is reported rather than papered over.
 //   switch view    Kanban is the only view Stage 2 builds. Its own entry says
 //                  so; tree and calendar name the stage they arrive in.
 //
 // An entry with a reason is honest in a way that both alternatives are not: an
 // enabled entry that does nothing lies, and an omitted entry makes the user
 // wonder whether they mistyped.
+//
+// The PRIORITY rows used to be the second such group, because there was no
+// binding to call. There is one now — App.SetPriority, over
+// TaskService.SetPriority — and the rows are live. That was not scope creep:
+// the brief names "set priority" among the palette's actions, and S2-20's own
+// acceptance criterion is that EVERY action in its table is reachable and
+// executable by keyboard alone, which four permanently-disabled rows do not
+// satisfy. What is still out of Stage 2 is the priority EDITOR in a detail
+// panel; a palette row is not that.
+//
+// A temporary reason on a row is therefore exactly what it claims to be — the
+// row is disabled until the thing exists, and then it is not.
 
 /** One row of the palette. */
 export interface Command {
@@ -104,9 +107,6 @@ const VIEW_STAGE: Readonly<Record<string, number>> = { tree: 3, calendar: 7 };
 
 /** The view this stage actually builds. */
 const CURRENT_VIEW = 'kanban';
-
-/** The stage the priority editor arrives in (`PLAN.md` §5, Stage 3). */
-const PRIORITY_STAGE = 3;
 
 // The label tables, read as SETS. `resources.en` and not the current language:
 // the keys are identical in both files — locales.test.ts is what keeps them
@@ -215,15 +215,38 @@ function hintForColumn(
 }
 
 /**
- * Set priority 1..4 — registered, and unavailable. See the note at the top of
- * this file: no binding sets a priority, and adding one is a Go change.
+ * Set the focused card's priority, one row per entry in the label table.
+ *
+ * # Where the four come from, and where they do not
+ *
+ * `PRIORITIES` is `Object.keys` of the `palette.priority` label table — S2-19's
+ * precedent, kept rather than improved on, because the alternative is worse in
+ * both directions. A literal `[1, 2, 3, 4]` here would be
+ * `domain.Priority.Valid`'s range written a second time; a TypeScript union
+ * `1 | 2 | 3 | 4` would be the same copy with a compiler enforcing it, which
+ * makes it harder to notice rather than easier. The label table has to name
+ * every priority anyway — a row with no wording is not a row — so it is already
+ * the one list, and reading it as a set adds nothing new to the project.
+ *
+ * `Number(value)` is the wire encoding of a key that IS the priority digit, not
+ * a computation and not a validation: a key the table mis-spelt becomes NaN,
+ * crosses as null, arrives in Go as 0 and is refused there with a message
+ * naming the field. Nothing in TypeScript decides what a priority is.
+ *
+ * Unavailable only when there is no card — the same reason, from the same
+ * table, that the move and timer-start rows use. Whether a particular node may
+ * take a particular priority is Go's question and is never pre-empted here.
  */
-function priorityCommands({ t }: CommandContext): Command[] {
+function priorityCommands({ selectedNodeId, t, store }: CommandContext): Command[] {
   return PRIORITIES.map((value) => ({
     id: `priority:${value}`,
     label: t('palette.action.setPriority', { priority: t(`palette.priority.${value}`) }),
-    unavailable: t('palette.reason.stage', { stage: PRIORITY_STAGE }),
-    run: () => {},
+    unavailable: selectedNodeId === null ? t('palette.reason.noCard') : undefined,
+    run: () => {
+      if (selectedNodeId !== null) {
+        void store.getState().setPriority(selectedNodeId, Number(value));
+      }
+    },
   }));
 }
 

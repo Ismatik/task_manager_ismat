@@ -151,6 +151,41 @@ describe('a rejected call', () => {
   });
 });
 
+describe('setPriority', () => {
+  it('sends the number through untouched and re-reads the board', async () => {
+    const go = createFakeClient({ board: board(COLUMNS, [nodeView()]) });
+    const store = createAppStore(go.client, { view: testWindow() });
+    await store.getState().hydrate();
+
+    const reads = go.calls.Board;
+
+    expect(await store.getState().setPriority('node-1', 1)).toBe(true);
+    expect(go.calls.SetPriority).toBe(1);
+    // The board is re-read rather than patched: the priority chip is drawn
+    // from what Go returns, and a local edit would be a second writer.
+    expect(go.calls.Board).toBe(reads + 1);
+  });
+
+  it('does not pre-validate the range — an impossible value still goes to Go', async () => {
+    // domain.Priority.Valid owns 1..4. A guard here would be that rule written
+    // a second time, so the call must be MADE and the refusal must be Go's.
+    const go = createFakeClient({ board: board(COLUMNS, [nodeView()]) });
+    go.reject('SetPriority', new Error('node "node-1": priority: 9 is outside 1..4'));
+    const store = createAppStore(go.client, { view: testWindow() });
+    await store.getState().hydrate();
+
+    const before = store.getState().board;
+
+    expect(await store.getState().setPriority('node-1', 9)).toBe(false);
+    expect(go.calls.SetPriority, 'the value was filtered out locally').toBe(1);
+    expect(store.getState().toasts).toHaveLength(1);
+    expect(store.getState().toasts[0].messageKey).toBe(GO_ERROR_KEY);
+    // No optimism here at all, so there is nothing to roll back and the board
+    // is the very same object it was before the call.
+    expect(store.getState().board).toBe(before);
+  });
+});
+
 describe('the timer display', () => {
   it('starts from Go’s elapsedSeconds and ticks locally between reads', async () => {
     let clock = 10_000;

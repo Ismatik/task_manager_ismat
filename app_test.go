@@ -160,6 +160,7 @@ var boundSurface = []string{
 	"SetDue",
 	"SetLanguage",
 	"SetPalette",
+	"SetPriority",
 	"SetTheme",
 	"Settings",
 	"TimerCurrent",

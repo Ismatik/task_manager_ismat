@@ -971,6 +971,141 @@ func TestSetDueIsAlwaysManual(t *testing.T) {
 	})
 }
 
+// ---------------------------------------------------------------------------
+// SetPriority
+
+func TestSetPriority(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("every valid priority round-trips", func(t *testing.T) {
+		// domain.Priorities() rather than 1, 2, 3, 4 written out: the set is
+		// the domain's and this test is not a second copy of it. If a fifth
+		// priority is ever added, this case covers it without being edited.
+		for _, want := range domain.Priorities() {
+			t.Run(want.String(), func(t *testing.T) {
+				f := newFixture(t)
+				n := f.create(draft("x", domain.NodeTypeTask, nil))
+
+				got, err := f.tasks.SetPriority(ctx, n.ID, want)
+				if err != nil {
+					t.Fatalf("SetPriority(%s): %v", want, err)
+				}
+				if got.Priority != want {
+					t.Errorf("returned priority = %d, want %d", got.Priority, want)
+				}
+				// The returned value is one thing; what is in the database is
+				// the claim. Read it back independently.
+				if stored := f.get(n.ID).Priority; stored != want {
+					t.Errorf("stored priority = %d, want %d", stored, want)
+				}
+			})
+		}
+	})
+
+	t.Run("it stamps updated_at and touches nothing else", func(t *testing.T) {
+		f := newFixture(t)
+		n := f.create(draft("x", domain.NodeTypeTask, nil))
+
+		f.now = testNow.Add(90 * time.Minute)
+
+		got, err := f.tasks.SetPriority(ctx, n.ID, domain.Priority1)
+		if err != nil {
+			t.Fatalf("SetPriority: %v", err)
+		}
+		if !got.UpdatedAt.Equal(f.now) {
+			t.Errorf("updated_at = %v, want the injected clock's %v", got.UpdatedAt, f.now)
+		}
+		if !got.CreatedAt.Equal(testNow) {
+			t.Errorf("created_at = %v, want it untouched at %v", got.CreatedAt, testNow)
+		}
+
+		// The one field, and only the one field. Everything the edit had no
+		// business in is compared against the node as it was created.
+		before, after := n, got
+		before.Priority, before.UpdatedAt = after.Priority, after.UpdatedAt
+		if !reflect.DeepEqual(before, after) {
+			t.Errorf("SetPriority changed more than the priority:\n\tbefore %+v\n\tafter  %+v", before, after)
+		}
+	})
+
+	t.Run("an out-of-range priority is refused by the domain, and nothing is written", func(t *testing.T) {
+		// The range is domain.Priority.Valid's, reached through Node.Validate:
+		// the service states it nowhere, so this is the domain refusing, not a
+		// service-level guard that happens to agree with it.
+		for _, bad := range []domain.Priority{-1, 0, 5, 99} {
+			t.Run(bad.String(), func(t *testing.T) {
+				f := newFixture(t)
+				n := f.create(draft("x", domain.NodeTypeTask, nil))
+
+				if _, err := f.tasks.SetPriority(ctx, n.ID, bad); !errors.Is(err, domain.ErrInvalid) {
+					t.Fatalf("SetPriority(%d) = %v, want domain.ErrInvalid", bad, err)
+				}
+
+				// The DATABASE, not the return value. A method that refused and
+				// wrote anyway would pass a test that only read what it handed
+				// back.
+				stored := f.get(n.ID)
+				if stored.Priority != n.Priority {
+					t.Errorf("stored priority = %d, want the original %d — nothing should have been written",
+						stored.Priority, n.Priority)
+				}
+				if !stored.UpdatedAt.Equal(n.UpdatedAt) {
+					t.Errorf("updated_at = %v, want the original %v — the row was touched by a refused edit",
+						stored.UpdatedAt, n.UpdatedAt)
+				}
+			})
+		}
+	})
+
+	t.Run("a zero is refused rather than read as the default 4", func(t *testing.T) {
+		// NewNode reads a zero priority as 4 because a draft is a form with
+		// blanks in it. An edit is not a form, and the two readings must not be
+		// confused: created at the default, an edit to 0 leaves it alone AND
+		// fails, rather than silently "succeeding" at the value it already had.
+		f := newFixture(t)
+		n := f.create(draft("x", domain.NodeTypeTask, nil))
+		if n.Priority != domain.Priority4 {
+			t.Fatalf("the fixture node starts at %d, want the default 4", n.Priority)
+		}
+
+		if _, err := f.tasks.SetPriority(ctx, n.ID, 0); err == nil {
+			t.Fatal("SetPriority(0) succeeded, want it refused — 0 is not 'the default' on an edit")
+		}
+	})
+
+	t.Run("every type may be prioritised, including the ones with no column", func(t *testing.T) {
+		// Unlike a due date, a priority has no type rule: PLAN.md §4 excludes a
+		// note from status and due, and a habit from columns, and says nothing
+		// about priority. If this ever starts failing, a predicate was added.
+		f := newFixture(t)
+
+		for _, typ := range domain.NodeTypes() {
+			d := draft(typ.String(), typ, nil)
+			if typ == domain.NodeTypeHabit {
+				d.Recurrence = ptr("FREQ=DAILY")
+			}
+			n := f.create(d)
+
+			got, err := f.tasks.SetPriority(ctx, n.ID, domain.Priority2)
+			if err != nil {
+				t.Errorf("SetPriority on a %s: %v", typ, err)
+				continue
+			}
+			if got.Priority != domain.Priority2 {
+				t.Errorf("%s: priority = %d, want 2", typ, got.Priority)
+			}
+		}
+	})
+
+	t.Run("a node that does not exist", func(t *testing.T) {
+		f := newFixture(t)
+
+		if _, err := f.tasks.SetPriority(ctx, "ghost", domain.Priority1); !errors.Is(err, store.ErrNotFound) {
+			t.Fatalf("SetPriority(ghost) = %v, want store.ErrNotFound", err)
+		}
+	})
+}
+
 // PLAN.md §4 spells a note out as "no status, no due". The status half was
 // locked; the due half was not, and both doors were open — CreateNode stored the
 // date it was handed and SetDue wrote one afterwards.

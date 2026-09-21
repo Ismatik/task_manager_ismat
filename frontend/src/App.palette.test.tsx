@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import App from './App';
 import type { Client, ColumnView, NodeView, SettingsView } from './lib/client';
 import { KEYS } from './lib/keyboard';
+import { priorityChip } from './lib/priority';
 import { createAppStore, type AppStore } from './store';
 import {
   columnView,
@@ -58,7 +59,8 @@ function paletteGo(seed: Record<number, string[]> = { 0: ['a'] }) {
   const themes: string[] = [];
   const languages: string[] = [];
   const timerStarts: string[] = [];
-  const refuse = { timerStart: false };
+  const priorities: number[] = [];
+  const refuse = { timerStart: false, setPriority: false };
   let stops = 0;
 
   const client: Client = {
@@ -69,6 +71,14 @@ function paletteGo(seed: Record<number, string[]> = { 0: ['a'] }) {
       moves.push(target);
       board = relocate(board, nodeID, target);
       return Promise.resolve(node());
+    },
+    SetPriority: (nodeID: string, priority: number) => {
+      priorities.push(priority);
+      if (refuse.setPriority) {
+        return Promise.reject(new Error('service: node "a": priority: 9 is outside 1..4'));
+      }
+      board = reprioritise(board, nodeID, priority);
+      return Promise.resolve(node({ priority }));
     },
     TimerStart: (nodeID: string) => {
       timerStarts.push(nodeID);
@@ -99,9 +109,28 @@ function paletteGo(seed: Record<number, string[]> = { 0: ['a'] }) {
     themes,
     languages,
     timerStarts,
+    priorities,
     refuse,
     stopCount: () => stops,
   };
+}
+
+/**
+ * A board with `nodeId`'s stored priority replaced.
+ *
+ * The fake Go writing it down is what makes the NEXT `Board()` return it, which
+ * is how a case below can assert that the change reached the screen rather than
+ * only the wire.
+ */
+function reprioritise(board: ColumnView[], nodeId: string, priority: number): ColumnView[] {
+  return board.map((column) =>
+    columnView(
+      column.status,
+      column.nodes.map((view) =>
+        view.node.id === nodeId ? nodeView({ ...view, node: node({ ...view.node, priority }) }) : view,
+      ),
+    ),
+  );
 }
 
 /** Takes `nodeId` out of whatever column holds it and appends it to `target`. */
@@ -183,6 +212,28 @@ function rows(): HTMLElement[] {
 /** The row whose `data-command` starts with `prefix`, or undefined. */
 function rowFor(prefix: string): HTMLElement | undefined {
   return rows().find((row) => row.getAttribute('data-command')?.startsWith(prefix));
+}
+
+const PRIORITY_PREFIX = 'priority:';
+
+/** Every priority row the palette is currently offering, in its own order. */
+function priorityRows(): HTMLElement[] {
+  return rows().filter((row) => row.getAttribute('data-command')?.startsWith(PRIORITY_PREFIX));
+}
+
+/**
+ * The priority each offered row stands for, read off the row's own id.
+ *
+ * Deliberately NOT the literal 1, 2, 3, 4. How many priorities there are and
+ * what they are called is Go's — domain.Priority — and the palette takes the
+ * set from the locale label table. Writing the four numbers down here would be
+ * a third copy of the range, in the file whose whole job is to check the other
+ * two agree.
+ */
+function priorityValues(): number[] {
+  return priorityRows().map((row) =>
+    Number(row.getAttribute('data-command')!.slice(PRIORITY_PREFIX.length)),
+  );
 }
 
 /** Presses ArrowDown until the named row is the active one, then Enter. */
@@ -380,26 +431,52 @@ describe('what the palette offers', () => {
     expect(start).toHaveAttribute('aria-disabled', 'true');
     expect(start).toHaveTextContent('Focus a card first.');
 
-    // Running it does nothing at all — no call, no toast.
+    // Setting a priority needs a card for exactly the same reason, and says so
+    // with the same sentence.
+    const priority = rowFor('priority:')!;
+    expect(priority).toHaveAttribute('aria-disabled', 'true');
+    expect(priority).toHaveTextContent('Focus a card first.');
+
+    // Running them does nothing at all — no call, no toast. In the palette's
+    // own order, because `runRow` only ever walks DOWN from the active row.
+    await runRow(user, priority.getAttribute('data-command')!);
+    expect(go.priorities).toEqual([]);
     await runRow(user, 'timerStart');
     expect(go.timerStarts).toEqual([]);
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  it('registers the priority and future-view rows as unavailable rather than dead', async () => {
-    // TASKS.md S2-20: "a dead entry that silently does nothing is the worse
-    // option". Neither group can act in Stage 2 — no binding sets a priority,
-    // and Kanban is the only view — so both say so.
+  it('offers every priority row as available once a card is focused', async () => {
+    // These four used to be registered unavailable with "arrives in stage 3",
+    // because no binding set a priority. App.SetPriority exists now, so a
+    // permanent reason on the row would be a lie — S2-20 requires every action
+    // in its table to be executable.
     const go = paletteGo();
     const user = await enterTheBoard(storeOver(go.client));
 
     await user.keyboard(OPEN_PALETTE);
     await screen.findByRole('dialog');
 
-    const priority = rowFor('priority:')!;
-    expect(priority).toHaveAttribute('aria-disabled', 'true');
-    expect(priority).toHaveTextContent('stage 3');
+    const offered = priorityRows();
+    expect(offered.length, 'no priority row was offered at all').toBeGreaterThan(0);
+    for (const row of offered) {
+      expect(row, row.getAttribute('data-command') ?? '').not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      expect(row.textContent).not.toContain('stage');
+    }
+  });
+
+  it('registers the future-view rows as unavailable rather than dead', async () => {
+    // TASKS.md S2-20: "a dead entry that silently does nothing is the worse
+    // option". Kanban is the only view Stage 2 builds, so the others say so.
+    const go = paletteGo();
+    const user = await enterTheBoard(storeOver(go.client));
+
+    await user.keyboard(OPEN_PALETTE);
+    await screen.findByRole('dialog');
 
     const kanban = rowFor('view:kanban')!;
     expect(kanban).toHaveAttribute('aria-disabled', 'true');
@@ -446,6 +523,82 @@ describe('running an action', () => {
     await waitFor(() =>
       expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveFocus(),
     );
+  });
+
+  it('runs EVERY priority row by keyboard alone, sending the value the row names', async () => {
+    // S2-20's acceptance criterion: "every action in the table is reachable and
+    // executable by keyboard alone". Ctrl+K, arrows, Enter — no pointer is
+    // touched here, and every row the palette offers is driven, not a sample.
+    const go = paletteGo();
+    const user = await enterTheBoard(storeOver(go.client));
+
+    await user.keyboard(OPEN_PALETTE);
+    await screen.findByRole('dialog');
+    const wanted = priorityValues();
+    expect(wanted.length, 'no priority row was offered at all').toBeGreaterThan(0);
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    for (const [index, priority] of wanted.entries()) {
+      await user.keyboard(OPEN_PALETTE);
+      await screen.findByRole('dialog');
+      await runRow(user, `${PRIORITY_PREFIX}${priority}`);
+
+      // Asserted inside the loop, not once at the end: a check that only runs
+      // after the last iteration passes even if the first three rows did
+      // nothing.
+      await waitFor(() => expect(go.priorities).toHaveLength(index + 1));
+      expect(go.priorities[index]).toBe(priority);
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+      // And it reached the SCREEN. The chip the card should now show is
+      // lib/priority.ts's answer for the value Go stored — null for the
+      // unremarkable one, which renders nothing at all.
+      const chip = priorityChip(priority);
+      const card = await screen.findByRole('article');
+      await waitFor(() => {
+        // queryAllByText over the chip SHAPE rather than `not.toHaveTextContent`
+        // on the card: the card's text starts with the title, so an anchored
+        // pattern against the whole of it can never match and would pass
+        // whatever the chip did. This looks for the chip element itself, and
+        // the previous iteration's chip is what it has to see go away.
+        const shown = within(card).queryAllByText(/^P\d$/);
+        return chip === null
+          ? expect(shown).toHaveLength(0)
+          : expect(shown.map((element) => element.textContent)).toEqual([chip.label]);
+      });
+    }
+
+    expect(screen.queryByRole('alert'), 'a successful run raised a toast').toBeNull();
+  });
+
+  it('surfaces Go’s refusal of a priority as one toast, with nothing applied', async () => {
+    const go = paletteGo();
+    go.refuse.setPriority = true;
+    const user = await enterTheBoard(storeOver(go.client));
+
+    await user.keyboard(OPEN_PALETTE);
+    await screen.findByRole('dialog');
+
+    // A row whose priority DOES draw a chip, so that "nothing was applied" is
+    // something the test can see rather than assume.
+    const visible = priorityValues().find((priority) => priorityChip(priority) !== null)!;
+    expect(visible, 'no offered priority draws a chip').toBeDefined();
+    const chip = priorityChip(visible)!;
+    expect(screen.queryByText(chip.label)).toBeNull();
+
+    await runRow(user, `${PRIORITY_PREFIX}${visible}`);
+
+    const alert = await screen.findByRole('alert');
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(alert).toHaveTextContent('Nexus could not finish that.');
+    // The Go text is for the console, never the user.
+    expect(alert).not.toHaveTextContent('outside 1..4');
+
+    // The call really was made — the refusal is Go's, not a guess made here —
+    // and the card still shows no chip.
+    expect(go.priorities).toEqual([visible]);
+    expect(screen.queryByText(chip.label)).toBeNull();
   });
 
   it('starts and stops the timer through the store', async () => {
