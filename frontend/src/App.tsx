@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { HabitStrip } from './components/HabitStrip';
+import { QuickAdd } from './components/QuickAdd';
 import { ToastList } from './components/Toast';
 import { globalActionFor } from './lib/keyboard';
 import type { AppStore } from './store';
@@ -28,7 +29,7 @@ import { Kanban } from './views/Kanban';
 //   1  header        S2-21 — appearance and language controls
 //   2  habits strip  S2-18 — components/HabitStrip.tsx
 //   3  board         S2-15 — views/Kanban.tsx
-//   4  overlay layer S2-19 quick add, S2-20 command palette
+//   4  overlay layer S2-19 — components/QuickAdd.tsx; S2-20 the palette
 //   5  toast layer   THIS TICKET — S2-13's ToastList, orphaned until now
 //
 // S2-16 specifies Tab/Shift+Tab as movement between regions. That order is this
@@ -37,8 +38,9 @@ import { Kanban } from './views/Kanban';
 // EMPTY SLOT IN THE SOURCE, named in a comment with its ticket — not a
 // placeholder component, not localised filler and not a reserved blank box. A
 // placeholder is a thing somebody has to remember to delete; an empty box is a
-// bar of nothing across the screen. Regions 1 and 4 emit no DOM at all, region
-// 2 emits none while there are no habits, and App.test.tsx asserts it.
+// bar of nothing across the screen. Region 1 emits no DOM at all, region 2
+// emits none while there are no habits, region 4 emits none while nothing is
+// open, and App.test.tsx asserts it.
 //
 // # The store's one route down
 //
@@ -145,7 +147,9 @@ function Shell() {
         <Kanban />
       </main>
 
-      {/* Region 4 — overlay layer. S2-19 quick add, S2-20 command palette. */}
+      {/* Region 4 — overlay layer. Each overlay renders nothing while closed.
+          S2-20 mounts the command palette beside this one. */}
+      <QuickAdd />
 
       {/* Region 5 — toast layer. Renders nothing while there is nothing wrong. */}
       <ToastList toasts={toasts} onDismiss={dismissToast} />

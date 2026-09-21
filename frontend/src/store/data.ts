@@ -1,6 +1,13 @@
 import type { StateCreator } from 'zustand';
 
-import { optional, type ColumnView, type HabitView, type TimerView } from '../lib/client';
+import {
+  optional,
+  type ColumnView,
+  type HabitView,
+  type NewNode,
+  type Node as StoredNode,
+  type TimerView,
+} from '../lib/client';
 import { adjacentColumn } from '../lib/keyboard';
 import { callGo } from './call';
 import type { AppState } from './index';
@@ -79,6 +86,24 @@ export interface DataSlice {
    * toast in the second case.
    */
   toggleHabit(nodeId: string): Promise<boolean>;
+
+  /**
+   * Creates a root node from a title and a type, and re-reads what it lands in.
+   *
+   * Returns the node Go stored, or null when Go refused — an empty title, a
+   * habit with no recurrence rule, a type that does not exist. Every one of
+   * those is a rule domain.Node.Validate and domain.CheckStatus already own, so
+   * NOTHING IS PRE-VALIDATED HERE: pre-validating is writing the rule a second
+   * time, and the second copy is the one that goes stale. callGo has raised the
+   * one toast by the time this returns null.
+   *
+   * Everything the draft does not carry is left at its ZERO VALUE on purpose,
+   * because the defaults are Go's: TaskService.CreateNode reads an empty status
+   * as backlog, a zero priority as 4, and a nil activity as D4's default for
+   * the type. A frontend that filled those in would be inventing defaults and
+   * would disagree with Go the first time one of them changed.
+   */
+  createNode(title: string, type: string): Promise<StoredNode | null>;
 
   /**
    * The elapsed seconds to PUT ON SCREEN at wall-clock time `now`.
@@ -242,6 +267,41 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
     // this IS the re-read — the streak arrives recomputed with it.
     set({ habits: answer });
     return true;
+  },
+
+  async createNode(title, type) {
+    // The zero values are the point — see the interface above. The cast is the
+    // same generator quirk withCheckFlipped explains: NewNode is generated as a
+    // class, the wire takes a plain object, and gate 4 still checks every field
+    // name here against Go's struct.
+    const draft = {
+      parentId: undefined,
+      type,
+      title,
+      descriptionMd: '',
+      status: '',
+      due: undefined,
+      priority: 0,
+      estimateMin: undefined,
+      recurrence: undefined,
+      activity: undefined,
+    } as NewNode;
+
+    const created = await callGo(get(), () => get().client.CreateNode(draft));
+    if (created === null) {
+      return null;
+    }
+
+    // Selection first, so that when the board arrives the roving tabindex is
+    // already on the new card rather than a frame behind it.
+    get().select(created.id);
+
+    // Both reads, because which of the two the node lands in is Go's answer,
+    // not one this could work out: a habit goes to the strip and never to a
+    // column (PLAN.md section 4), everything else goes to a column. Asking for
+    // both is one extra call; deciding between them here would be the rule.
+    await Promise.all([get().loadBoard(), get().loadHabits()]);
+    return created;
   },
 
   displayElapsedSeconds(now = get().now()) {

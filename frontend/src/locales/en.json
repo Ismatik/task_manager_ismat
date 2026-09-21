@@ -41,11 +41,11 @@
       "running": "Timer running"
     },
     "type": {
-      "bug": "Bug",
+      "task": "Task",
+      "project": "Project",
       "habit": "Habit",
       "note": "Note",
-      "project": "Project",
-      "task": "Task",
+      "bug": "Bug",
       "unknown": "Item"
     }
   },
@@ -55,6 +55,12 @@
     "streak": {
       "label": "Streak {{value}}"
     }
+  },
+  "quickAdd": {
+    "label": "Quick add",
+    "title": "What needs doing?",
+    "type": "Type",
+    "submit": "Add it"
   },
   "toast": {
     "error": {
