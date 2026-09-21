@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand';
 
 import { optional, type ColumnView, type HabitView, type TimerView } from '../lib/client';
+import { adjacentColumn } from '../lib/keyboard';
 import { callGo } from './call';
 import type { AppState } from './index';
 
@@ -45,6 +46,21 @@ export interface DataSlice {
 
   /** Reads settings, board, strip and timer. Never throws. */
   hydrate(): Promise<void>;
+
+  /**
+   * Moves a card one column left (-1) or right (+1), and re-reads the board.
+   *
+   * Returns whether the board moved, which is what the caller needs to know to
+   * decide whether to put focus back on the card. False covers both the edges
+   * — right from the last column, left from the first — and a refusal from Go,
+   * and the two are deliberately not distinguished here: neither one changed
+   * anything, and only one of them raised a toast, which callGo already did.
+   *
+   * The target is `column.status` off GO'S OWN BOARD. Nothing computes a "next
+   * status": the frontend knows the columns' order because Go returned them in
+   * order, and knows nothing at all about their names.
+   */
+  moveToAdjacentColumn(nodeId: string, offset: number): Promise<boolean>;
 
   /**
    * The elapsed seconds to PUT ON SCREEN at wall-clock time `now`.
@@ -98,6 +114,33 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
   async hydrate() {
     await get().loadSettings();
     await Promise.all([get().loadBoard(), get().loadHabits(), get().loadTimer()]);
+  },
+
+  async moveToAdjacentColumn(nodeId, offset) {
+    const { board } = get();
+    if (board === null) {
+      return false;
+    }
+
+    const target = adjacentColumn(board, nodeId, offset);
+    if (target === null) {
+      // The edges: no call, no toast, nothing at all. Not an error and not a
+      // wrap-around.
+      return false;
+    }
+
+    if ((await callGo(get(), () => get().client.MoveToColumn(nodeId, target.status))) === null) {
+      // Refused — a project to doing (D9), say. callGo already raised the one
+      // toast, and the board is untouched, so the card has not moved and
+      // focus is still on it.
+      return false;
+    }
+
+    // Re-read rather than patch. Go's answer is the truth: the move rewrites a
+    // due date (D8) and cascades to the subtree (D2), and a local edit that
+    // tried to keep up would be a second implementation of both.
+    await get().loadBoard();
+    return true;
   },
 
   displayElapsedSeconds(now = get().now()) {

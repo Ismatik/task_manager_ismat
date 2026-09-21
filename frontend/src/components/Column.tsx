@@ -37,9 +37,18 @@ import { Card } from './Card';
 export interface ColumnProps {
   /** One ColumnView from Board(), rendered exactly as it arrived. */
   column: ColumnView;
+  /**
+   * The one card on the WHOLE BOARD that carries `tabIndex=0`.
+   *
+   * The board is a single tab stop and the arrows move inside it, so every
+   * other card is `-1`: focusable from script, invisible to Tab. The decision
+   * is the board's (lib/keyboard.ts `rovingNodeId`); the column only passes it
+   * on, which is why it is an id and not a per-column flag.
+   */
+  rovingNodeId: string | null;
 }
 
-export function Column({ column }: ColumnProps) {
+export function Column({ column, rovingNodeId }: ColumnProps) {
   const { t } = useTranslation();
 
   const heading = t(`board.column.name.${column.status}`, { defaultValue: column.status });
@@ -67,7 +76,7 @@ export function Column({ column }: ColumnProps) {
         <ul className="flex min-w-0 flex-col gap-2">
           {column.nodes.map((view) => (
             <li key={view.node.id} className="min-w-0">
-              <Card view={view} />
+              <Card view={view} tabIndex={view.node.id === rovingNodeId ? 0 : -1} />
             </li>
           ))}
         </ul>

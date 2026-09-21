@@ -50,9 +50,16 @@ import { TypeIcon } from './TypeIcon';
 export interface CardProps {
   /** One NodeView from Board(), rendered exactly as it arrived. */
   view: NodeView;
+  /**
+   * 0 for the one card the board's roving tabindex is on, -1 for every other.
+   *
+   * Undefined leaves the card out of the focus model entirely, which is what a
+   * caller that is not the board wants.
+   */
+  tabIndex?: number;
 }
 
-export function Card({ view }: CardProps) {
+export function Card({ view, tabIndex }: CardProps) {
   const { t, i18n } = useTranslation();
 
   // `optional` because the wire sends null where the generator declares `?`.
@@ -61,7 +68,15 @@ export function Card({ view }: CardProps) {
   const estimate = optional(view.node.estimateMin);
 
   return (
-    <article className="flex flex-col gap-2 rounded-md border border-line bg-surface p-2 text-ink shadow-sm backdrop-blur-glass">
+    <article
+      // The card publishes its id on itself, and that is the ONLY channel the
+      // board's delegated key and focus handlers use to find out which card an
+      // event came from. No per-card handler, no callback prop threaded through
+      // the column, and nothing for a later ticket to forget to pass down.
+      data-node-id={view.node.id}
+      tabIndex={tabIndex}
+      className="flex flex-col gap-2 rounded-md border border-line bg-surface p-2 text-ink shadow-sm backdrop-blur-glass"
+    >
       <div className="flex min-w-0 items-start gap-2">
         <TypeIcon type={view.node.type} />
         <h3 className="min-w-0 flex-1 break-words">{view.node.title}</h3>

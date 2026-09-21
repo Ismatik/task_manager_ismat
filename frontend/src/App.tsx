@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ToastList } from './components/Toast';
+import { globalActionFor } from './lib/keyboard';
 import type { AppStore } from './store';
 import { StoreContext, useAppState, useAppStore } from './store/context';
 import { Kanban } from './views/Kanban';
@@ -95,6 +96,37 @@ function Shell() {
     // leaves the board null (S2-13's callGo). A failed read is an empty board
     // and an error message — never a blank window.
     void store.getState().loadBoard();
+  }, [store]);
+
+  // The global shortcuts — Ctrl+N, Ctrl+K, Escape.
+  //
+  // They live on the DOCUMENT, and on the shell rather than on the board,
+  // because S2-16 requires them to fire "wherever focus happens to be": in the
+  // habits strip, in an overlay, on a toast button, or on nothing at all. A
+  // listener on the board would work until the first time the user was not on
+  // the board, which is the case a manual test never reaches.
+  //
+  // The map itself is not here. lib/keyboard.ts owns it, S2-20 renders its
+  // hints from the same table, and this is only the place the document is
+  // listened to.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const action = globalActionFor(event);
+      if (action === null) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (action === 'closeOverlay') {
+        store.getState().closeOverlay();
+        return;
+      }
+      store.getState().openOverlayPanel(action);
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, [store]);
 
   return (
