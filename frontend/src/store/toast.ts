@@ -1,15 +1,15 @@
-// Nexus — the toast queue.
+import type { StateCreator } from 'zustand';
+
+import type { AppState } from './index';
+
+// Nexus — the toast slice.
 //
-// PLAN.md section 1: no silent failures. Every rejection that crosses the Go
-// boundary ends up here, and the component that draws it arrives in S2-13.
+// # A toast carries a KEY, not a sentence
 //
-// # What a toast carries is a KEY, not a sentence
-//
-// The store never holds user-visible text. It holds an i18n key, so the message
-// is translated at render time in whatever language is current — a string
-// captured here would be frozen in the language that happened to be active when
-// the error occurred. The raw Go error travels alongside it for the console and
-// is never shown to the user.
+// The store never holds user-visible text. It holds an i18n key, translated at
+// render time in whatever language is current; a string captured here would be
+// frozen in the language that happened to be active when the error occurred.
+// The raw Go error rides along for the console and is never rendered.
 
 let nextId = 1;
 
@@ -22,65 +22,36 @@ export interface Toast {
   cause?: unknown;
 }
 
-export interface ToastStore {
-  list(): readonly Toast[];
-  push(messageKey: string, cause?: unknown): Toast;
-  dismiss(id: number): void;
-  clear(): void;
-  subscribe(listener: () => void): () => void;
+export interface ToastSlice {
+  toasts: readonly Toast[];
+  pushToast(messageKey: string, cause?: unknown): Toast;
+  dismissToast(id: number): void;
+  clearToasts(): void;
 }
 
-/**
- * Creates an independent toast queue.
- *
- * A factory rather than a module-level singleton: tests need one queue per
- * case, and "exactly one toast was raised" is not an assertion you can make
- * against state another test left behind.
- */
-export function createToastStore(): ToastStore {
-  let toasts: readonly Toast[] = [];
-  const listeners = new Set<() => void>();
+export const createToastSlice: StateCreator<AppState, [], [], ToastSlice> = (set, get) => ({
+  toasts: [],
 
-  const emit = () => {
-    for (const listener of listeners) {
-      listener();
+  pushToast(messageKey, cause) {
+    const toast: Toast = { id: nextId, messageKey, cause };
+    nextId += 1;
+
+    set({ toasts: [...get().toasts, toast] });
+
+    // The detail goes to the console and stops there. It is also never
+    // swallowed: something that failed always leaves a trace somebody can read.
+    if (cause !== undefined) {
+      console.error('[nexus]', messageKey, cause);
     }
-  };
 
-  return {
-    list: () => toasts,
+    return toast;
+  },
 
-    push(messageKey, cause) {
-      const toast: Toast = { id: nextId, messageKey, cause };
-      nextId += 1;
-      toasts = [...toasts, toast];
+  dismissToast(id) {
+    set({ toasts: get().toasts.filter((toast) => toast.id !== id) });
+  },
 
-      // The detail goes to the console and stops there — a Go error string is
-      // untranslated, often names a node id, and is not something a user can
-      // act on. It is also never swallowed.
-      if (cause !== undefined) {
-        console.error('[nexus]', messageKey, cause);
-      }
-
-      emit();
-      return toast;
-    },
-
-    dismiss(id) {
-      toasts = toasts.filter((toast) => toast.id !== id);
-      emit();
-    },
-
-    clear() {
-      toasts = [];
-      emit();
-    },
-
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-  };
-}
+  clearToasts() {
+    set({ toasts: [] });
+  },
+});

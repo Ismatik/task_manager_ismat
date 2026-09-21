@@ -24,9 +24,10 @@ import ru from '../locales/ru.json';
 //
 // The port is injected rather than imported because of a layering rule that is
 // checked mechanically: `frontend/src/lib/client.ts` is the ONLY file in
-// frontend/src allowed to import from wailsjs. This module is therefore
-// deliberately ignorant of Wails, which is also what makes it testable against
-// an in-memory fake that behaves like SettingsService.
+// frontend/src allowed to reach into the generated Wails client, for either a
+// binding or a type. This module is therefore deliberately ignorant of Wails,
+// which is also what makes it testable against an in-memory fake that behaves
+// like SettingsService.
 
 export const resources = {
   en: { translation: en },

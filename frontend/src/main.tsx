@@ -5,9 +5,9 @@ import { I18nextProvider } from 'react-i18next';
 import './style.css';
 import App from './App';
 import { revealAfterBoot } from './lib/appearance';
+import { wailsClient } from './lib/client';
 import { createI18n, fallbackLanguage } from './lib/i18n';
-import { createSettingsStore, wailsSettingsPort } from './store/settings';
-import { createToastStore } from './store/toast';
+import { createAppStore } from './store';
 
 // Nexus — the entry point, and the bootstrap order that matters.
 //
@@ -25,12 +25,11 @@ import { createToastStore } from './store/toast';
 // mounts, on the markup's static default and the fallback language, with a
 // toast. A failed read is a bad session, not a blank window.
 async function main() {
-  const toasts = createToastStore();
-  const settings = createSettingsStore(wailsSettingsPort, toasts);
+  const store = createAppStore(wailsClient);
 
-  const view = await settings.hydrate();
+  const settings = await store.getState().loadSettings();
 
-  const i18n = await createI18n(view?.language ?? fallbackLanguage);
+  const i18n = await createI18n(settings?.language ?? fallbackLanguage);
 
   revealAfterBoot();
 
