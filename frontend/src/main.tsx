@@ -24,6 +24,18 @@ import { createAppStore } from './store';
 // If Go cannot be reached the boot gate still comes off and the app still
 // mounts, on the markup's static default and the fallback language, with a
 // toast. A failed read is a bad session, not a blank window.
+//
+// # The store is built ONCE, here, and handed down as a prop
+//
+// This is the only place `createAppStore` is called in the running application
+// — S2-15's "one construction route into the tree". It stays a factory rather
+// than becoming a module-level singleton so that a test can build its own store
+// over a fake client and pass it to the same prop. App publishes it on
+// store/context.ts; nothing below reaches back up here for it.
+//
+// The BOARD is not read here. Everything above is pre-paint work because it
+// decides what the first frame looks like; the board does not, and it is
+// hydrated by App's own effect. Two hydration sites would be one too many.
 async function main() {
   const store = createAppStore(wailsClient);
 
@@ -39,7 +51,7 @@ async function main() {
   root.render(
     <React.StrictMode>
       <I18nextProvider i18n={i18n}>
-        <App />
+        <App store={store} />
       </I18nextProvider>
     </React.StrictMode>,
   );

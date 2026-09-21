@@ -3,11 +3,21 @@
     "name": "Nexus"
   },
   "board": {
+    "label": "Доска",
+    "empty": "Доску пока нечем показать.",
     "column": {
       "cardCount_one": "{{count}} карточка",
       "cardCount_few": "{{count}} карточки",
       "cardCount_many": "{{count}} карточек",
-      "cardCount_other": "{{count}} карточки"
+      "cardCount_other": "{{count}} карточки",
+      "empty": "В этой колонке пусто.",
+      "name": {
+        "backlog": "Бэклог",
+        "week": "На этой неделе",
+        "today": "Сегодня",
+        "doing": "В работе",
+        "done": "Готово"
+      }
     }
   },
   "card": {

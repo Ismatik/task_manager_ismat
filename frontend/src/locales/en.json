@@ -3,9 +3,19 @@
     "name": "Nexus"
   },
   "board": {
+    "label": "Board",
+    "empty": "There is no board to show yet.",
     "column": {
       "cardCount_one": "{{count}} card",
-      "cardCount_other": "{{count}} cards"
+      "cardCount_other": "{{count}} cards",
+      "empty": "Nothing in this column.",
+      "name": {
+        "backlog": "Backlog",
+        "week": "This week",
+        "today": "Today",
+        "doing": "Doing",
+        "done": "Done"
+      }
     }
   },
   "card": {
