@@ -1,0 +1,20 @@
+{
+  "app": {
+    "name": "Nexus"
+  },
+  "board": {
+    "column": {
+      "cardCount_one": "{{count}} карточка",
+      "cardCount_few": "{{count}} карточки",
+      "cardCount_many": "{{count}} карточек",
+      "cardCount_other": "{{count}} карточки"
+    }
+  },
+  "toast": {
+    "error": {
+      "title": "Что-то пошло не так",
+      "body": "Nexus не смог выполнить это действие. Ничего не изменилось.",
+      "dismiss": "Закрыть"
+    }
+  }
+}

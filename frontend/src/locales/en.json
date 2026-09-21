@@ -1,0 +1,18 @@
+{
+  "app": {
+    "name": "Nexus"
+  },
+  "board": {
+    "column": {
+      "cardCount_one": "{{count}} card",
+      "cardCount_other": "{{count}} cards"
+    }
+  },
+  "toast": {
+    "error": {
+      "title": "Something went wrong",
+      "body": "Nexus could not finish that. Nothing was changed.",
+      "dismiss": "Dismiss"
+    }
+  }
+}
