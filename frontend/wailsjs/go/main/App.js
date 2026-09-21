@@ -10,8 +10,8 @@ export function Board() {
   return window['go']['main']['App']['Board']();
 }
 
-export function CheckHabit(arg1, arg2) {
-  return window['go']['main']['App']['CheckHabit'](arg1, arg2);
+export function CheckHabitToday(arg1) {
+  return window['go']['main']['App']['CheckHabitToday'](arg1);
 }
 
 export function CreateNode(arg1) {
@@ -86,6 +86,6 @@ export function Tree(arg1) {
   return window['go']['main']['App']['Tree'](arg1);
 }
 
-export function UncheckHabit(arg1, arg2) {
-  return window['go']['main']['App']['UncheckHabit'](arg1, arg2);
+export function UncheckHabitToday(arg1) {
+  return window['go']['main']['App']['UncheckHabitToday'](arg1);
 }

@@ -86,6 +86,31 @@ func (s *HabitService) Uncheck(ctx context.Context, nodeID string, date domain.D
 	return s.checks.Uncheck(ctx, nodeID, date)
 }
 
+// CheckToday records that the habit was done TODAY — where today is
+// domain.Today(s.clock), the injected clock's local calendar day.
+//
+// # Why this exists rather than the caller naming the day
+//
+// It is the same day HabitView.CheckedToday and HabitView.ScheduledToday are
+// derived against in Strip: the same clock, read in the same process. A caller
+// that worked out its own "today" and passed it to Check would be a SECOND
+// implementation of the rule, and across a local midnight boundary the two
+// disagree — the check lands on a day the user never chose while the strip
+// comes back still unchecked, so the tick appears to do nothing at all.
+//
+// The dated Check above stays exactly as it is. The calendar (Stage 7) ticks
+// days that are genuinely not today, and that is a day the caller CHOSE rather
+// than one it computed. DueToday/DueOn is the same pair, one question along.
+func (s *HabitService) CheckToday(ctx context.Context, nodeID string) error {
+	return s.Check(ctx, nodeID, domain.Today(s.clock))
+}
+
+// UncheckToday removes today's check, today being the injected clock's, for
+// CheckToday's reason.
+func (s *HabitService) UncheckToday(ctx context.Context, nodeID string) error {
+	return s.Uncheck(ctx, nodeID, domain.Today(s.clock))
+}
+
 // IsChecked reports whether the habit was checked on date.
 func (s *HabitService) IsChecked(ctx context.Context, nodeID string, date domain.Date) (bool, error) {
 	if _, err := s.habit(ctx, nodeID); err != nil {

@@ -47,34 +47,9 @@ export function formatDate(isoDate: string, locale: string): string {
   }).format(local);
 }
 
-/** Formats an RFC 3339 instant — a TimerView.startedAt — as a wall clock time. */
-export function formatTime(isoInstant: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(isoInstant));
-}
-
-/**
- * Formats a TimerView.elapsedSeconds as a clock readout, "H:MM:SS".
- *
- * Intl.DurationFormat would be the locale-correct answer and is deliberately
- * not used: it is not available in every engine this has to run in, and a
- * running timer is read as a clock in both languages anyway. The digits are
- * still locale-formatted, so a locale with its own numerals gets them.
- */
-export function formatDuration(totalSeconds: number, locale: string): string {
-  const safe = Math.max(0, Math.trunc(totalSeconds));
-
-  const hours = Math.trunc(safe / 3600);
-  const minutes = Math.trunc(safe / 60) % 60;
-  const seconds = safe % 60;
-
-  const twoDigits = new Intl.NumberFormat(locale, {
-    minimumIntegerDigits: 2,
-    useGrouping: false,
-  });
-  const plain = new Intl.NumberFormat(locale, { useGrouping: false });
-
-  return `${plain.format(hours)}:${twoDigits.format(minutes)}:${twoDigits.format(seconds)}`;
-}
+// A time-of-day and a duration formatter used to live here, for a running timer
+// nothing renders yet. They were deleted with the store helpers that fed them
+// (S2-18): an unused formatter is harmless, but the elapsed-seconds arithmetic
+// that called one was not, and a formatter kept "for when it is wired up" is an
+// invitation to wire it up to a locally computed number. Stage 3 draws the
+// timer; it can add exactly the formatter it renders.

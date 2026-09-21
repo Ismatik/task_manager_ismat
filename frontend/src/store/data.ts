@@ -1,7 +1,6 @@
 import type { StateCreator } from 'zustand';
 
 import {
-  optional,
   type ColumnView,
   type HabitView,
   type NewNode,
@@ -36,13 +35,15 @@ import type { AppState } from './index';
 // guessing at it locally would be the rule written a second time. The checkbox
 // moves at once; the number moves when Go says so.
 //
-// # The one thing that is allowed to tick locally
+// # Nothing here ticks, either
 //
-// dto.go authorises it in so many words: "the UI ticks its own display between
-// reads rather than polling Go every second". So the DISPLAY advances between
-// reads — but the number it starts from is Go's elapsedSeconds, and
-// TimerView.elapsedSeconds itself is never written to. See
-// displayElapsedSeconds below.
+// dto.go authorises a DISPLAY to advance between reads — "the UI ticks its own
+// display between reads rather than polling Go every second" — and that is a
+// licence for the component that draws a running clock, which does not exist
+// yet (Stage 3). Until it does there is no wall-clock arithmetic in this file:
+// a helper nothing renders, adding elapsed time on top of the number Go
+// computed, is a second implementation waiting for its first caller, and that
+// is the shape three of Stage 1's review failures had.
 
 /**
  * One end of a drag: a column Go named, and a position inside it.
@@ -91,8 +92,6 @@ export interface DataSlice {
   habits: HabitView[] | null;
   /** The single global timer, as Go last reported it. */
   timer: TimerView | null;
-  /** Local wall-clock milliseconds at which `timer` was read. */
-  timerReadAt: number | null;
 
   loadBoard(): Promise<ColumnView[] | null>;
   loadHabits(): Promise<HabitView[] | null>;
@@ -239,35 +238,8 @@ export interface DataSlice {
   /** Stops the one global timer, and re-reads what changed. */
   stopTimer(): Promise<boolean>;
 
-  /**
-   * The elapsed seconds to PUT ON SCREEN at wall-clock time `now`.
-   *
-   * Go's number plus the time since it was read, and only while the timer is
-   * running. Stopped, it is Go's number unchanged. This is a display value and
-   * is never written back into `timer`.
-   */
-  displayElapsedSeconds(now?: number): number;
-
-  /** The instant the running timer started, or null. */
-  timerStartedAt(): string | null;
 }
 
-/**
- * The calendar day at `at`, written the way domain.Date marshals — "YYYY-MM-DD".
- *
- * CheckHabit and UncheckHabit take the day as a parameter, so somebody has to
- * name it, and no binding reports Go's idea of today. This is that name and
- * nothing more: it is the LOCAL calendar day off the store's injected clock,
- * the same wall clock Go's own `time.Now()` reads, and it decides nothing.
- * Whether that day is an occurrence of the habit's recurrence, whether the
- * check breaks a streak and whether the day may be checked at all are all Go's
- * answers, asked by sending it this string.
- *
- * Built out of the local getters rather than `toISOString()`, which is UTC and
- * would tick over to tomorrow at 03:00 for a user in Almaty — a day the user
- * never chose, produced by a timezone they never mentioned. lib/format.ts makes
- * the same point about reading one.
- */
 /**
  * A copy of `habit` with today's check flipped, and nothing else touched.
  *
@@ -283,18 +255,10 @@ function withCheckFlipped(habit: HabitView): HabitView {
   return { ...habit, checkedToday: !habit.checkedToday } as HabitView;
 }
 
-function wireDate(at: number): string {
-  const local = new Date(at);
-  const pad = (part: number) => String(part).padStart(2, '0');
-
-  return `${local.getFullYear()}-${pad(local.getMonth() + 1)}-${pad(local.getDate())}`;
-}
-
 export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, get) => ({
   board: null,
   habits: null,
   timer: null,
-  timerReadAt: null,
 
   async loadBoard() {
     const board = await callGo(get(), () => get().client.Board());
@@ -322,7 +286,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
       return null;
     }
 
-    set({ timer, timerReadAt: get().now() });
+    set({ timer });
     return timer;
   },
 
@@ -434,8 +398,6 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
       return false;
     }
 
-    const day = wireDate(get().now());
-
     // The bounded optimism (TASKS.md S2-18). The box ticks on the keystroke
     // rather than a round trip later, because a checkbox that lags is a
     // checkbox the user presses twice. Only `checkedToday` moves — the streak
@@ -444,10 +406,14 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
       habits: habits.map((habit) => (habit.node.id === nodeId ? withCheckFlipped(habit) : habit)),
     });
 
+    // No day is named here, and there is no day to name: CheckHabitToday and
+    // UncheckHabitToday take a node id and nothing else, and Go answers with
+    // domain.Today(clock) — the same today `checkedToday` was derived against
+    // in the strip this optimism just edited (S2-18).
     const answer = await callGo(get(), () =>
       before.checkedToday
-        ? get().client.UncheckHabit(nodeId, day)
-        : get().client.CheckHabit(nodeId, day),
+        ? get().client.UncheckHabitToday(nodeId)
+        : get().client.CheckHabitToday(nodeId),
     );
 
     if (answer === null) {
@@ -459,7 +425,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
       return false;
     }
 
-    // CheckHabit and UncheckHabit both return the whole strip as it now is, so
+    // Both bindings return the whole strip as it now is, so
     // this IS the re-read — the streak arrives recomputed with it.
     set({ habits: answer });
     return true;
@@ -506,7 +472,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
       return false;
     }
 
-    set({ timer, timerReadAt: get().now() });
+    set({ timer });
     await get().loadBoard();
     return true;
   },
@@ -517,28 +483,9 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
       return false;
     }
 
-    set({ timer, timerReadAt: get().now() });
+    set({ timer });
     await get().loadBoard();
     return true;
   },
 
-  displayElapsedSeconds(now = get().now()) {
-    const { timer, timerReadAt } = get();
-
-    if (timer === null) {
-      return 0;
-    }
-    if (!timer.running || timerReadAt === null) {
-      return timer.elapsedSeconds;
-    }
-
-    return timer.elapsedSeconds + Math.max(0, Math.floor((now - timerReadAt) / 1000));
-  },
-
-  timerStartedAt() {
-    // `optional` because the generator declares this field as `?` while the
-    // wire sends null — see lib/client.ts. Reading it any other way works until
-    // the one day it does not.
-    return optional(get().timer?.startedAt);
-  },
 });

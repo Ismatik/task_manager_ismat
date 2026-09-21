@@ -18,9 +18,8 @@ import { BOTH_LANGUAGES, renderIn, tabUntil } from './test/render';
 
 const COLUMNS = ['col-1', 'col-2', 'col-3', 'col-4', 'col-5'];
 
-/** A Monday at 09:30 local time — the day the toggle must name on the wire. */
+/** A Monday at 09:30 local time. Nothing on the wire depends on it (S2-18). */
 const CLOCK = new Date(2026, 8, 21, 9, 30).getTime();
-const CLOCK_DAY = '2026-09-21';
 
 function habit(id: string, title: string, overrides: Partial<HabitView> = {}): HabitView {
   return habitView({ node: node({ id, type: 'habit', title }), ...overrides });
@@ -38,11 +37,12 @@ function stripGo(habits: HabitView[], cards: ColumnView[] = board(COLUMNS, [node
   const base = createFakeClient();
   let strip = habits;
 
-  const asked: { method: string; nodeId: string; day: string }[] = [];
+  const asked: { method: string; args: unknown[] }[] = [];
   const refuse = { check: false };
 
-  const answer = (method: string, nodeId: string, day: string): Promise<HabitView[]> => {
-    asked.push({ method, nodeId, day });
+  const answer = (method: string, args: unknown[]): Promise<HabitView[]> => {
+    asked.push({ method, args });
+    const nodeId = args[0] as string;
 
     if (refuse.check) {
       return Promise.reject(new Error('service: checking a habit: node is archived'));
@@ -51,7 +51,7 @@ function stripGo(habits: HabitView[], cards: ColumnView[] = board(COLUMNS, [node
     // models.ts declares HabitView as a class, the wire sends a plain object.
     strip = strip.map((entry) =>
       entry.node.id === nodeId
-        ? ({ ...entry, checkedToday: method === 'CheckHabit' } as HabitView)
+        ? ({ ...entry, checkedToday: method === 'CheckHabitToday' } as HabitView)
         : entry,
     );
     return Promise.resolve(strip);
@@ -61,8 +61,8 @@ function stripGo(habits: HabitView[], cards: ColumnView[] = board(COLUMNS, [node
     ...base.client,
     Board: () => Promise.resolve(cards),
     HabitStrip: () => Promise.resolve(strip),
-    CheckHabit: (nodeID, date) => answer('CheckHabit', nodeID, date),
-    UncheckHabit: (nodeID, date) => answer('UncheckHabit', nodeID, date),
+    CheckHabitToday: (...args) => answer('CheckHabitToday', args),
+    UncheckHabitToday: (...args) => answer('UncheckHabitToday', args),
   };
 
   return { client, asked, refuse };
@@ -203,7 +203,7 @@ describe('the habits strip', () => {
     expect(focusedHabitId()).toBe('h-1');
   });
 
-  it('toggles today’s check on Space, naming the local calendar day', async () => {
+  it('toggles today’s check on Space, naming the node and no day', async () => {
     const go = stripGo([habit('h-1', 'Read')]);
     const user = await enterTheApp(storeOver(go.client));
 
@@ -211,7 +211,7 @@ describe('the habits strip', () => {
     await user.keyboard(' ');
 
     await waitFor(() =>
-      expect(go.asked).toEqual([{ method: 'CheckHabit', nodeId: 'h-1', day: CLOCK_DAY }]),
+      expect(go.asked).toEqual([{ method: 'CheckHabitToday', args: ['h-1'] }]),
     );
     await waitFor(() => expect(screen.getByRole('checkbox', { name: /Read/ })).toBeChecked());
 
@@ -219,7 +219,8 @@ describe('the habits strip', () => {
     await user.keyboard(' ');
 
     await waitFor(() => expect(go.asked).toHaveLength(2));
-    expect(go.asked[1].method).toBe('UncheckHabit');
+    expect(go.asked[1].method).toBe('UncheckHabitToday');
+    expect(go.asked[1].args).toEqual(['h-1']);
     await waitFor(() => expect(screen.getByRole('checkbox', { name: /Read/ })).not.toBeChecked());
   });
 

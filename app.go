@@ -217,26 +217,34 @@ func (a *App) HabitStrip() ([]service.HabitView, error) {
 	return a.svc.Habits.Strip(a.context())
 }
 
-// CheckHabit ticks a habit for a day, given as "YYYY-MM-DD", and returns the
-// strip as it now is — so the caller re-renders from the answer.
-func (a *App) CheckHabit(nodeID string, date string) ([]service.HabitView, error) {
-	parsed, err := domain.ParseDate(date)
-	if err != nil {
-		return nil, err
-	}
-	if err := a.svc.Habits.Check(a.context(), nodeID, parsed); err != nil {
+// CheckHabitToday ticks a habit for TODAY and returns the strip as it now is —
+// so the caller re-renders from the answer.
+//
+// # It takes no date, and that is the point (S2-18)
+//
+// Which day "today" is is domain.Today(clock)'s answer, asked here through
+// HabitService.CheckToday — the SAME clock and the same call HabitStrip derives
+// CheckedToday and ScheduledToday against. A date parameter would invite the
+// caller to name the day, and the only caller that can is the frontend, which
+// would have to compute it: two clocks for one rule, disagreeing for one minute
+// either side of local midnight. CLAUDE.md forbids the frontend deriving a date
+// in so many words, so the parameter is gone rather than merely unused.
+//
+// The dated door is not lost: service.HabitService.Check still takes a
+// domain.Date, which is what Stage 7's calendar will bind when it needs to tick
+// a day that is not today — a day the user PICKED rather than one the frontend
+// worked out.
+func (a *App) CheckHabitToday(nodeID string) ([]service.HabitView, error) {
+	if err := a.svc.Habits.CheckToday(a.context(), nodeID); err != nil {
 		return nil, err
 	}
 	return a.svc.Habits.Strip(a.context())
 }
 
-// UncheckHabit removes a day's tick and returns the strip as it now is.
-func (a *App) UncheckHabit(nodeID string, date string) ([]service.HabitView, error) {
-	parsed, err := domain.ParseDate(date)
-	if err != nil {
-		return nil, err
-	}
-	if err := a.svc.Habits.Uncheck(a.context(), nodeID, parsed); err != nil {
+// UncheckHabitToday removes today's tick and returns the strip as it now is.
+// Today is the clock's, for CheckHabitToday's reason.
+func (a *App) UncheckHabitToday(nodeID string) ([]service.HabitView, error) {
+	if err := a.svc.Habits.UncheckToday(a.context(), nodeID); err != nil {
 		return nil, err
 	}
 	return a.svc.Habits.Strip(a.context())

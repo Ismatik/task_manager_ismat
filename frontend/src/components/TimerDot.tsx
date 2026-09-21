@@ -11,12 +11,12 @@ import { useTranslation } from 'react-i18next';
 //
 // It could: TimerView carries `elapsedSeconds`. But a number that was true when
 // Board() answered and never moves again is worse than no number — it reads as a
-// stopped clock. The store already owns the honest version
-// (`displayElapsedSeconds`, which advances Go's value against an injected clock
-// between reads), and wiring a per-second ticker into a card is not this
-// ticket's. So the card says THAT the timer is running, in `accent`, which is
-// the token design/README.md assigns to a running timer, and says it to screen
-// readers too.
+// stopped clock, and the honest version needs a per-second ticker, which is
+// Stage 3's and not this ticket's. Nothing in the store advances it in the
+// meantime (S2-18 deleted the helper that did, because nothing rendered it). So
+// the card says THAT the timer is running, in `accent`, which is the token
+// design/README.md assigns to a running timer, and says it to screen readers
+// too.
 
 export interface TimerDotProps {
   /** `timer.running`, exactly as Go reported it. */

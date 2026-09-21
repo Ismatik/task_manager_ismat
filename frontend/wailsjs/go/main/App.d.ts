@@ -7,7 +7,7 @@ export function ArchiveNode(arg1:string):Promise<number>;
 
 export function Board():Promise<Array<service.ColumnView>>;
 
-export function CheckHabit(arg1:string,arg2:string):Promise<Array<service.HabitView>>;
+export function CheckHabitToday(arg1:string):Promise<Array<service.HabitView>>;
 
 export function CreateNode(arg1:service.NewNode):Promise<domain.Node>;
 
@@ -45,4 +45,4 @@ export function TimerStop():Promise<service.TimerView>;
 
 export function Tree(arg1:string):Promise<Array<service.NodeView>>;
 
-export function UncheckHabit(arg1:string,arg2:string):Promise<Array<service.HabitView>>;
+export function UncheckHabitToday(arg1:string):Promise<Array<service.HabitView>>;

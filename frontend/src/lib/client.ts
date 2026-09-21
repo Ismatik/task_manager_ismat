@@ -90,8 +90,14 @@ export interface Client {
   // Search, habits and the timer.
   Search(query: string, opts: service.SearchOptions): Promise<service.NodeView[]>;
   HabitStrip(): Promise<service.HabitView[]>;
-  CheckHabit(nodeID: string, date: string): Promise<service.HabitView[]>;
-  UncheckHabit(nodeID: string, date: string): Promise<service.HabitView[]>;
+  // No date parameter, and that is the point (S2-18): which calendar day the
+  // present one is is domain.Today(clock)'s answer, asked in Go by the same
+  // call HabitStrip derives checkedToday against. A date here would be a day
+  // this side had to compute, which is a second clock for one rule — and one
+  // minute either side of local midnight the two disagree. app.go's
+  // CheckHabitToday says the rest.
+  CheckHabitToday(nodeID: string): Promise<service.HabitView[]>;
+  UncheckHabitToday(nodeID: string): Promise<service.HabitView[]>;
   TimerStart(nodeID: string): Promise<service.TimerView>;
   TimerStop(): Promise<service.TimerView>;
   TimerCurrent(): Promise<service.TimerView>;
@@ -127,8 +133,8 @@ export const wailsClient: Client = {
 
   Search: App.Search,
   HabitStrip: App.HabitStrip,
-  CheckHabit: App.CheckHabit,
-  UncheckHabit: App.UncheckHabit,
+  CheckHabitToday: App.CheckHabitToday,
+  UncheckHabitToday: App.UncheckHabitToday,
   TimerStart: App.TimerStart,
   TimerStop: App.TimerStop,
   TimerCurrent: App.TimerCurrent,

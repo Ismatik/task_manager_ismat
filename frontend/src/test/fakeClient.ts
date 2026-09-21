@@ -194,8 +194,8 @@ export function createFakeClient(initial: Partial<FakeClientState> = {}): FakeCl
 
     Search: () => record('Search', () => []),
     HabitStrip: () => record('HabitStrip', () => state.habits),
-    CheckHabit: () => record('CheckHabit', () => state.habits),
-    UncheckHabit: () => record('UncheckHabit', () => state.habits),
+    CheckHabitToday: () => record('CheckHabitToday', () => state.habits),
+    UncheckHabitToday: () => record('UncheckHabitToday', () => state.habits),
     TimerStart: () => record('TimerStart', () => state.timer),
     TimerStop: () => record('TimerStop', () => state.timer),
     TimerCurrent: () => record('TimerCurrent', () => state.timer),

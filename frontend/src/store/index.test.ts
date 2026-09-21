@@ -186,62 +186,36 @@ describe('setPriority', () => {
   });
 });
 
-describe('the timer display', () => {
-  it('starts from Go’s elapsedSeconds and ticks locally between reads', async () => {
+describe('the timer', () => {
+  it('holds exactly what Go returned, and derives nothing from it', async () => {
     let clock = 10_000;
     const go = createFakeClient({
-      timer: timerView({ running: true, entryId: 'entry-1', elapsedSeconds: 42 }),
+      timer: timerView({
+        running: true,
+        entryId: 'entry-1',
+        elapsedSeconds: 42,
+        startedAt: '2026-09-21T14:00:00Z',
+      }),
     });
     const store = createAppStore(go.client, { view: testWindow(), now: () => clock });
 
     await store.getState().loadTimer();
 
-    expect(store.getState().displayElapsedSeconds()).toBe(42);
+    expect(store.getState().timer).toEqual(go.state.timer);
 
-    clock += 3_500;
-    expect(store.getState().displayElapsedSeconds()).toBe(45);
-
-    clock += 60_000;
-    expect(store.getState().displayElapsedSeconds()).toBe(105);
-
-    // dto.go authorises the DISPLAY to tick, not the DTO to be edited. Go's
-    // number is untouched, which is what makes the next read authoritative
-    // rather than a merge.
+    // Time passes and the store's number does not move. Advancing it is a
+    // DISPLAY concern that belongs to the component drawing a running clock
+    // (Stage 3), and until that component exists the wall-clock arithmetic
+    // that used to live here has no consumer — which is why S2-18 deleted it
+    // rather than leaving it to be wired up to the wrong number later.
+    clock += 120_000;
     expect(store.getState().timer?.elapsedSeconds).toBe(42);
   });
 
-  it('does not tick when the timer is not running', async () => {
-    let clock = 10_000;
-    const go = createFakeClient({ timer: timerView({ elapsedSeconds: 17 }) });
-    const store = createAppStore(go.client, { view: testWindow(), now: () => clock });
-
-    await store.getState().loadTimer();
-    clock += 120_000;
-
-    expect(store.getState().displayElapsedSeconds()).toBe(17);
-  });
-
-  it('reads startedAt tolerantly, whether Go sent null or the generator said undefined', async () => {
-    const go = createFakeClient({ timer: timerView() });
-    const store = createAppStore(go.client, { view: testWindow() });
-    await store.getState().loadTimer();
-
-    expect(store.getState().timerStartedAt()).toBeNull();
-
-    go.state.timer = { ...timerView({ running: true }), startedAt: null } as never;
-    await store.getState().loadTimer();
-    expect(store.getState().timerStartedAt()).toBeNull();
-
-    go.state.timer = timerView({ running: true, startedAt: '2026-09-21T14:00:00Z' });
-    await store.getState().loadTimer();
-    expect(store.getState().timerStartedAt()).toBe('2026-09-21T14:00:00Z');
-  });
-
-  it('is zero before anything has been read', () => {
+  it('is null before anything has been read', () => {
     const store = createAppStore(createFakeClient().client, { view: testWindow() });
 
-    expect(store.getState().displayElapsedSeconds()).toBe(0);
-    expect(store.getState().timerStartedAt()).toBeNull();
+    expect(store.getState().timer).toBeNull();
   });
 });
 

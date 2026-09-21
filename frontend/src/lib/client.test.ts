@@ -28,7 +28,7 @@ describe('the Go client', () => {
     expect(Object.keys(wailsClient).sort()).toEqual([
       'ArchiveNode',
       'Board',
-      'CheckHabit',
+      'CheckHabitToday',
       'CreateNode',
       'HabitStrip',
       'MoveNode',
@@ -47,7 +47,7 @@ describe('the Go client', () => {
       'TimerStart',
       'TimerStop',
       'Tree',
-      'UncheckHabit',
+      'UncheckHabitToday',
     ]);
   });
 });

@@ -29,15 +29,22 @@ import { createUiSlice, type UiSlice } from './ui';
 //
 // `client` is injected, which is what makes every case in store tests a fake
 // that resolves or rejects on demand rather than a WebKit window. `now` and
-// `view` are injected for the same reason: a timer that ticks against a
-// controllable clock is testable, and one that calls Date.now() directly is
-// not. None of the three is reactive — nothing subscribes to them and nothing
-// sets them.
+// `view` are injected for the same reason: behaviour that depends on the wall
+// clock or the document is testable when the two are handed in and not when
+// they are reached for. None of the three is reactive — nothing subscribes to
+// them and nothing sets them.
+//
+// `now` is read by NO production code and that is deliberate (S2-18): the day a
+// habit check lands on is Go's, the elapsed seconds on a timer are Go's, and
+// the helper that used to advance the second of those between reads was deleted
+// because nothing rendered it. The seam stays because store/habits.test.ts uses
+// it to prove the point — the same toggle either side of local midnight sends
+// the identical call — and because Stage 3's running clock will need it.
 
 export interface Environment {
   /** The Go binding surface. */
   client: Client;
-  /** Wall-clock milliseconds. Injected so the timer display is testable. */
+  /** Wall-clock milliseconds. Injected; read by tests, not by the store. */
   now: () => number;
   /** The window whose document the appearance is applied to. */
   view: Window;

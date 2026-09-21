@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDate, formatDuration, formatNumber, formatTime } from './format';
+import { formatDate, formatNumber } from './format';
 
 describe('format', () => {
   it('formats a number in the active locale', () => {
@@ -33,24 +33,5 @@ describe('format', () => {
     expect(formatDate('2026-01-01', 'en')).toContain('2026');
     expect(formatDate('2025-12-31', 'en')).toContain('2025');
     expect(formatDate('2025-12-31', 'en')).toContain('31');
-  });
-
-  it('formats an RFC 3339 instant as a wall clock time', () => {
-    const at = formatTime('2026-09-21T14:05:00Z', 'en');
-
-    expect(at).toMatch(/\d{1,2}[:.]\d{2}/);
-  });
-
-  it('formats elapsed seconds as a clock readout', () => {
-    expect(formatDuration(0, 'en')).toBe('0:00:00');
-    expect(formatDuration(59, 'en')).toBe('0:00:59');
-    expect(formatDuration(60, 'en')).toBe('0:01:00');
-    expect(formatDuration(3661, 'en')).toBe('1:01:01');
-    expect(formatDuration(86400 + 1, 'en')).toBe('24:00:01');
-  });
-
-  it('clamps a nonsensical duration rather than rendering a negative clock', () => {
-    expect(formatDuration(-5, 'en')).toBe('0:00:00');
-    expect(formatDuration(12.7, 'en')).toBe('0:00:12');
   });
 });

@@ -148,7 +148,7 @@ func TestNewServicesConstructsEverything(t *testing.T) {
 var boundSurface = []string{
 	"ArchiveNode",
 	"Board",
-	"CheckHabit",
+	"CheckHabitToday",
 	"CreateNode",
 	"HabitStrip",
 	"MoveNode",
@@ -167,7 +167,7 @@ var boundSurface = []string{
 	"TimerStart",
 	"TimerStop",
 	"Tree",
-	"UncheckHabit",
+	"UncheckHabitToday",
 }
 
 func TestTheBoundSurfaceIsExactlyTheStageTwoList(t *testing.T) {

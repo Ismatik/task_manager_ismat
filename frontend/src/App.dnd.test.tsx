@@ -119,7 +119,7 @@ function movingGo(seed: Record<number, NodeView[]> = {}, habits: HabitView[] = [
     refuse,
     hold,
     reads: () => reads,
-    habitChecks: () => base.calls.CheckHabit ?? 0,
+    habitChecks: () => base.calls.CheckHabitToday ?? 0,
     release: () => release(),
   };
 }

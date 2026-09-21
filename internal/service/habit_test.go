@@ -164,6 +164,94 @@ func TestHabitCheckAndUncheckRoundTrip(t *testing.T) {
 	})
 }
 
+// S2-18 — the midnight case, which is why CheckToday takes no date.
+//
+// The day is read from the injected clock AT THE MOMENT OF THE CALL, and it is
+// the same domain.Today(clock) Strip derives CheckedToday against. The test
+// stands one minute either side of local midnight: before it the tick belongs
+// to Friday and the strip agrees, after it the very same call means Saturday.
+//
+// A caller that computed the day instead — the frontend did, and sent it — can
+// be one minute stale and name yesterday, at which point the check lands on a
+// day the user never chose and the strip comes back still unchecked.
+func TestHabitCheckTodayIsTheClocksDayAtTheMomentOfTheCall(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	habits := f.habits()
+	h := f.weeklyHabit()
+
+	saturday := thisFriday.AddDays(1)
+
+	// 23:59 on the scheduled Friday.
+	f.now = thisFriday.Time().Add(23*time.Hour + 59*time.Minute)
+
+	if err := habits.CheckToday(ctx, h.ID); err != nil {
+		t.Fatalf("CheckToday = %v", err)
+	}
+	if checked, err := habits.IsChecked(ctx, h.ID, thisFriday); err != nil || !checked {
+		t.Fatalf("IsChecked(%s) = %v, %v; want true, nil", thisFriday, checked, err)
+	}
+	// The read path agrees with the write path, which is the whole claim: one
+	// clock, one day, so the tick the user pressed is the tick that comes back.
+	if view := viewOf(f.stripOf(ctx), h.ID); view == nil || !view.CheckedToday {
+		t.Fatalf("the strip reports CheckedToday = %v just before midnight; want true", view)
+	}
+
+	// Two minutes later it is Saturday, and the very same call means Saturday.
+	f.now = f.now.Add(2 * time.Minute)
+
+	if err := habits.CheckToday(ctx, h.ID); err != nil {
+		t.Fatalf("CheckToday after midnight = %v", err)
+	}
+	if checked, err := habits.IsChecked(ctx, h.ID, saturday); err != nil || !checked {
+		t.Errorf("IsChecked(%s) = %v, %v; want true, nil", saturday, checked, err)
+	}
+	if checked, err := habits.IsChecked(ctx, h.ID, thisFriday); err != nil || !checked {
+		t.Errorf("Friday's check was disturbed: IsChecked(%s) = %v, %v", thisFriday, checked, err)
+	}
+}
+
+// UncheckToday removes the same day CheckToday wrote, and only that day.
+func TestHabitUncheckTodayIsTheClocksDay(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	habits := f.habits()
+	h := f.weeklyHabit()
+
+	if err := habits.Check(ctx, h.ID, lastFriday); err != nil {
+		t.Fatalf("Check = %v", err)
+	}
+	if err := habits.CheckToday(ctx, h.ID); err != nil {
+		t.Fatalf("CheckToday = %v", err)
+	}
+
+	if err := habits.UncheckToday(ctx, h.ID); err != nil {
+		t.Fatalf("UncheckToday = %v", err)
+	}
+	if checked, err := habits.IsChecked(ctx, h.ID, domain.Today(f.clock())); err != nil || checked {
+		t.Errorf("today is still checked: %v, %v", checked, err)
+	}
+	if checked, err := habits.IsChecked(ctx, h.ID, lastFriday); err != nil || !checked {
+		t.Errorf("an earlier day was unchecked too: IsChecked(%s) = %v, %v", lastFriday, checked, err)
+	}
+}
+
+// Both dateless doors refuse a node that is not a habit, like every other
+// method here — the convenience wrapper does not open a side entrance.
+func TestHabitTodayDoorsRefuseANonHabit(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	habits := f.habits()
+	task := f.create(draft("not a habit", domain.NodeTypeTask, nil))
+
+	if err := habits.CheckToday(ctx, task.ID); !errors.Is(err, service.ErrNotAHabit) {
+		t.Errorf("CheckToday = %v, want ErrNotAHabit", err)
+	}
+	if err := habits.UncheckToday(ctx, task.ID); !errors.Is(err, service.ErrNotAHabit) {
+		t.Errorf("UncheckToday = %v, want ErrNotAHabit", err)
+	}
+}
+
 // Every method refuses a node that is not a habit, and says so in a way the
 // caller can match.
 func TestHabitServiceRefusesNodesThatAreNotHabits(t *testing.T) {
