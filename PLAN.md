@@ -3,8 +3,9 @@
 My restatement of the brief, written before any code. It stays the source of truth for
 the data model and the decisions; only the stage status below moves. **Stage 0 and
 Stage 1 are both CLOSED (PASS); Stage 2 is IMPLEMENTED, NOT CLOSED** — all twenty-two
-tickets are committed, the Reviewer has not ruled yet, and a stage closes only on a
-PASS. See §5 and `TASKS.md`.
+tickets are committed, **review round 1 returned FAIL on two blocking issues that are now
+fixed** (`ae6befd`, `4b1af9c`, and the ruling they were missing is **D17**), the Reviewer
+has not returned PASS, and a stage closes only on a PASS. See §5 and `TASKS.md`.
 
 ---
 
@@ -187,7 +188,7 @@ and stop for your "next".
 |---|---|---|
 | 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) — **CLOSED, PASS** | `make check` green, empty window opens, second launch focuses the first |
 | 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **CLOSED, PASS** (PASS on the **fourth** review, at `a1f09b7`; it failed the first three — the history is kept below) | **≥90% coverage** on `internal/domain` + `internal/service` — **MET: 100.0% / 92.9%** |
-| 2 | **Kanban + Habits strip** (launch screen) — **IMPLEMENTED, NOT CLOSED — S2-01 … S2-22 all committed, plus the gap-closing `7af4d1d`; awaiting the Reviewer** — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — demonstrated twice, by the automated flow test of S2-22 and by the hand script in `TASKS.md` — **and moving a card to Doing must itself open a `time_entry`** (§4 coupling, **D13**; ticket S2-03) |
+| 2 | **Kanban + Habits strip** (launch screen) — **IMPLEMENTED, NOT CLOSED — S2-01 … S2-22 all committed, plus the gap-closing `7af4d1d` and round 1's two fixes `ae6befd` / `4b1af9c`; awaiting the re-review** — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — demonstrated twice, by the automated flow test of S2-22 and by the hand script in `TASKS.md` — **and moving a card to Doing must itself open a `time_entry`** (§4 coupling, **D13**; ticket S2-03) |
 | 3 | **Detail + Tree + Search/Archive** — slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | Every field round-trips through Go; reparent in tree shows on Kanban instantly |
 | 4 | **Quick-add + Focus mode** — frameless standalone window, Go-side NL parser (date, `!priority`, `#tag`, `>Project` fuzzy, `~estimate`, `@type`), live preview chips, Enter creates & closes, Esc closes; Focus mode (one card, large timer, Esc exits); sleep/lock timer handling | `deploy KA Avto fri 15:00 !high #work >KA Avto ~2h` parses correctly in tests **and** in the UI |
 | 5 | **Platform integration** — tray via `energye/systray`, badge = overdue + due today, menu (Open / Quick add / Start-Stop timer / Quit); `.desktop` + `install.sh` → autostart, GNOME `gsettings` shortcut Super+Space → `nexus --quick`, warn if AppIndicator missing | Reboot → app opens; Super+Space → quick-add |
@@ -371,8 +372,12 @@ Measured on the tree as committed:
 | `make front-test` | **22 files, 251 tests** |
 | `make guard` | all **six** checks pass, with `GUARD_ALLOW_RE` **empty** |
 
-Four things the Reviewer cannot verify on this machine are listed under
+**Five** things the Reviewer cannot verify on this machine are listed under
 *"Owed to a hand pass"* below. They are owed, not done.
+
+**Review round 1 returned FAIL on two blocking issues; both are fixed and the stage is
+back with the Reviewer.** See *"Review round 1"* below. It is still **not closed** — a
+stage closes only on PASS, and none has been returned.
 
 The shape of the stage, and why it is in that order:
 
@@ -394,6 +399,8 @@ Four new decisions come out of this planning pass and are recorded in §7: **D12
 locale/background fix, given by the user), and **D13**, **D14**, **D15** — PM rulings
 on the Doing↔timer coupling, on K2 and on K3, each open to the user's override. A fifth,
 **D16**, was added *during* the stage: Aurora's background drift is gated and not drawn.
+A sixth, **D17**, was added *after* it was implemented, out of the Reviewer's first
+round: Go decides the habit check day and the frontend never names a date Go will act on.
 
 **One planning defect, found and corrected mid-stage.** After S2-13 the Dev reported that
 **no remaining ticket owned `frontend/src/App.tsx` or `frontend/src/main.tsx`** — so the
@@ -437,6 +444,42 @@ spellings is acceptable; an undisclosed one, or one that adds behaviour, is not.
 | **S2-21** (`642e677`) | six existing test files plus a new shared `frontend/src/test/render.tsx` | **RATIFIED.** Mounting the header put focusable elements ahead of the board, so six tests asserting *"the first `Tab` lands on the board"* were mechanically wrong. The fix introduces `tabUntil(user, arrived)` — **one spelling instead of six hard-coded tab-stop counts** — so it **removed** duplication rather than adding it. **No assertion was weakened**; every one still makes the same claim about the same element |
 | **S2-22** (`58552bf`) | the `Makefile`, to add `make guard` check 6 | **RATIFIED.** The ticket's own criterion is *"`make guard` fails if a mouse event is introduced into the accept test"* — the rule was **required** to live in `make guard`, so the ticket's Scope list was simply incomplete. Not a widening in substance, a Scope-list omission. **The five gates are still five**; `guard` is not one of them |
 
+**Review round 1 — FAIL on two blocking issues, both now fixed.** Neither was a missing
+feature; both were a rule with a second spelling, which is the same family that cost
+Stage 1 three rounds.
+
+1. **The habit check day was computed in TypeScript** and sent to Go, while Go computed
+   its own today for the flags the same strip renders. **Two clocks, one rule.** Fixed in
+   `ae6befd` and, more importantly, *decided*: the rule had only ever been written in a
+   code comment, and is now **D17** in §7 — with its rejected alternative (publishing
+   Go's today for the frontend to hand back) and its accepted consequence (the dated
+   `Check`/`Uncheck` are service-only until Stage 7 binds them) on the record.
+2. **`make guard` check 2 was case-sensitive while its own comment claimed the check was
+   EXACT**, so `'Done'`, `'Doing'` and `'Today'` walked past a grep that stopped
+   `'done'`. The Reviewer proved it with a line spelling `domain.Status`'s rule a second
+   time in TypeScript. Fixed in `4b1af9c` — `-E` became `-iE` — and verified both ways:
+   the proof line passes the old grep and fails the new one, and `-iE` returns **zero
+   hits** across `frontend/src` as it stands, so nothing is grandfathered and
+   `GUARD_ALLOW_RE` **stays empty**. The same comment said *"Five checks"* while the
+   recipe runs six; corrected to match.
+
+**A guard is not a proof, and this is now written down.** Checks 3a/3b are **name-based
+heuristics** over `overdue|derive|streak|progress|percent`, so a derivation named
+anything else — `wireDate`, for instance — is invisible to them by construction. The
+Reviewer walked a recomputed today, a recomputed overdue flag and an inline percentage
+past a clean `make guard` to show it. The Makefile discloses it; **D17** records it in
+the plan, because the failure mode is a reader treating a green `guard` as evidence that
+the frontend computes nothing. It is evidence that five names are absent.
+
+**Dead TypeScript time-derivations were deleted in the same commit** (`ae6befd`):
+`displayElapsedSeconds`, its `timerReadAt` input, `timerStartedAt`, and `format.ts`'s
+`formatTime` and `formatDuration`, with their orphaned tests. All of it was wall-clock
+arithmetic sitting on top of Go's `elapsedSeconds`, **tested but rendered by no
+component** — which is exactly how a second implementation of a rule waits for its first
+caller, and exactly the shape that failed Stage 1 three times. It was removed before it
+could be wired up. **No ticker was added**; drawing the running clock is Stage 3's, and
+that ticket can add precisely what it renders.
+
 **Owed to a hand pass — not verified, and no document may imply otherwise.** There is no
 display on this machine and `xvfb-run`, `scrot`, `import` and `grim` are all absent, so
 the Reviewer cannot execute these. They are owed to a human at a real keyboard in front
@@ -456,6 +499,12 @@ of a real window:
 4. **The `:focus-visible` accent ring actually painted, in both palettes.** jsdom
    evaluates `:focus-visible` as **false** for programmatic focus, so what is asserted is
    reachability and focusability, not a painted ring.
+5. **S2-07's own last criterion** — *"the app opens a window and the frontend can call
+   `Board()` and receive five columns. Verified by hand and reported."* It is a
+   hand-verification written into a ticket, it is as unverifiable here as the other four,
+   and it was **missing from this list** until the Reviewer enumerated it. `make build`
+   proves the binary links; nothing on this machine proves a window opens or that the
+   first `Board()` over the real IPC bridge returns five columns.
 
 And, held to the same standard: **the Aurora drift gate is implemented and audited both
 ways, but nothing draws a drift, so nobody has watched one pause** (**D16**, **K5**).
@@ -476,6 +525,27 @@ nothing to look at. See K5 in §7.
   only `view:tree`, `view:calendar` and `view:kanban` are registered unavailable, and each
   carries a reason tied to a **later stage** ("you are looking at it", "coming in stage
   N") rather than a permanent limitation. No row silently does nothing.
+
+#### Carried into Stage 3 — one item, and it is not a defect
+
+**Enum membership is spelled a second time, in the locale files, with nothing checking
+it.** `commands.ts` and `AppearanceControls.tsx` take `Object.keys` of
+`settings.palette`, `settings.theme`, `settings.language`, `palette.priority` and
+`card.type` from `en.json` as the **authoritative sets**. Go owns all five —
+`domain.Palettes()`, `domain.Themes()`, `domain.Priorities()` and the node types — and
+publishes **none** of them over the wire. `locales.test.ts` checks en/ru key parity and
+nothing ties either file to Go, so if Go gains a palette or a priority the UI silently
+will not offer it and **no test goes red**.
+
+The Reviewer ruled this an **acceptable judgement call for Stage 2, not a defect**, and
+the instructive contrast is inside the same stage: **where Go does publish a set — the
+columns — the frontend takes it from Go and the locale file only names it.** That is the
+shape the other five should converge on.
+
+Stage 3 resolves it one of two ways, and picks one: **bind a set-publishing method** so
+the frontend enumerates what Go enumerates, or **add a parity test** that fails when a Go
+set and its locale table disagree. **Nothing is scheduled now** and no Stage 2 ticket is
+reopened for it.
 
 **Three things Stage 2 is explicitly forbidden from doing.** They are the shape of
 Stage 1's four review rounds, turned into rules up front:
@@ -509,7 +579,7 @@ I am the **orchestrator**. Three sub-agents, delegated explicitly:
 
 ## 7. Resolved decisions
 
-The open questions are **closed**. Referenced as **D1–D16** and **E1–E3** from tickets
+The open questions are **closed**. Referenced as **D1–D17** and **E1–E3** from tickets
 in `TASKS.md`.
 
 **D1–D12 were given by the user and are authoritative** — they override anything
@@ -520,10 +590,13 @@ same authority. D10 and D11 came out of the second review, and **D10 generalises
 derivation rule in §4**, which has been amended accordingly. **D12** was confirmed by
 the user while Stage 2 was being planned and closes **K1**.
 
-**D13, D14, D15 and D16 are PM rulings.** D13, D14 and D15 were made during Stage 2
+**D13, D14, D15, D16 and D17 are PM rulings.** D13, D14 and D15 were made during Stage 2
 planning because `TASKS.md` **C1**, **C4** and **C5** demanded a decision and the user's
 brief did not contain one; **D16** was made *during* Stage 2, when the Dev asked what
-draws Aurora's background drift and correctly declined to invent it. They are written in
+draws Aurora's background drift and correctly declined to invent it; **D17** was made
+*after* Stage 2 was implemented, when the Reviewer's first round found the habit check
+day being computed in TypeScript on a decision that had been *"made in a code comment"*
+and never written down. They are written in
 the same form and bind the Dev exactly as the rest do — a rule with no single written
 spelling is the defect that cost Stage 1 three review rounds — but their provenance is
 different and **the user may overturn any of them**. If one is overturned, the ticket
@@ -1013,6 +1086,64 @@ this document* rather than silently in a component. At that point the ticket is 
 drawing: the gate, the media query and the test are already built and already green. The
 standing consequence is recorded as **K5** below.
 
+### D17 — Go decides the habit check day; the frontend never names a date Go will act on (PM ruling, during Stage 2, on the Reviewer's first-round FAIL)
+
+**The failure.** `frontend/src/store/data.ts` carried a helper called `wireDate` that
+built the **local calendar day in TypeScript** and passed it to
+`CheckHabit(nodeID, date)`. Go meanwhile computed **its own today** at
+`internal/service/habit.go` — `domain.Today(s.clock)` — for the `checkedToday` and
+`scheduledToday` flags **the same strip renders**. Two clocks, one rule: §1's central
+commitment — *"all domain logic lives in Go; the frontend renders what Go returns"* —
+broken verbatim, on the one screen where both answers are visible at once.
+
+It is not theoretical. Across a local midnight the user presses `Space`, the frontend
+writes a check for **yesterday**, Go answers `checkedToday: false`, the optimistic tick
+reverts, and the user sees nothing happen while a check lands on a day they never chose.
+
+**And nobody had ruled on it.** In the Reviewer's words: *"no ticket or decision ever
+ruled on it — the decision was made in a code comment."* That is what this entry fixes;
+the code fix is `ae6befd`.
+
+**The ruling: the frontend never names a date that Go will act on.**
+
+- `HabitService.CheckToday` / `UncheckToday` take a node id and nothing else and
+  **delegate to the existing dated `Check`/`Uncheck`** with `domain.Today(s.clock)`.
+  The rule keeps **one spelling** — the same `domain.Today(clock)` the strip already
+  derives `checkedToday` against. A second `time.Now()`-shaped path would have been the
+  same defect in Go.
+- The bindings become `CheckHabitToday(nodeID)` / `UncheckHabitToday(nodeID)`. The dated
+  pair is **no longer bound at all**, deliberately: an unbound method is a door a
+  computed date cannot be walked through.
+- **`wireDate` was deleted, not bypassed.** A helper that still builds a date is a helper
+  the next ticket calls.
+- The dated `Check`/`Uncheck` **survive on the service for Stage 7's calendar**, where
+  the user *picks* a day rather than the frontend *computing* one. A date the user chose
+  is data; a date the frontend worked out is a derivation.
+
+**Rejected alternative: publish Go's today on a DTO and let the frontend hand it back.**
+It looks like it honours the rule, because the value originates in Go — and it does not.
+The frontend still names the date on the wire, the value is still stale by exactly the
+interval between the read and the write, and the midnight bug survives with an extra
+round trip in front of it. The fix for a value the frontend should not compute is to
+**stop sending it**, not to source it more respectably.
+
+**Accepted consequence:** `HabitService.Check`/`Uncheck` are **service-only until Stage 7
+binds them** — reachable from Go, unreachable from TypeScript, and exercised only by
+their tests. That is deliberate, it is the door the calendar will use, and it must not be
+removed as dead code.
+
+**The part that generalises — `make guard` cannot see this class of defect.** Its checks
+**3a and 3b are name-based heuristics**: they fire on identifiers containing
+`overdue|derive|streak|progress|percent`. `wireDate` is named after none of them, so the
+guard stayed green over a recomputed today for the whole stage. The Reviewer demonstrated
+the blind spot deliberately, walking **a recomputed today, a recomputed overdue flag and
+an inline percentage** past a clean `make guard`. The Makefile already discloses that
+checks 3 and 4 are heuristics; it is recorded here too so that **no report, review or
+status line may offer a green `make guard` as evidence that the frontend computes
+nothing**. It is evidence that the *named patterns* are absent. Reading the diff remains
+the check, and a derivation renamed away from those five words is invisible to the grep
+by construction.
+
 ### FTS5 — spike it, do not guess (was Q8, unchanged)
 **Spike FTS5 on `modernc.org/sqlite` in Stage 1**, first thing. If FTS5 is not
 available in the pinned version, **fall back to LIKE-based search on `title` +
@@ -1164,14 +1295,17 @@ who is expected to read it.
 
 ---
 
-**Status: decisions locked — D1–D16, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
+**Status: decisions locked — D1–D17, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
 CLOSED (PASS) — all twenty-two tickets, S1-01 … S1-22, ACCEPT met at 100.0% / 92.9%,
 PASS returned on the fourth review at `a1f09b7` after three FAILs whose history is kept
 in §5. **Stage 2 is IMPLEMENTED, NOT CLOSED**: twenty-two tickets, S2-01 … S2-22, in
 `TASKS.md`, **all twenty-two committed**, plus the gap-closing `7af4d1d`. `make check`
 green, `make cover` 100.0% / 93.8%, `make front-test` 22 files / 251 tests, `make guard`
-clean over all six checks with an empty `GUARD_ALLOW_RE`. **The Reviewer has not ruled;
-a stage closes only on PASS.** All five carried obligations are absorbed into
+clean over all six checks with an empty `GUARD_ALLOW_RE`. **Review round 1 returned FAIL
+on two blocking issues — a habit check day computed in TypeScript, and a `make guard`
+check that claimed to be exact and was case-sensitive — and both are fixed (`ae6befd`,
+`4b1af9c`). The Reviewer has not returned PASS; a stage closes only on PASS.** All five
+carried obligations are absorbed into
 tickets — C1 → S2-03, C2 → S2-01, C3 → S2-08, C4 → S2-06, C5 → S2-14 — and every known
 issue now has a decision: **K1 → D12** (user), **K2 → D14**, **K3 → D15** and
 **K5 → D16** (PM rulings, overturnable), **K4** RESOLVED in `9664506`. Nothing is open.
@@ -1179,6 +1313,11 @@ issue now has a decision: **K1 → D12** (user), **K2 → D14**, **K3 → D15** 
 silently, and both corrected in `TASKS.md`:** nothing owned `App.tsx` or `main.tsx`, so
 nothing mounted anything; and the out-of-scope line contradicted the brief on *set
 priority*, resolved in the brief's favour. Three disclosed widenings (S2-13, S2-21,
-S2-22) are **ratified**, and four checks are recorded as **owed to a hand pass, not
-verified**. See §5, "Stage 2 — IMPLEMENTED, NOT CLOSED", and `TASKS.md`,
+S2-22) are **ratified**; **D17** records the one rule the stage had never written down;
+and **five** checks are recorded as **owed to a hand pass, not verified**. One item is
+**carried into Stage 3** — the five enum sets spelled in the locale files with nothing
+tying them to Go — as an acceptable judgement call, not a defect, and it is not
+scheduled. A green `make guard` is **not** proof that the frontend computes nothing;
+checks 3a/3b are name-based heuristics and **D17** says so. See §5,
+"Stage 2 — IMPLEMENTED, NOT CLOSED", and `TASKS.md`,
 "Composition — who mounts what".**

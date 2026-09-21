@@ -15,9 +15,12 @@
   NOT CLOSED.** Twenty-two tickets, **S2-01 … S2-22, all committed**, plus the
   gap-closing `7af4d1d`. `make check` green (all five gates), `make cover` **100.0% /
   93.8%**, `make front-test` **22 files / 251 tests**, `make guard` clean over all **six**
-  checks with `GUARD_ALLOW_RE` **empty**. **The Reviewer has not ruled — a stage closes
-  only on PASS**, and four checks are recorded as
-  [owed to a hand pass](#owed-to-a-hand-pass--not-verified), not as verified. All five
+  checks with `GUARD_ALLOW_RE` **empty**. **Review round 1 returned FAIL on two blocking
+  issues; both are fixed** (`ae6befd`, `4b1af9c`) — see
+  [Review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed). **The
+  Reviewer has not returned PASS — a stage closes only on PASS**, and **five** checks are
+  recorded as [owed to a hand pass](#owed-to-a-hand-pass--not-verified), not as verified.
+  All five
   items under [Carried into Stage 2](#carried-into-stage-2) are absorbed into named
   tickets — **C1 → S2-03, C2 → S2-01, C3 → S2-08, C4 → S2-06, C5 → S2-14** — and the
   fifth, *one rule one spelling*, is enforced by `make guard` (**S2-10**) and re-checked
@@ -26,8 +29,10 @@
   `main.tsx` (see [Composition — who mounts what](#composition--who-mounts-what)), and
   the out-of-scope line contradicted the brief on *set priority* (see
   [The plan correction](#the-plan-correction--set-priority-from-the-palette-is-stage-2)).
+  One item is [carried into Stage 3](#carried-into-stage-3), as an acceptable judgement
+  call rather than a defect, and is **not** scheduled.
 
-Decisions referenced as **D1–D16 / E1–E3** and known issues **K1–K5** live in
+Decisions referenced as **D1–D17 / E1–E3** and known issues **K1–K5** live in
 [`PLAN.md` §7](./PLAN.md). Four decisions were confirmed by the user *during* Stage 1
 and are recorded there — **D8** (a column move always overwrites the due date),
 **D9** (type beats leaf-ness — a project is never timeable), **D10** (a node with no
@@ -39,7 +44,11 @@ Doing↔timer coupling actually does), **D14** (archiving re-inspects a node tha
 a leaf — closing **K2**) and **D15** (a card whose progress is undefined says so —
 closing **K3**). **D16** was added *during* Stage 2, when the Dev asked what draws
 Aurora's background drift: the gate is built, the visual is deferred, and **K5** records
-the consequence. **Every known issue now has a decision; none is open.**
+the consequence. **D17** was added *after* Stage 2 was implemented, out of the Reviewer's
+first round: **Go decides the habit check day and the frontend never names a date Go will
+act on** — and, as part of the same entry, that `make guard`'s checks 3a/3b are
+**name-based heuristics**, so a green guard is not proof that the frontend computes
+nothing. **Every known issue now has a decision; none is open.**
 
 **Do not implement anything that is not on a ticket**, and do not add tickets here —
 the PM writes them.
@@ -2223,12 +2232,14 @@ rounds.
 ## Stage 2 — Kanban + Habits strip
 
 **Status: IMPLEMENTED, NOT CLOSED — S2-01 … S2-22 all committed, plus the gap-closing
-`7af4d1d`. The Reviewer runs next.**
+`7af4d1d`. Review round 1 returned FAIL on two blocking issues; both are fixed
+(`ae6befd`, `4b1af9c`) and the re-review runs next.**
 Twenty-two tickets, **S2-01 … S2-22**, one conventional commit each. This is the
 **launch screen**: the first stage whose output a user can look at.
 
 **It is not closed, and this document must not be read as saying it is.** Per
-`PLAN.md` §5 a stage closes only on a Reviewer **PASS**, and none has been returned. The
+`PLAN.md` §5 a stage closes only on a Reviewer **PASS**; round 1 returned **FAIL**, and
+no PASS has been returned since the fixes landed. The
 [DONE criteria](#stage-2--done-criteria) below are therefore still **unticked**: they are
 the Reviewer's to verify, not the PM's to assert. What the PM *can* state is what was
 measured on the tree as committed:
@@ -2240,7 +2251,7 @@ measured on the tree as committed:
 | `make front-test` | **22 files, 251 tests** |
 | `make guard` | all **six** checks pass, `GUARD_ALLOW_RE` **empty** |
 
-Four things nobody on this machine can check are listed under
+**Five** things nobody on this machine can check are listed under
 [Owed to a hand pass](#owed-to-a-hand-pass--not-verified). They are **owed**, not done.
 
 **Corrected in place after S2-13.** The Dev reported, in `97873d9`'s body rather than by
@@ -2253,6 +2264,65 @@ came with it — `frontend/src/lib/format.ts` is now in S2-11's Scope where its
 Requirements had already named it, and S2-13's six-line `main.tsx` widening is
 [ratified](#s2-13--feat-the-go-client-the-zustand-store-and-the-error-toast). **No
 committed ticket's meaning changed**; S2-01 … S2-13 stand as reviewed.
+
+### Review round 1 — FAIL on two blocking issues, both fixed
+
+Neither was a missing feature. **Both were a rule with a second spelling** — the same
+family that cost Stage 1 three rounds, arriving this time in TypeScript and in the grep
+that was supposed to stop it.
+
+**Blocking issue 1 — the habit check day was computed in TypeScript.**
+`frontend/src/store/data.ts` held `wireDate`, which built the **local calendar day** and
+passed it to `CheckHabit(nodeID, date)`, while `internal/service/habit.go` independently
+computed `domain.Today(s.clock)` for the `checkedToday` / `scheduledToday` flags **the
+same strip renders**. Two clocks, one rule. Across a local midnight the frontend writes a
+check for *yesterday*, Go answers `checkedToday: false`, the optimistic tick reverts, and
+the check lands on a day the user never chose.
+
+The Reviewer's point was not only the bug: *"no ticket or decision ever ruled on it — the
+decision was made in a code comment."* So the ruling is now written down as **D17** in
+[`PLAN.md` §7](./PLAN.md), with its rejected alternative and its accepted consequence.
+Fixed in `ae6befd`: `CheckHabitToday(nodeID)` / `UncheckHabitToday(nodeID)` are the bound
+surface, `HabitService.CheckToday`/`UncheckToday` delegate to the existing **dated**
+`Check`/`Uncheck` with `domain.Today(s.clock)` so today keeps **one spelling**, and
+**`wireDate` was deleted rather than left unused**. The dated pair stays on the service
+for **Stage 7's calendar** — where the user *picks* a day — and is deliberately **not
+bound**, so nothing can feed a computed date back in. The new store test drives the
+toggle at `23:59:30` and again at `00:00:30` and asserts the two calls are identical,
+argument for argument.
+
+> **S2-07's bound surface is therefore amended**: `CheckHabit` / `UncheckHabit` are
+> `CheckHabitToday` / `UncheckHabitToday`, each taking a node id only. The count of bound
+> methods is unchanged; the dated signature is gone from the wire.
+
+**Blocking issue 2 — `make guard` check 2 claimed to be EXACT and was case-sensitive.**
+It ran under `-E`, so `'Done'`, `'Doing'` and `'Today'` walked past a grep that stopped
+`'done'`, and the Makefile's own paragraph — *"a hit is a defect and there is nothing to
+argue about"* — was false. The Reviewer proved it by getting
+`view.status === 'Done' || view.status === 'Doing'` through a clean run: `domain.Status`'s
+rule, spelled a second time in TypeScript. Fixed in `4b1af9c` (`-E` → `-iE`) and verified
+**both ways** — the proof line passes the old grep and fails the new one, and `-iE`
+returns **zero hits** across `frontend/src` as it stands, so nothing is grandfathered and
+**`GUARD_ALLOW_RE` stays empty**. The same comment said *"Five checks"* while the recipe
+runs six; corrected to match.
+
+**A green `make guard` is not proof that the frontend computes nothing.** Checks **3a and
+3b are name-based heuristics** over `overdue|derive|streak|progress|percent`, so a
+derivation named anything else — `wireDate` being the worked example — is invisible to
+them **by construction**. The Reviewer walked a recomputed today, a recomputed overdue
+flag and an inline percentage past a clean guard to demonstrate it. The Makefile discloses
+this; **D17** records it in the plan as well, because the risk is a future reader citing a
+green guard as evidence. It is evidence that five *names* are absent. **Reading the diff
+is still the check**, and rule 7 below is still the rule.
+
+**Dead TypeScript time-derivations deleted in the same commit** (`ae6befd`):
+`displayElapsedSeconds`, its `timerReadAt` input, `timerStartedAt`, and `format.ts`'s
+`formatTime` and `formatDuration`, with their orphaned tests. Every one was wall-clock
+arithmetic on top of Go's `elapsedSeconds`, **tested but rendered by no component** —
+which is exactly how a second implementation of a rule waits for its first caller, and
+exactly the shape that failed Stage 1 three times. Removed before it could be wired up.
+**No ticker was added**: drawing the running clock is Stage 3's, and that ticket adds
+precisely what it renders.
 
 ### The plan correction — "set priority" from the palette is Stage 2
 
@@ -2472,7 +2542,7 @@ Stage 2 adds two targets alongside it, on the same precedent as Stage 1's `make 
 | Target | Ticket | What it does |
 |---|---|---|
 | `make front-test` | S2-10 | `npm run test -- --run` in `frontend/` — the vitest suite. |
-| `make guard` | S2-10 | The mechanical rules greps: no hex literal, no status-string literal, no recomputed rule, no bare user-visible string. Exits non-zero on any hit. **As shipped it runs six checks** — S2-10's five, plus **check 6**, the no-mouse rule over `App.accept.test.tsx`, added by S2-22 because that ticket's own criterion required the rule to live here ([ratified](#s2-22--test-the-no-mouse-accept-flow-and-the-ru--a11y-audit)). |
+| `make guard` | S2-10 | The mechanical rules greps: no hex literal, no status-string literal, no recomputed rule, no bare user-visible string. Exits non-zero on any hit. **As shipped it runs six checks** — S2-10's five, plus **check 6**, the no-mouse rule over `App.accept.test.tsx`, added by S2-22 because that ticket's own criterion required the rule to live here ([ratified](#s2-22--test-the-no-mouse-accept-flow-and-the-ru--a11y-audit)). **Check 2 is case-insensitive since `4b1af9c`** — it was `-E` and let `'Done'` past. **Checks 3a/3b are name-based heuristics and a green run proves nothing about an unnamed derivation** (**D17**); see [Review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed). |
 
 Both are **acceptance criteria on every frontend ticket from S2-10 onwards**, and both
 are Stage 2 DONE criteria. Neither is a sixth gate. "Green" still means `make check`
@@ -2935,8 +3005,14 @@ Requirements:
 - The bound surface for Stage 2, and nothing beyond it: `Board`, `Tree`, `Progress`,
   `CreateNode`, `MoveToColumn` (the **coupled** one from S2-03 — the only one bindable),
   `MoveNode`, `SetDue`, `ArchiveNode`, `RestoreNode`, `Search`, `HabitStrip`,
-  `CheckHabit`, `UncheckHabit`, `TimerStart`, `TimerStop`, `TimerCurrent`, `Settings`,
-  `SetPalette`, `SetTheme`, `SetAccent`, `SetLanguage`.
+  `CheckHabitToday`, `UncheckHabitToday`, `TimerStart`, `TimerStop`, `TimerCurrent`,
+  `Settings`, `SetPalette`, `SetTheme`, `SetAccent`, `SetLanguage`.
+  **Amended by [review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed)
+  (`ae6befd`, D17):** this line originally said `CheckHabit` / `UncheckHabit`, each taking
+  a node id **and a date** — and that date was being computed in TypeScript. The bound
+  pair is now `CheckHabitToday` / `UncheckHabitToday`, **node id only**; Go decides the
+  day from `s.clock`. The dated `HabitService.Check`/`Uncheck` **remain on the service,
+  unbound**, for Stage 7's calendar. The count of bound methods is unchanged.
 - **`Greet` is deleted**, along with its frontend caller (S2-09 removes the caller; if
   the ordering makes that awkward, delete the demo box here and say so).
 - `main.go` stays thin (`ARCHITECTURE.md` §1): flags, lock, open, construct, bind. **No
@@ -2957,7 +3033,9 @@ Requirements:
       are in the commit, not left dirty.
 - [ ] `Greet` appears nowhere: `git grep -n Greet` returns nothing.
 - [ ] The app opens a window and the frontend can call `Board()` and receive five
-      columns. Verified by hand and reported.
+      columns. Verified by hand and reported. **This one cannot be checked on this
+      machine** — it is item 5 under
+      [Owed to a hand pass](#owed-to-a-hand-pass--not-verified).
 - [ ] `make cover` green. `make check` green.
 
 **Commit:** `feat(app): open the store, construct the services and bind them (S2-07)`
@@ -3109,6 +3187,20 @@ Requirements:
   `frontend/src/lib/priority.ts`, and the guard asserts `P0|P1|P2` appears nowhere else
   in `frontend/src` outside `locales/`.
 - Both targets are **non-gate**, exactly like `make cover`. The five gates stay five.
+
+> **Two corrections from
+> [review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed), neither
+> reopening this ticket.**
+> **(a)** Check 2 shipped case-**sensitive** under `-E` while the target's own comment
+> claimed it was EXACT, so `'Done'`, `'Doing'` and `'Today'` walked past it. `4b1af9c`
+> makes it `-iE`; **zero hits** on the tree as it stands, so nothing is grandfathered and
+> `GUARD_ALLOW_RE` **stays empty**.
+> **(b)** Checks **3a/3b match on identifier *names*** —
+> `overdue|derive|streak|progress|percent` — so **a derivation named anything else is
+> invisible to them by construction**, and a green `make guard` is **not** proof that the
+> frontend computes nothing. The round-1 `wireDate` defect is the worked example
+> (**D17**). The heuristic is not a bug in this ticket; treating its silence as evidence
+> would be.
 
 **Acceptance criteria**
 - [ ] `make front-test` runs and passes (a single trivial smoke test is enough at this
@@ -3647,9 +3739,14 @@ Requirements:
 - The streak number is Go's (**D5** — consecutive scheduled RRULE occurrences, *not*
   calendar days). `font-mono`, `warning` for the flame (`design/README.md`), `success`
   for the check.
-- Checking calls `CheckHabit`, unchecking `UncheckHabit`, and both re-read. **Optimistic
-  is allowed here on the same terms as a move** — revert from Go's answer on error, with
-  a toast.
+- Checking calls `CheckHabitToday`, unchecking `UncheckHabitToday`, **passing a node id
+  and nothing else**, and both re-read. **Optimistic is allowed here on the same terms as
+  a move** — revert from Go's answer on error, with a toast.
+- **The frontend does not name the day** (**D17**). Go derives it from its clock, with
+  the same `domain.Today(clock)` that fills the `checkedToday` and `scheduledToday` flags
+  this strip renders. A calendar day built in TypeScript and sent over the wire is a
+  second clock, and this ticket's first implementation shipped one; see
+  [Review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed).
 - **Habits never appear in a Kanban column** (`PLAN.md` §4) — and the frontend does not
   need to enforce that, because `Board()` already excludes them. A filter here would be a
   second spelling of the rule. **Do not add one.**
@@ -3664,6 +3761,10 @@ Requirements:
       number — proving TypeScript is not counting.
 - [ ] `Space` on a focused habit toggles the check and calls the right method; a
       rejection reverts and raises one toast.
+- [ ] **No date crosses the wire** (**D17**): the toggle driven at `23:59:30` and again
+      at `00:00:30` produces **identical calls, argument for argument**, and
+      `git grep -n 'new Date\|toISOString' frontend/src/store` finds no date being built
+      for a habit call.
 - [ ] `git grep -n "habit" frontend/src` shows **no** filtering of board data by type.
 - [ ] The strip is keyboard-reachable from the board and back, mouse untouched.
 - [ ] **Mounted and reachable**: `render(<App />)` with a mocked client shows the habits,
@@ -4044,7 +4145,7 @@ is half 1; this half is the real window, which is exactly what half 1 cannot see
 | that `data-drift` is `off` under `prefers-reduced-motion` and `on` otherwise | that the launch screen is actually assembled — header, strip, board, overlays, toasts — and not five tests that pass in isolation |
 | Go-side atomicity, the single-active timer, the cascade rule (**S2-03**) | |
 | `en.json`/`ru.json` key parity | |
-| no hex literal, no status literal, no recomputed rule (`make guard`) | |
+| no hex literal, no status literal, no `P0/P1/P2` outside its module, no mouse in the ACCEPT test (`make guard` checks 1, 2, 5, 6 — **exact**) | **that no rule is re-derived in TypeScript.** `make guard` checks 3a/3b are **name-based heuristics**; a derivation named outside `overdue\|derive\|streak\|progress\|percent` does not trip them (**D17**). This one is verified by **reading the diff**, not by either column's tooling |
 
 Nothing in the left column is claimed as hand-verified, and nothing in the right column
 is claimed as automated.
@@ -4057,11 +4158,13 @@ be discovered at review.
 
 ### Owed to a hand pass — NOT VERIFIED
 
-**Four checks are outstanding, and no document in this repository may describe them as
+**Five checks are outstanding, and no document in this repository may describe them as
 done.** They are not outstanding through negligence: **there is no display on this
 machine**, and `xvfb-run`, `scrot`, `import` and `grim` are **all absent**, so the
 Reviewer cannot run them either. They are owed to a human at a real keyboard in front of
-a real window, and they are the precise contents of the right-hand column above.
+a real window. Items 1–4 are the precise contents of the right-hand column above; item 5
+is a ticket criterion that belonged on this list from the start and was **missing until
+review round 1 enumerated it**.
 
 1. **Steps 1–10 of [half 2](#half-2--by-hand-on-the-real-binary-mouse-untouched)** on
    `./build/bin/nexus`, mouse untouched, reported step by step. **Including the due-badge
@@ -4084,6 +4187,14 @@ a real window, and they are the precise contents of the right-hand column above.
    with `css: false`, so what is asserted mechanically is **reachability and
    focusability**, element by element — not a painted ring. This is the right-hand
    column's fourth row.
+5. **[S2-07](#s2-07--feat-open-the-store-construct-the-services-bind-them)'s own last
+   criterion**: *"the app opens a window and the frontend can call `Board()` and receive
+   five columns. Verified by hand and reported."* It is as unverifiable here as the four
+   above and was **not enumerated** until review round 1 found it. `make build` proves the
+   binary links; **nothing on this machine proves a window opens**, or that the first
+   `Board()` across the real IPC bridge returns five columns. It overlaps item 1 in
+   practice — step 1 of the hand script cannot start without it — but it is a criterion on
+   a named ticket and is owed in its own right.
 
 **And, held to the same standard, the Aurora drift.** The gate is implemented and was
 audited **both ways** in S2-22 — `data-drift` is `on` without reduced motion and `off`
@@ -4103,16 +4214,25 @@ committed, but these are the **Reviewer's** to verify, not the PM's to assert �
 them here would be exactly the "marked done, not verified" failure the last line of this
 section forbids. What the PM has recorded is the **measurement** (`make check` green,
 `make cover` 100.0% / 93.8%, `make front-test` 22 files / 251 tests, `make guard` clean
-over six checks with an empty `GUARD_ALLOW_RE`) and, separately, the four things
+over six checks with an empty `GUARD_ALLOW_RE`) and, separately, the **five** things
 **nobody on this machine can check** — see
 [Owed to a hand pass](#owed-to-a-hand-pass--not-verified), which carries the hand half of
 criterion 5, the last clause of criterion 8 and the last clause of criterion 13.
+
+**Review round 1 returned FAIL**, on two blocking issues now fixed (`ae6befd`,
+`4b1af9c`); see
+[Review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed). A first-round
+FAIL is a normal outcome here — Stage 1 closed on its fourth review. **Criterion 22 is
+still open.**
 
 1. [ ] All twenty-two tickets are committed, one conventional commit each, in order,
    `S2-01` … `S2-22`, authored solely by `Ismat <mukhamejanov.ismat@gmail.com>` with **no
    AI author and no co-author trailer**. **One further commit, `7af4d1d`, closes the
    `set priority` gap under S2-20** and is part of the stage — see
    [The plan correction](#the-plan-correction--set-priority-from-the-palette-is-stage-2).
+   **Two more, `ae6befd` and `4b1af9c`, fix review round 1's blocking issues** and are
+   likewise part of the stage — see
+   [Review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed).
 2. [ ] `make check` is green — **all five gates, unchanged in number and definition**.
 3. [ ] `make cover` is green: `internal/domain` ≥ 90.0% **and** `internal/service` ≥ 90.0%,
    measured per package after `go clean -testcache`.
@@ -4133,7 +4253,11 @@ criterion 5, the last clause of criterion 8 and the last clause of criterion 13.
     `DoingRefusal`/`CanBeDoing`, `countsAsWork`, habit-requires-recurrence,
     `DefaultActivity` — is still one definition each, and **no `frontend/src` file
     computes a status, a column eligibility, progress, a streak, an overdue flag or a due
-    date**. `make guard` passes and the Reviewer has read it rather than trusting it.
+    date**, **and does not compute a *date* Go will act on** (**D17**). `make guard`
+    passes **and the Reviewer has read the diff rather than trusting it** — checks 3a/3b
+    are name-based heuristics and a derivation named outside
+    `overdue|derive|streak|progress|percent` is invisible to them, which is how the
+    round-1 `wireDate` defect survived a green guard for a whole stage.
 11. [ ] `git grep -nE '#[0-9a-fA-F]{3,8}' frontend/src` returns nothing.
 12. [ ] `design/` is byte-identical to its Stage 1 state:
     `git diff <stage-1-tag-or-sha> -- design/` is empty.
@@ -4180,3 +4304,49 @@ and **Aurora's background drift**, whose reduced-motion gate ships and whose vis
 not, by **D16**. That last one is the only item on this list that is out of scope because
 the design export does not specify it rather than because it belongs to a later stage;
 it returns when a spec exists, and **it is not to be invented** (**K5**).
+
+---
+
+## Carried into Stage 3
+
+**Whoever plans Stage 3 must turn each item below into a ticket with a checkable
+criterion, or state explicitly why not.** This is the same contract as
+[Carried into Stage 2](#carried-into-stage-2). Nothing here is scheduled yet, and
+**nothing here reopens a Stage 2 ticket.**
+
+| | Item | Source | Status |
+|---|---|---|---|
+| **C6** | Five enum sets are spelled a second time in the locale files, with nothing tying them to Go | Review round 1, non-blocking finding 4 | **Judgement call, not a defect.** Stage 3 picks one of two fixes |
+| — | Draw the running timer clock | `ae6befd` deleted the untested-in-anger wall-clock helpers no component rendered | Stage 3 adds **exactly what it renders**, on Go's `elapsedSeconds` |
+| — | Aurora's background drift | **D16**, **K5** | Only when a drift **specification** exists. **Not to be invented** |
+
+### C6 — enum membership is spelled twice, and nothing checks it
+
+`frontend/src/lib/commands.ts` and `frontend/src/components/AppearanceControls.tsx` take
+`Object.keys` of **`settings.palette`, `settings.theme`, `settings.language`,
+`palette.priority` and `card.type`** out of `en.json` and treat them as the
+**authoritative sets**. Go owns all five — `domain.Palettes()`, `domain.Themes()`,
+`domain.Priorities()` and the node types — and **publishes none of them over the wire**.
+`locales.test.ts` checks **en/ru key parity** and nothing ties *either* file to Go, so if
+Go gains a palette or a priority, **the UI silently will not offer it and no test goes
+red**.
+
+**The Reviewer ruled this an acceptable judgement call for Stage 2, not a defect**, and
+the contrast that makes it instructive is inside the same stage: **where Go *does*
+publish a set — the five Kanban columns — the frontend takes the set from Go and the
+locale file only supplies the *labels*.** That is the shape the other five should end up
+in. Nothing today is wrong on screen; what is missing is the thing that would go red if
+it became wrong.
+
+Stage 3 picks **one** of:
+
+- [ ] **Bind a set-publishing method** for each set, so the frontend enumerates what Go
+      enumerates and the locale file is reduced to labels — the columns' shape,
+      generalised. Preferred, because it removes the second spelling rather than
+      detecting it.
+- [ ] **Add a parity test** that fails when a Go set and its locale table disagree, in
+      either direction. Cheaper, and it leaves the duplicate in place with an alarm on
+      it.
+
+Either way the criterion is the same: **adding a value to a Go set must turn something
+red** until the frontend offers it.
