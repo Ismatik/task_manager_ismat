@@ -16,11 +16,18 @@ import type { AppState } from './index';
 // clock. If a screen needs a value that is not here, the answer is a Go change.
 //
 // The store also never writes a domain field to a value Go did not produce.
-// There is exactly one bounded exception, written down in TASKS.md S2-13 so
-// nobody has to guess at it: S2-17's optimistic move, which relocates a card
-// between columns locally and reverts from Go's answer on error. That is
-// optimism about a value Go is ABOUT to compute, not a recomputation of it.
-// Everything else re-reads.
+// There are exactly two bounded exceptions, both written down in TASKS.md so
+// nobody has to guess at them: S2-17's optimistic move, which relocates a card
+// between columns locally, and S2-18's optimistic habit check, which ticks
+// `checkedToday` locally. Both revert FROM GO'S ANSWER on error — a re-read,
+// never a remembered snapshot, which can be stale if anything else changed.
+// That is optimism about a value Go is ABOUT to compute, not a recomputation of
+// it. Everything else re-reads.
+//
+// Note what the optimistic tick does NOT touch: `streak`. The streak is D5's
+// answer — consecutive scheduled RRULE occurrences, not calendar days — and
+// guessing at it locally would be the rule written a second time. The checkbox
+// moves at once; the number moves when Go says so.
 //
 // # The one thing that is allowed to tick locally
 //
@@ -63,6 +70,17 @@ export interface DataSlice {
   moveToAdjacentColumn(nodeId: string, offset: number): Promise<boolean>;
 
   /**
+   * Ticks or un-ticks today's check for a habit, and re-reads the strip.
+   *
+   * Which way round it goes is `checkedToday` off GO'S OWN STRIP — the frontend
+   * does not track a check of its own, and does not decide whether the current
+   * day is one the schedule names. Returns whether the strip changed, false
+   * for an unknown habit and for a refusal; callGo has already raised the one
+   * toast in the second case.
+   */
+  toggleHabit(nodeId: string): Promise<boolean>;
+
+  /**
    * The elapsed seconds to PUT ON SCREEN at wall-clock time `now`.
    *
    * Go's number plus the time since it was read, and only while the timer is
@@ -73,6 +91,44 @@ export interface DataSlice {
 
   /** The instant the running timer started, or null. */
   timerStartedAt(): string | null;
+}
+
+/**
+ * The calendar day at `at`, written the way domain.Date marshals — "YYYY-MM-DD".
+ *
+ * CheckHabit and UncheckHabit take the day as a parameter, so somebody has to
+ * name it, and no binding reports Go's idea of today. This is that name and
+ * nothing more: it is the LOCAL calendar day off the store's injected clock,
+ * the same wall clock Go's own `time.Now()` reads, and it decides nothing.
+ * Whether that day is an occurrence of the habit's recurrence, whether the
+ * check breaks a streak and whether the day may be checked at all are all Go's
+ * answers, asked by sending it this string.
+ *
+ * Built out of the local getters rather than `toISOString()`, which is UTC and
+ * would tick over to tomorrow at 03:00 for a user in Almaty — a day the user
+ * never chose, produced by a timezone they never mentioned. lib/format.ts makes
+ * the same point about reading one.
+ */
+/**
+ * A copy of `habit` with today's check flipped, and nothing else touched.
+ *
+ * The cast is the generator quirk lib/client.ts documents, in its second form.
+ * models.ts declares HabitView as a CLASS carrying a `convertValues` method,
+ * while the wire sends — and the store therefore only ever holds — a plain JSON
+ * object with no such method. A spread of one is structurally everything a
+ * HabitView is and is still not assignable to it. test/fakeClient.ts casts for
+ * the same reason, and the answer is not to stop using the generated types:
+ * every field name written here is still checked against Go's DTO by gate 4.
+ */
+function withCheckFlipped(habit: HabitView): HabitView {
+  return { ...habit, checkedToday: !habit.checkedToday } as HabitView;
+}
+
+function wireDate(at: number): string {
+  const local = new Date(at);
+  const pad = (part: number) => String(part).padStart(2, '0');
+
+  return `${local.getFullYear()}-${pad(local.getMonth() + 1)}-${pad(local.getDate())}`;
 }
 
 export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, get) => ({
@@ -140,6 +196,51 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
     // due date (D8) and cascades to the subtree (D2), and a local edit that
     // tried to keep up would be a second implementation of both.
     await get().loadBoard();
+    return true;
+  },
+
+  async toggleHabit(nodeId) {
+    const { habits } = get();
+    if (habits === null) {
+      return false;
+    }
+
+    const before = habits.find((habit) => habit.node.id === nodeId);
+    if (before === undefined) {
+      // A habit the strip does not hold. No call, no toast: nothing happened.
+      return false;
+    }
+
+    const day = wireDate(get().now());
+
+    // The bounded optimism (TASKS.md S2-18). The box ticks on the keystroke
+    // rather than a round trip later, because a checkbox that lags is a
+    // checkbox the user presses twice. Only `checkedToday` moves — the streak
+    // is D5's and waits for Go.
+    set({
+      habits: habits.map((habit) =>
+        habit.node.id === nodeId ? withCheckFlipped(habit) : habit,
+      ),
+    });
+
+    const answer = await callGo(get(), () =>
+      before.checkedToday
+        ? get().client.UncheckHabit(nodeId, day)
+        : get().client.CheckHabit(nodeId, day),
+    );
+
+    if (answer === null) {
+      // Refused. Revert FROM GO'S ANSWER rather than from the array captured
+      // above: a snapshot is only right if nothing else changed in the
+      // meantime, and "nothing else changed" is not something this can know.
+      // callGo has already raised the one toast.
+      await get().loadHabits();
+      return false;
+    }
+
+    // CheckHabit and UncheckHabit both return the whole strip as it now is, so
+    // this IS the re-read — the streak arrives recomputed with it.
+    set({ habits: answer });
     return true;
   },
 

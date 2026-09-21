@@ -49,6 +49,13 @@
       "unknown": "Item"
     }
   },
+  "habits": {
+    "label": "Habits",
+    "notScheduledToday": "Not scheduled today",
+    "streak": {
+      "label": "Streak {{value}}"
+    }
+  },
   "toast": {
     "error": {
       "title": "Something went wrong",

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { HabitStrip } from './components/HabitStrip';
 import { ToastList } from './components/Toast';
 import { globalActionFor } from './lib/keyboard';
 import type { AppStore } from './store';
@@ -25,8 +26,8 @@ import { Kanban } from './views/Kanban';
 // # The regions, in DOM order, and why the order IS the markup
 //
 //   1  header        S2-21 — appearance and language controls
-//   2  habits strip  S2-18
-//   3  board         THIS TICKET — views/Kanban.tsx
+//   2  habits strip  S2-18 — components/HabitStrip.tsx
+//   3  board         S2-15 — views/Kanban.tsx
 //   4  overlay layer S2-19 quick add, S2-20 command palette
 //   5  toast layer   THIS TICKET — S2-13's ToastList, orphaned until now
 //
@@ -36,8 +37,8 @@ import { Kanban } from './views/Kanban';
 // EMPTY SLOT IN THE SOURCE, named in a comment with its ticket — not a
 // placeholder component, not localised filler and not a reserved blank box. A
 // placeholder is a thing somebody has to remember to delete; an empty box is a
-// bar of nothing across the screen. Regions 1, 2 and 4 emit no DOM at all, and
-// App.test.tsx asserts it.
+// bar of nothing across the screen. Regions 1 and 4 emit no DOM at all, region
+// 2 emits none while there are no habits, and App.test.tsx asserts it.
 //
 // # The store's one route down
 //
@@ -75,10 +76,11 @@ function Shell() {
   const toasts = useAppState((state) => state.toasts);
   const dismissToast = useAppState((state) => state.dismissToast);
 
-  // The board read. It lives here rather than in main.tsx because main.tsx's
-  // pre-paint work is the work that decides what the first frame LOOKS like —
-  // palette, theme, accent, language — and the board is not that. Hydrating in
-  // both places would be two hydration sites, which is one too many.
+  // The board and habit-strip reads. They live here rather than in main.tsx
+  // because main.tsx's pre-paint work is the work that decides what the first
+  // frame LOOKS like — palette, theme, accent, language — and neither of these
+  // is that. Hydrating in both places would be two hydration sites, which is
+  // one too many; hydrating the strip inside HabitStrip itself would be a third.
   //
   // The ref is a latch for React.StrictMode, which mounts every component twice
   // in development to surface exactly this kind of effect. Without it startup
@@ -94,8 +96,10 @@ function Shell() {
 
     // No catch here: the store turns a rejection into exactly one toast and
     // leaves the board null (S2-13's callGo). A failed read is an empty board
-    // and an error message — never a blank window.
+    // and an error message — never a blank window. The two reads are
+    // independent, so a strip that cannot be read does not cost you the board.
     void store.getState().loadBoard();
+    void store.getState().loadHabits();
   }, [store]);
 
   // The global shortcuts — Ctrl+N, Ctrl+K, Escape.
@@ -133,7 +137,8 @@ function Shell() {
     <div className="flex min-h-screen min-w-0 flex-col gap-2 bg-bg p-2 text-ink">
       {/* Region 1 — header. S2-21 mounts the appearance and language controls. */}
 
-      {/* Region 2 — habits strip. S2-18 mounts it. */}
+      {/* Region 2 — habits strip. Renders nothing while there are no habits. */}
+      <HabitStrip />
 
       {/* Region 3 — board. */}
       <main aria-label={t('board.label')} className="min-w-0 flex-1">

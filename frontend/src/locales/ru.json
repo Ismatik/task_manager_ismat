@@ -51,6 +51,13 @@
       "unknown": "Элемент"
     }
   },
+  "habits": {
+    "label": "Привычки",
+    "notScheduledToday": "Сегодня не по расписанию",
+    "streak": {
+      "label": "Серия {{value}}"
+    }
+  },
   "toast": {
     "error": {
       "title": "Что-то пошло не так",
