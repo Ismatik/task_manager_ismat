@@ -168,7 +168,7 @@ and stop for your "next".
 | # | Stage | Acceptance |
 |---|---|---|
 | 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) — **CLOSED, PASS** | `make check` green, empty window opens, second launch focuses the first |
-| 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **IMPLEMENTED, NOT CLOSED** (failed review three times, all fixes landed, awaiting re-check; see below) | **≥90% coverage** on `internal/domain` + `internal/service` — **met: 100.0% / 92.9%** |
+| 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **CLOSED, PASS** (PASS on the **fourth** review, at `a1f09b7`; it failed the first three — the history is kept below) | **≥90% coverage** on `internal/domain` + `internal/service` — **MET: 100.0% / 92.9%** |
 | 2 | **Kanban + Habits strip** (launch screen) — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — **and moving a card to Doing must itself open a `time_entry`** (§4 coupling; see `TASKS.md`, "Carried into Stage 2") |
 | 3 | **Detail + Tree + Search/Archive** — slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | Every field round-trips through Go; reparent in tree shows on Kanban instantly |
 | 4 | **Quick-add + Focus mode** — frameless standalone window, Go-side NL parser (date, `!priority`, `#tag`, `>Project` fuzzy, `~estimate`, `@type`), live preview chips, Enter creates & closes, Esc closes; Focus mode (one card, large timer, Esc exits); sleep/lock timer handling | `deploy KA Avto fri 15:00 !high #work >KA Avto ~2h` parses correctly in tests **and** in the UI |
@@ -202,28 +202,37 @@ the single-active timer, streaks and search. Stage 0's only migration is
 
 **Stage 1 is broken into tickets S1-01 … S1-22 in `TASKS.md`.**
 
-### Stage 1 — IMPLEMENTED, NOT CLOSED
+### Stage 1 — CLOSED, PASS
 
+The Reviewer returned **PASS** on the **fourth** review, verified at commit `a1f09b7`.
 All twenty-two tickets **S1-01 … S1-22** are implemented and committed, one
-conventional commit each. The ACCEPT criterion is **met**: `internal/domain`
-**100.0%**, `internal/service` **92.9%** statement coverage, measured per package.
-(`internal/store` is at **86.4%** and is not gated.)
+conventional commit each, all authored solely by `Ismat
+<mukhamejanov.ismat@gmail.com>` with no AI author and no co-author trailer. All five
+gates are green, including gate 5, `wails build -tags webkit2_41`.
 
-**The stage nevertheless failed review three times**, every time on the same family of
-defects: a type rule spelled in more than one place, with one copy diverging. Each
-divergence was a door illegal rows could walk through.
+The **ACCEPT criterion is MET**. The bar is **≥90%** statement coverage on
+`internal/domain` and `internal/service`, measured per package; re-measured after
+`go clean -testcache` the actuals are `internal/domain` **100.0%** and
+`internal/service` **92.9%**. (`internal/store` is at **86.4%** and is deliberately not
+gated.) The Reviewer also confirmed independently that §7 D2 and the D9 sub-point are
+correctly generalised — no surviving bullet states a *current* rule in `note`-only
+terms — that no `.go` file changed after `9664506`, and that the tree was clean.
 
-First review — **FAIL**, three blocking issues:
+**The stage nevertheless failed review three times before that**, every time on the
+same family of defects: a type rule spelled in more than one place, with one copy
+diverging. Each divergence was a door illegal rows could walk through. The four-round
+history is kept in full below, because it is the most useful thing in this document.
+
+**First review — FAIL**, three blocking issues:
 
 1. illegal type/status combinations were accepted on the create path — **fixed by the
    Dev in `fd5e31d`**;
 2. due dates were written onto types that have no Kanban column — **fixed by the Dev in
    `f1802d7`**;
 3. **decisions D8 and D9 existed nowhere in the specification** although five source
-   files cited them as authoritative — **fixed in §7 above**.
+   files cited them as authoritative — **recorded in §7 below by the PM in `e7d74cc`**.
 
-Second review — **FAIL**, on the remaining doors of the same rule. All fixes have
-landed:
+**Second review — FAIL**, on the remaining doors of the same rule:
 
 - `1cbe582` — the no-column rule routed through `domain.NodeType.HasColumn()`
   everywhere, so it has exactly one spelling;
@@ -236,10 +245,11 @@ landed:
 - `d5a170b` — an empty project counted as one unfinished work leaf in its parent's
   denominator — recorded as **D11**.
 
-The two user decisions those last two commits required are recorded in §7 as **D10**
-and **D11**, and §4's derivation rule has been generalised to match them.
+The two user decisions those last two commits required were recorded in §7 as **D10**
+and **D11** by the PM in `0854ed5`, which also generalised §4's derivation rule to
+match them.
 
-Third review — **FAIL**, one blocking issue: the last surviving divergence, the one
+**Third review — FAIL**, one blocking issue: the last surviving divergence, the one
 this plan had written off as harmless in **K4**. `ValidateMove` refused only a `note`
 as a parent, so a habit could still take children. The Reviewer showed end-to-end that
 the two claims K4 made were both false: a task parked under a habit made the **habit
@@ -259,7 +269,10 @@ Fixed by the Dev in `9664506`:
   node type cannot have children") **with no alias left behind** — an alias would have
   been a second spelling of the rule, which is the defect class itself.
 
-**The structural fix — Stage 2 must not undo it.** The same commit folded the four
+**K4** was re-written from "harmless, not scheduled" to **RESOLVED** by the PM in
+`e3d626f`, which also recorded the predicate consolidation described next.
+
+**The structural fix — Stage 2 must not undo it.** `9664506` also folded the four
 separate spellings of "a project never enters `doing`" (`CanEnterDoing`,
 `CheckStatus`'s sentinel selection, `PlanCascade`, `canBeTimed`) onto a single
 predicate, **`domain.DoingRefusal(NodeType) error`**, with `NodeType.CanBeDoing()`
@@ -268,7 +281,7 @@ resulting type-rule inventory has **no rule spelled twice**: `HasColumn`, `HasDu
 `DoingRefusal`/`CanBeDoing`, `countsAsWork`, the habit-requires-recurrence check and
 `DefaultActivity` are each the single definition of their rule. Three review failures
 came from a rule written down twice and then edited once; a new duplicate spelling is
-the one thing this stage must not gain.
+the one thing **Stage 2** must not gain.
 
 One honest caveat, recorded so nobody "tidies" it later: `countsAsWork`
 (`HasColumn() && != NodeTypeProject`) and `DoingRefusal` admit **the same set of types
@@ -276,9 +289,52 @@ today**, but they answer **different questions** — "is this a unit of work?" (
 **D11**) versus "may this node be doing?" (**D9**). They were kept separate
 deliberately, so that a future change to one does not silently move the other.
 
-**Stage 1 is therefore NOT closed.** Per §5, no stage closes without a PASS, and the
-Reviewer has not yet re-checked the fixes. The stage closes when — and only when —
-that re-check returns **PASS**. Until then nothing in Stage 2 starts.
+**Fourth review — PASS**, at `a1f09b7`. The Reviewer re-checked every fix from the
+three failed rounds and confirmed: all five gates green including
+`wails build -tags webkit2_41`; coverage re-measured after `go clean -testcache` at
+**100.0% / 92.9%**, both over the ≥90% bar; §7 **D2** and the **D9** sub-point
+correctly generalised, with an independent grep finding no remaining bullet that
+states a *current* rule in `note`-only terms — that last doc fix is `a1f09b7` itself;
+no `.go` file changed since `9664506`; tree clean; and no AI author or co-author
+trailer on any commit. **Stage 1 is CLOSED.**
+
+The eleven commits of the review cycle, in order: `fd5e31d`, `f1802d7`, `e7d74cc`
+(round 1) · `1cbe582`, `f266bf5`, `81fb6e4`, `d5a170b`, `0854ed5` (round 2) ·
+`9664506`, `e3d626f` (round 3) · `a1f09b7` (round 4, PASS).
+
+#### Carried into Stage 2 — obligations, not suggestions
+
+Stage 1 closed with five things owed to Stage 2. They are listed here and as explicit
+acceptance criteria in `TASKS.md`, "Carried into Stage 2"; none of them may be dropped
+silently.
+
+1. **Wire `MoveToColumn(doing)` to `TimerService.Start`.** §4 couples them — "moving a
+   card to Doing opens a `time_entry`" — but **no Stage 1 ticket did the wiring**, and
+   the two services simply sit there composable. The Reviewer's warning stands: unless
+   this is an explicit **Stage 2 acceptance criterion**, the coupling silently never
+   ships. It is one, on the §5 Stage 2 row.
+2. **`Board()` is O(n²·log n)** — `snapshot.view` rebuilds its index once per node.
+   Fine at 200 nodes, not at 10k. **Fix it before the board is on screen**, not after.
+3. **K1** — the `BackgroundColour`/`LC_NUMERIC` locale bug. Decide it with the palette
+   work; three options are recorded below and none is chosen.
+4. **K2** and **K3** — the two stale-stored-status consequences of **D11**, below.
+   Both are Stage 2 rulings: K2 the card-state rule, K3 the card chrome.
+5. **No rule may gain a second spelling — in Go *or* in TypeScript.** See the note
+   immediately below.
+
+#### Engineering note for Stage 2 — one rule, one spelling
+
+**Three of Stage 1's four review rounds failed on the same defect**: a type rule
+written down in two places and then edited in one. The inventory is clean as of
+`9664506` — `HasColumn`, `HasDue`, `DoingRefusal`/`CanBeDoing`, `countsAsWork`, the
+habit-requires-recurrence check and `DefaultActivity` are each **the single definition
+of their rule**. Stage 2 must not introduce a second spelling of any of them.
+
+This applies to **TypeScript exactly as it applies to Go**. The frontend renders what
+Go returns and re-implements none of these rules: not "can this card go to Doing", not
+"does this type get a column", not "does this count as work", not progress, not a
+streak, not an overdue flag. A rule re-derived in a component is a second spelling, and
+a second spelling is the defect that cost this project three review rounds.
 
 **Final review**: fresh clone → `make check` → `wails build -tags webkit2_41` → `install.sh` →
 reboot checklist, executed and reported. `QA.md` with 25 manual scenarios covering
@@ -608,7 +664,11 @@ and closed Stage 0. `pkg-config --exists gtk+-3.0 webkit2gtk-4.1` now succeeds.
 
 ---
 
-### Known issues — recorded, not scheduled
+### Known issues — recorded, carried into Stage 2
+
+**K1, K2 and K3 are the open ones, and all three are Stage 2's to decide** (see §5,
+"Carried into Stage 2"). **K4 is RESOLVED** in `9664506` and is kept on the record
+below, not deleted, so the failure mode stays visible.
 
 **K1 — `BackgroundColour` never reaches GTK under a comma-decimal locale.**
 This machine runs `LC_NUMERIC=ru_RU.UTF-8`. Wails builds the window background as a
@@ -625,9 +685,9 @@ Nothing is logged; the window just uses its default.
 
 This is an **upstream Wails bug**, not ours, and it is **not fixed in Stage 1**:
 Stage 1 is Go-only, has no window work in it, and a locale workaround bolted on now
-would be untestable until there is a palette to compare against. **The decision
-belongs to Stage 2**, where the palette/theme work makes the window background have
-to match a token. The options to weigh there, none of them chosen here:
+would be untestable until there is a palette to compare against. **The decision is
+carried into Stage 2** (`TASKS.md`, C3), where the palette/theme work makes the window
+background have to match a token. The options to weigh there, none of them chosen here:
 
 1. force `LC_NUMERIC=C` for the process before `wails.Run`;
 2. leave the window background transparent and let the frontend paint it, which is
@@ -644,15 +704,16 @@ Since **D11**, a leaf project's *stored* status decides whether it counts as don
 its parent's denominator. Archiving the last real child of a project that an earlier
 cascade had written `done` leaves it counted as a **done** unit on a status nobody set
 deliberately. The state is self-consistent — column and bar agree — so this is not a
-contradiction and **is not scheduled now**. It may want a rule about **re-inspecting a
-project's stored status when its last child is archived**. That ruling belongs to
-**Stage 2**.
+contradiction, which is exactly why it will not announce itself. It wants a rule about
+**re-inspecting a project's stored status when its last child is archived**. That
+ruling is **carried into Stage 2** (`TASKS.md`, C4) and must be recorded here as a
+decision when it is made.
 
 **K3 — an empty project stored `done` renders in the Done column with no bar at all.**
 Its own progress is undefined (**D11**, part 1), so no bar is drawn, while its status
 puts the card in Done. Not a contradiction, but it is **the one place a finished card
-shows nothing**. Recorded for the Stage 2 card-chrome work to decide what, if anything,
-a done-but-unmeasurable card should render.
+shows nothing**. **Carried into Stage 2** (`TASKS.md`, C5): the card-chrome work
+decides what, if anything, a done-but-unmeasurable card should render.
 
 **K4 — RESOLVED in `9664506`, not an open issue. A no-column type cannot have
 children at all.**
@@ -676,7 +737,9 @@ remain the open ones.**
 ---
 
 **Status: decisions locked — D1–D11, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
-implemented (all twenty-two tickets, S1-01 … S1-22) but is NOT closed: it failed review
-three times, every fix has landed — including `9664506`, which resolved **K4** and
-folded the "may be doing" rule onto one predicate — and it is awaiting a re-check.
-See §5, "Stage 1 — IMPLEMENTED, NOT CLOSED".**
+CLOSED (PASS) — all twenty-two tickets, S1-01 … S1-22, ACCEPT met at 100.0% / 92.9%,
+PASS returned on the fourth review at `a1f09b7` after three FAILs whose history is
+kept in §5. **K4** is RESOLVED in `9664506`; **K1**, **K2** and **K3** stay open and
+are carried into Stage 2 together with the `MoveToColumn(doing)` → `TimerService.Start`
+wiring and the `Board()` O(n²·log n) fix. Stage 2 is next and not yet planned.
+See §5, "Stage 1 — CLOSED, PASS" and "Carried into Stage 2".**

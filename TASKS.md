@@ -3,12 +3,17 @@
 - **[Stage 0 — Scaffold](#stage-0--scaffold): DONE. Reviewer returned PASS.** All
   thirteen tickets committed, all five gates green, all seven DONE criteria met.
   Kept below as the record and as the template for ticket quality.
-- **[Stage 1 — Domain + store](#stage-1--domain--store): IMPLEMENTED, NOT CLOSED.**
-  Go only, no UI, no Wails bindings. All twenty-two tickets **S1-01 … S1-22**
-  committed; ACCEPT met at **100.0% / 92.9%**; **review returned FAIL three times** on
-  one family of related defects. Every fix has landed, and the stage stays open until
-  the Reviewer re-checks and returns PASS. See
-  [Stage 1 — DONE criteria](#stage-1--done-criteria).
+- **[Stage 1 — Domain + store](#stage-1--domain--store): DONE. Reviewer returned PASS
+  on the fourth review, at `a1f09b7`.** Go only, no UI, no Wails bindings. All
+  twenty-two tickets **S1-01 … S1-22** committed; ACCEPT met at **100.0% / 92.9%**
+  against a ≥90% bar; all eleven DONE criteria met. **Review returned FAIL three times
+  first**, on one family of related defects — that history is kept in full below and is
+  the most useful thing in this file. See
+  [Stage 1 — DONE criteria](#stage-1--done-criteria) and
+  [Carried into Stage 2](#carried-into-stage-2).
+- **Stage 2 — Kanban + Habits strip: not started, not yet planned.** What Stage 1 owes
+  it is listed under [Carried into Stage 2](#carried-into-stage-2); those items are
+  acceptance criteria, not suggestions.
 
 Decisions referenced as **D1–D11 / E1–E3** and known issues **K1–K3** (plus **K4**,
 now **RESOLVED** in `9664506`) live in
@@ -17,7 +22,9 @@ and are now recorded there — **D8** (a column move always overwrites the due d
 **D9** (type beats leaf-ness — a project is never timeable), **D10** (a node with no
 Kanban column is excluded from parent derivation, generalising §4) and **D11** (an
 empty project is one unfinished work leaf in its parent). The tickets below encode
-their behaviour. Do not plan or implement beyond Stage 1.
+their behaviour. **Stage 1 is closed; Stage 2 is not planned yet.** Do not implement
+anything below that is not on a Stage 2 ticket, and do not invent Stage 2 tickets here
+— the PM writes them in a separate pass.
 
 ---
 
@@ -656,23 +663,32 @@ extraction beyond the locale file stubs.
 
 ## Stage 1 — Domain + store
 
-**Status: IMPLEMENTED, NOT CLOSED.** Tickets `S1-01` … `S1-22`, all twenty-two
-committed. ACCEPT met — `internal/domain` **100.0%**, `internal/service` **92.9%**
-(`internal/store` is 86.4% and not gated).
+**Status: DONE — CLOSED, PASS.** The Reviewer returned **PASS** on the **fourth**
+review, verified at commit `a1f09b7`. Tickets `S1-01` … `S1-22`, all twenty-two
+committed, one conventional commit each, no AI author or co-author on any of them.
+All five gates green including `wails build -tags webkit2_41`. Kept in full below as
+the record of what was agreed. **Do not re-open these tickets.**
 
-**Review returned FAIL three times**, every time on the same family of defects: a type
-rule spelled in more than one place, with one copy diverging. Each divergence was a
-door illegal rows walked through.
+**ACCEPT met** — the bar is ≥90% statement coverage per package on `internal/domain`
+and `internal/service`; re-measured after `go clean -testcache` the actuals are
+**100.0%** and **92.9%** (`internal/store` is 86.4% and deliberately not gated).
+
+**Review returned FAIL three times before that**, every time on the same family of
+defects: a type rule spelled in more than one place, with one copy diverging. Each
+divergence was a door illegal rows walked through. The history is kept in full — it is
+the most useful record in this file.
 
 - **First review** — two code defects, fixed by the Dev in `fd5e31d` (illegal
   type/status combinations accepted on create) and `f1802d7` (due dates written onto
-  types with no column), plus the missing record of decisions **D8** and **D9**, fixed
-  by the PM in `PLAN.md` §7.
+  types with no column), plus the missing record of decisions **D8** and **D9**,
+  written into `PLAN.md` §7 by the PM in `e7d74cc`.
 - **Second review** — the remaining doors of the same rule: `1cbe582` (the rule routed
   through `domain.NodeType.HasColumn()` everywhere, one spelling), `f266bf5` (a due
   date refused on a `note`; D9's wording corrected — a `habit` may have a date),
   `81fb6e4` (**every** no-column type excluded from derivation — **D10**), and
-  `d5a170b` (an empty project counted as one unfinished work leaf — **D11**).
+  `d5a170b` (an empty project counted as one unfinished work leaf — **D11**). **D10**
+  and **D11** were recorded in `PLAN.md` §7 by the PM in `0854ed5`, which also
+  generalised §4's derivation rule to match.
 - **Third review** — the last surviving divergence, the one `PLAN.md` had written off
   as harmless in **K4**: `ValidateMove` refused only a `note` as a parent, so a habit
   could take children. That made the habit itself render in a Kanban column and made an
@@ -683,7 +699,20 @@ door illegal rows walked through.
   **`ErrTypeHasNoChildren`** with **no alias** (an alias would be a second spelling).
   The same commit folded `CanEnterDoing`, `CheckStatus`'s sentinel selection,
   `PlanCascade` and `canBeTimed` onto one predicate, **`domain.DoingRefusal`**, with
-  `NodeType.CanBeDoing()` defined in terms of it. **K4 is resolved**, not deferred.
+  `NodeType.CanBeDoing()` defined in terms of it. **K4 is resolved**, not deferred —
+  rewritten from "harmless" to **RESOLVED** in `PLAN.md` by the PM in `e3d626f`, and
+  kept on the record there rather than deleted so the failure mode stays visible.
+- **Fourth review — PASS**, at `a1f09b7`. Every fix from the three failed rounds
+  re-checked: five gates green including `wails build -tags webkit2_41`; coverage
+  re-measured after `go clean -testcache` at **100.0% / 92.9%**; `PLAN.md` §7 **D2**
+  and the **D9** sub-point correctly generalised, with an independent grep finding no
+  bullet left that states a *current* rule in `note`-only terms — that final doc fix is
+  `a1f09b7` itself; no `.go` file changed since `9664506`; tree clean; sole author
+  `Ismat <mukhamejanov.ismat@gmail.com>` throughout. **Stage 1 closes here.**
+
+The eleven commits of the review cycle, in order: `fd5e31d`, `f1802d7`, `e7d74cc`
+(round 1) · `1cbe582`, `f266bf5`, `81fb6e4`, `d5a170b`, `0854ed5` (round 2) ·
+`9664506`, `e3d626f` (round 3) · `a1f09b7` (round 4, PASS).
 
 **No type rule is spelled twice any more** — `HasColumn`, `HasDue`,
 `DoingRefusal`/`CanBeDoing`, `countsAsWork`, the habit-requires-recurrence check and
@@ -692,10 +721,10 @@ door illegal rows walked through.
 D9) and are kept separate on purpose. **Stage 2 must not reintroduce a second
 spelling of any of them.**
 
-**All fixes have landed.** The two user decisions the D10/D11 commits required are
-recorded in `PLAN.md` §7, and §4's derivation rule has been generalised to match.
-**The stage does not close until the Reviewer re-checks everything above and returns
-PASS.**
+**All fixes landed and were re-checked.** The two user decisions the D10/D11 commits
+required are recorded in `PLAN.md` §7, and §4's derivation rule has been generalised to
+match. The Reviewer verified all of it on the fourth round, so **the stage is closed**.
+What it owes Stage 2 is in [Carried into Stage 2](#carried-into-stage-2).
 
 **Go only. No UI, no Wails bindings, no TypeScript.** Not one line of
 `frontend/src` changes in this stage, and no method is added to `app.go`. Stage 2 owns
@@ -1297,8 +1326,8 @@ supersede the corresponding lines above; the follow-up commits are `81fb6e4` and
   was already correct and did not change.
 
 **Stage 2 must not re-derive either of these.** See also known issues **K2** and **K3**
-in `PLAN.md`, which this pair of decisions created or exposed and which are
-**recorded, not scheduled**. **K4** — the fourth one this pair exposed — is **not**
+in `PLAN.md`, which this pair of decisions created or exposed and which are **carried
+into Stage 2** as C4 and C5. **K4** — the fourth one this pair exposed — is **not**
 deferred: it was a real defect and is **resolved** in `9664506`, which refuses every
 no-column type as a parent.
 
@@ -2000,18 +2029,20 @@ Requirements:
 
 ---
 
-## Stage 1 — DONE criteria
+## Stage 1 — DONE criteria — ALL MET, PASS
 
-Stage 1 closes only when **all** of these hold:
+Stage 1 closed only once **all** of these held. They do, verified by the Reviewer at
+`a1f09b7` on the fourth review:
 
-1. All twenty-two tickets are committed, one conventional commit each, in order,
+1. [x] All twenty-two tickets are committed, one conventional commit each, in order,
    `S1-01` … `S1-22`.
-2. `make check` is green — all five gates, unchanged in number and definition.
-3. **`make cover` is green: `internal/domain` ≥ 90.0% and `internal/service` ≥ 90.0%,
+2. [x] `make check` is green — all five gates, unchanged in number and definition.
+3. [x] **`make cover` is green: `internal/domain` ≥ 90.0% and `internal/service` ≥ 90.0%,
    measured per package** by
    `go test -covermode=atomic -coverprofile=… ./internal/{domain,service}/...` and read
-   off the `total:` line of `go tool cover -func=…`.
-4. Every rule in `PLAN.md` §4 has table-driven tests, and specifically these four named
+   off the `total:` line of `go tool cover -func=…`. **Actual, re-measured after
+   `go clean -testcache`: `internal/domain` 100.0%, `internal/service` 92.9%.**
+4. [x] Every rule in `PLAN.md` §4 has table-driven tests, and specifically these four named
    edge cases each have a findable, named subtest:
    - **parent → Done cascades** to every unfinished descendant **that has a Kanban
      column** (D10 — `note` and `habit` descendants are skipped), sets `completed_at`,
@@ -2020,27 +2051,139 @@ Stage 1 closes only when **all** of these hold:
    - **overlapping timers** are impossible — exactly one open entry, enforced by the
      service *and* by the schema (S1-05, S1-15, S1-19),
    - **`due_source` transitions**, all four (S1-08, S1-18).
-5. The FTS5 decision is recorded in S1-04's commit body and S1-17 implements that
+5. [x] The FTS5 decision is recorded in S1-04's commit body and S1-17 implements that
    branch and only that branch.
-6. `CGO_ENABLED=0 go build ./...` succeeds and `go list -deps ./... | grep -i mattn`
+6. [x] `CGO_ENABLED=0 go build ./...` succeeds and `go list -deps ./... | grep -i mattn`
    prints nothing.
-7. `internal/domain` is still pure — `TestDomainIsPure` and `TestDomainReadsNoClock`
+7. [x] `internal/domain` is still pure — `TestDomainIsPure` and `TestDomainReadsNoClock`
    pass **unmodified**.
-8. `git status --porcelain` is empty after a full `make check && make cover`; no
+8. [x] `git status --porcelain` is empty after a full `make check && make cover`; no
    `*.db` and no `coverage*.out` in the tree.
-9. `git log` shows no AI author and no co-author trailer on any commit.
-10. `0001_settings.sql` is byte-identical to its Stage 0 state.
-11. **The Reviewer re-checks the three failed reviews' fixes and returns PASS.** This one
-    has **not** happened. Criteria 1–10 hold today and the stage is still **NOT
-    CLOSED**: per `PLAN.md` §5, no stage closes without a PASS. Nothing in Stage 2
-    starts before it.
+9. [x] `git log` shows no AI author and no co-author trailer on any commit.
+10. [x] `0001_settings.sql` is byte-identical to its Stage 0 state.
+11. [x] **The Reviewer re-checks the three failed reviews' fixes and returns PASS.**
+    This happened on the **fourth** review, at `a1f09b7`: the fixes for all three
+    earlier FAILs were re-checked, coverage was re-measured from a cleared test cache,
+    and an independent grep confirmed the generalised wording of D2 and D9. Per
+    `PLAN.md` §5 a stage cannot close without a PASS — this is that PASS.
 
-**Out of Stage 1 scope** (do not start): any Wails binding or `app.go` method, any
+Nothing was marked done that was not actually verified.
+
+**Out of Stage 1 scope, and it stayed out**: any Wails binding or `app.go` method, any
 `frontend/` change, Kanban, the habit strip, quick-add, the command palette, the tray,
 D-Bus sleep/lock handling, attachment file copying, backup/export, the PMP timelog
-generator, the calendar, stats and Gantt. Also **not** in scope: the **K1** locale
-workaround, and the two issues **K2** (a leaf project's stale stored status now
-decides whether it counts as done) and **K3** (an empty project stored `done` renders
-in Done with no bar). All three are **recorded, not scheduled** — those decisions
-belong to Stage 2. **K4 is not on this list**: a no-column type taking children was a
-real defect, and it is **fixed** in `9664506`, not deferred.
+generator, the calendar, stats and Gantt. Also out of scope: the **K1** locale
+workaround, **K2** (a leaf project's stale stored status now decides whether it counts
+as done) and **K3** (an empty project stored `done` renders in Done with no bar). Those
+three are open and now belong to Stage 2 — see below. **K4 is not among them**: a
+no-column type taking children was a real defect, **fixed** in `9664506`, and it is
+kept on the record in `PLAN.md` §7 as **RESOLVED** rather than deleted.
+
+---
+
+## Carried into Stage 2
+
+**These are Stage 2 acceptance criteria, not suggestions.** Stage 1 closed clean, but it
+closed owing five things. Each one is here because it will otherwise be forgotten: two
+are couplings and costs no ticket ever picked up, three are the open known issues.
+Whoever plans Stage 2 must turn every item below into a ticket with a checkable
+criterion, or state explicitly why not.
+
+### C1 — Wire `MoveToColumn(doing)` to `TimerService.Start`
+
+`PLAN.md` §4 couples them: *"Moving a card to Doing opens a `time_entry`."* **No Stage 1
+ticket did the wiring.** `TaskService.MoveToColumn` and `TimerService.Start` are both
+implemented, both tested, and merely composable — nothing calls one from the other. The
+Reviewer's warning: unless this is an **explicit Stage 2 acceptance criterion**, the
+coupling silently never ships and the product quietly loses a §4 rule.
+
+It is therefore already written into the §5 Stage 2 acceptance cell in `PLAN.md`:
+*moving a card to Doing must itself open a `time_entry`*. Stage 2 must have a test that
+fails if the wiring is removed.
+
+- [ ] Moving a node to `doing` opens exactly one `time_entry` for it, in the same
+      transaction semantics as the move.
+- [ ] The single-active-timer invariant still holds: moving a second card to `doing`
+      closes the first card's entry rather than opening a concurrent one.
+- [ ] A move refused by `domain.DoingRefusal` (a `project`) opens **no** entry.
+
+### C2 — `Board()` is O(n²·log n); fix it before the board is on screen
+
+`snapshot.view` (`internal/service/read.go`) calls `domain.DeriveStatus` and
+`domain.ComputeProgress` with the **whole node slice**, and each of those rebuilds
+`indexByID` from scratch — so the index is rebuilt **once per node** and assembling the
+board is O(n²·log n). At the ~200 nodes a real personal board holds this is invisible;
+at 10k it is not. Fix it **before** the Kanban renders, not after — once the UI is live
+the regression is a user-visible stutter and the fix competes with feature work.
+
+- [ ] The index is built once per `Board()` call, not once per node.
+- [ ] `internal/domain` stays pure and keeps its single spelling of each rule — the fix
+      is an indexing change, not a second derivation path.
+- [ ] A benchmark or a sized test documents the complexity change.
+
+### C3 — K1: `BackgroundColour` never reaches GTK under `LC_NUMERIC=ru_RU.UTF-8`
+
+Upstream Wails formats the window background's alpha with the **process** locale at
+`window.c:205`, emitting `rgba(27, 38, 54, 0,0)`; GTK's CSS parser rejects the comma and
+the background is **silently** never applied. Three options are recorded in `PLAN.md`
+§7 — force `LC_NUMERIC=C` before `wails.Run`, leave the window transparent and let the
+frontend paint it, or patch and pin a fork — and **none is chosen**. Choose it **with
+the palette work**, where the window background first has to match a token.
+
+- [ ] One of the three options is chosen, recorded as a decision, and implemented.
+- [ ] The dark theme shows no flash of a wrong background on this machine.
+
+### C4 — K2: a leaf project's stale *stored* status has teeth
+
+Since **D11** a leaf project's stored status decides whether it counts as done in its
+parent's denominator. **Archiving the last real child of a project that an earlier
+cascade wrote `done`** leaves that project counted as a **done** unit on a status nobody
+set deliberately. The state is self-consistent — column and bar agree — so it is not a
+contradiction, which is exactly why it will not announce itself.
+
+- [ ] Stage 2 rules on whether a project's stored status is re-inspected when its last
+      child is archived, and the ruling is recorded as a decision in `PLAN.md` §7.
+
+### C5 — K3: an empty project stored `done` renders in Done with no bar
+
+Its own progress is undefined (**D11**, part 1) so no bar is drawn, while its status
+puts the card in the Done column. **It is the one place a finished card shows nothing.**
+This is a card-chrome decision.
+
+- [ ] The card-chrome work decides what a done-but-unmeasurable card renders, and the
+      decision is recorded.
+
+### Engineering note — one rule, one spelling. In TypeScript too.
+
+**Three of Stage 1's four review rounds failed on the same defect**: a type rule written
+down in two places and edited in one. Every one of those duplicates was a door illegal
+rows walked through, and the worst of them — K4 — had been written off in the plan as
+harmless before a sweep attributed ~33,100 invariant violations to it.
+
+The inventory is **clean** as of `9664506`. Each of these is **the single definition of
+its rule**:
+
+| Rule | Single spelling |
+|---|---|
+| does this type get a Kanban column? | `domain.NodeType.HasColumn` |
+| may this type carry a due date? | `domain.NodeType.HasDue` |
+| may this node be `doing` / be timed? | `domain.DoingRefusal`, with `NodeType.CanBeDoing` defined in terms of it |
+| is this a unit of work for progress? | `countsAsWork` |
+| a habit must have a recurrence | the habit-requires-recurrence check |
+| default activity for a type | `DefaultActivity` |
+
+`countsAsWork` and `DoingRefusal` admit the same set of types **today** but answer
+different questions (D7/D11 versus D9); they are kept separate on purpose and must not
+be merged.
+
+**Stage 2 must not introduce a second spelling of any of them — in Go or in
+TypeScript.** The frontend renders what Go returns and **re-implements none of these
+rules**: not a status, not a column eligibility, not "can this be dragged to Doing", not
+progress, not a streak, not an overdue flag, not a due date. Every derived value arrives
+as a plain field on the DTO. A rule re-derived in a React component is a second
+spelling, and a second spelling is the defect class that cost this project three review
+rounds.
+
+- [ ] No Stage 2 ticket adds a second implementation of any row in the table above.
+- [ ] No `frontend/src` file computes a status, progress, streak, overdue flag or column
+      eligibility.
