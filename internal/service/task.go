@@ -68,18 +68,31 @@ func (b sqlBeginner) Begin(ctx context.Context) (Tx, error) {
 // The Clock is the one the domain rules are handed, and newID is the uuid source
 // (generating ids is a service concern, never a domain one), so every test is
 // deterministic and every assertion is on an exact value.
+//
+// # It owns the timer coupling too (D13)
+//
+// PLAN.md §4 says moving a card to Doing opens a time entry, and D13 settles the
+// rest of it. The timer service is a collaborator rather than something the
+// caller composes afterwards, because "afterwards" is a second transaction: the
+// move would commit and the timer might not. It is a REQUIRED collaborator for
+// the same reason there is only one MoveToColumn — an optional coupling is a
+// coupling somebody constructs their way around.
 type TaskService struct {
 	db    Beginner
 	nodes *store.NodeRepo
 	tags  *store.TagRepo
+	timer *TimerService
 	clock Clock
 	newID func() string
 }
 
-// NewTaskService returns a service over the repositories, the clock and the id
-// generator.
-func NewTaskService(db Beginner, nodes *store.NodeRepo, tags *store.TagRepo, clock Clock, newID func() string) *TaskService {
-	return &TaskService{db: db, nodes: nodes, tags: tags, clock: clock, newID: newID}
+// NewTaskService returns a service over the repositories, the timer service, the
+// clock and the id generator.
+//
+// timer is not optional: MoveToColumn drives it inside its own transaction
+// (D13), and a nil one would be a card in Doing with no entry behind it.
+func NewTaskService(db Beginner, nodes *store.NodeRepo, tags *store.TagRepo, timer *TimerService, clock Clock, newID func() string) *TaskService {
+	return &TaskService{db: db, nodes: nodes, tags: tags, timer: timer, clock: clock, newID: newID}
 }
 
 // inTx runs fn inside one transaction, committing on success and rolling back
@@ -330,9 +343,18 @@ func samePointer(a, b *string) bool {
 //  2. a node whose TYPE has no column is refused outright (PLAN.md §4),
 //  3. domain.DueForColumnMove decides the due date and its provenance (D1),
 //  4. the due date is written, then the cascade is applied in one statement,
-//  5. updated_at is stamped on everything either of them touched.
+//  5. updated_at is stamped on everything either of them touched,
+//  6. the timer is coupled to the move (D13) — see coupleTimer.
 //
-// Either all of it lands or none of it does.
+// Either all of it lands or none of it does, the time entry included: if the
+// timer insert fails, the card does not stay in Doing.
+//
+// # This is the only move-to-column entry point, on purpose (D13)
+//
+// There is no uncoupled variant to bind by mistake. Two methods, one that opens
+// a time entry and one that does not, is a second spelling of PLAN.md §4's rule
+// with a call-site-shaped fuse: the day a new caller picks the wrong one, the
+// coupling is gone for that path only and nothing fails.
 //
 // The due rule is applied to the dragged node only. D1 describes the column move
 // as writing "the" due date of the card that moved, and a cascade that also
@@ -390,6 +412,13 @@ func (s *TaskService) MoveToColumn(ctx context.Context, nodeID string, target do
 			return err
 		}
 
+		// After the statuses are written, so that the timer sees the node as it
+		// now is: canBeTimed refuses a done node, and a card dragged out of Done
+		// into Doing is not done any more by this point.
+		if err := s.coupleTimer(ctx, exec, nodeID, changes); err != nil {
+			return err
+		}
+
 		moved, err = nodes.Get(ctx, nodeID)
 		return err
 	})
@@ -397,6 +426,65 @@ func (s *TaskService) MoveToColumn(ctx context.Context, nodeID string, target do
 		return domain.Node{}, err
 	}
 	return moved, nil
+}
+
+// coupleTimer is the Doing↔timer coupling (C1, D13), applied inside the move's
+// own transaction.
+//
+// # It reads the plan, and asks no new question about a type
+//
+// Everything it needs is already in the cascade domain.PlanCascade produced, and
+// that is deliberate: this ticket adds no predicate. Who may be doing is
+// domain.DoingRefusal's answer, applied by PlanCascade before this runs (D9), so
+// a project or a no-column type has failed the move already and there is nothing
+// here to re-decide.
+//
+//   - LEAVING doing closes the entry (D13 §3). Whichever node the single global
+//     timer is running on, if the plan writes a status other than doing onto it,
+//     its entry is closed — to any column, done included. A timer still running
+//     on a card the user has moved on from is wrong in the data and, through
+//     TimerView.Running, visibly wrong on screen.
+//
+//   - A DIRECT move to doing opens one (D13 §1). "Direct" is not a new rule
+//     either: PlanCascade names the dragged node itself exactly when the drag
+//     landed on a leaf, and names only its descendants when it did not. So a plan
+//     that contains the dragged node IS the direct move, and a cascade — the
+//     drag of a parent, which could put twelve leaves into Doing — contains only
+//     descendants and opens nothing (D13 §2). There is no principled way to pick
+//     which of twelve cards the one global timer belongs to, and a cascade is a
+//     planning gesture rather than a "start working now" one.
+//
+// start closes whatever else was running before it opens, which is the existing
+// single-active invariant reached through the existing code path, not a second
+// copy of it.
+func (s *TaskService) coupleTimer(ctx context.Context, exec store.Executor, nodeID string, changes []domain.StatusChange) error {
+	running, err := s.timer.running(ctx, exec)
+	if err != nil {
+		return err
+	}
+
+	if running != nil {
+		for _, c := range changes {
+			if c.NodeID != running.NodeID || c.Status == domain.StatusDoing {
+				continue
+			}
+			if _, err := s.timer.stop(ctx, exec); err != nil {
+				return err
+			}
+			break
+		}
+	}
+
+	for _, c := range changes {
+		if c.NodeID != nodeID || c.Status != domain.StatusDoing {
+			continue
+		}
+		if _, err := s.timer.start(ctx, exec, nodeID); err != nil {
+			return err
+		}
+		break
+	}
+	return nil
 }
 
 // SetDue is the user editing a due date by hand, which is why it is a different

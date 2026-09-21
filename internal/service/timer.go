@@ -111,48 +111,71 @@ func runInTx(ctx context.Context, b Beginner, fn func(exec store.Executor) error
 // back, with its original started_at. Restarting it would fragment the log into
 // two rows and reset the elapsed time the user is watching, which is not what
 // pressing start again means.
+// It is this method's own transaction, and the work itself is start below —
+// which TaskService.MoveToColumn drives inside the MOVE's transaction, so that
+// D13's "the timer opens in the same transaction as the move" is one code path
+// and not two.
 func (s *TimerService) Start(ctx context.Context, nodeID string) (domain.TimeEntry, error) {
 	var started domain.TimeEntry
 
 	err := runInTx(ctx, s.db, func(exec store.Executor) error {
-		nodes := s.nodes.WithExecutor(exec)
-		entries := s.entries.WithExecutor(exec)
-
-		node, err := nodes.Get(ctx, nodeID)
-		if err != nil {
-			return err
-		}
-		children, err := nodes.ListChildren(ctx, &nodeID, true)
-		if err != nil {
-			return err
-		}
-		if err := canBeTimed(node, children); err != nil {
-			return err
-		}
-
-		// What is running now, if anything.
-		open, err := entries.OpenEntry(ctx)
-		switch {
-		case err == nil && open.NodeID == nodeID:
-			// Already running here: hand back the entry that is going, rather
-			// than stopping and restarting it.
-			started = open
-			return nil
-		case err == nil:
-			if err := entries.Close(ctx, open.ID, s.clock()); err != nil {
-				return err
-			}
-		case !errors.Is(err, store.ErrNotFound):
-			return err
-		}
-
-		started, err = entries.Open(ctx, s.newID(), nodeID, s.clock())
+		var err error
+		started, err = s.start(ctx, exec, nodeID)
 		return err
 	})
 	if err != nil {
 		return domain.TimeEntry{}, err
 	}
 	return started, nil
+}
+
+// start is Start's body, bound to an executor the CALLER owns.
+//
+// It is unexported and takes the executor because the Doing↔timer coupling
+// (D13, S2-03) has to run inside the move's transaction: if the move commits and
+// the timer does not, PLAN.md §4's coupling is a lie for as long as it takes the
+// user to notice. Both callers drive this function, so the single-active
+// invariant — close whatever is running, then open — keeps its one spelling
+// here, above the schema's `one_open_timer` index.
+func (s *TimerService) start(ctx context.Context, exec store.Executor, nodeID string) (domain.TimeEntry, error) {
+	nodes := s.nodes.WithExecutor(exec)
+	entries := s.entries.WithExecutor(exec)
+
+	node, err := nodes.Get(ctx, nodeID)
+	if err != nil {
+		return domain.TimeEntry{}, err
+	}
+	children, err := nodes.ListChildren(ctx, &nodeID, true)
+	if err != nil {
+		return domain.TimeEntry{}, err
+	}
+	if err := canBeTimed(node, children); err != nil {
+		return domain.TimeEntry{}, err
+	}
+
+	// What is running now, if anything.
+	open, err := entries.OpenEntry(ctx)
+	switch {
+	case err == nil && open.NodeID == nodeID:
+		// Already running here: hand back the entry that is going, rather
+		// than stopping and restarting it.
+		return open, nil
+	case err == nil:
+		if err := entries.Close(ctx, open.ID, s.clock()); err != nil {
+			return domain.TimeEntry{}, err
+		}
+	case !errors.Is(err, store.ErrNotFound):
+		return domain.TimeEntry{}, err
+	}
+
+	return entries.Open(ctx, s.newID(), nodeID, s.clock())
+}
+
+// running returns the single open entry seen through exec, or nil when nothing
+// is running. It is loadRunning — the read path's one spelling of the question —
+// bound to the caller's transaction.
+func (s *TimerService) running(ctx context.Context, exec store.Executor) (*domain.TimeEntry, error) {
+	return loadRunning(ctx, s.entries.WithExecutor(exec))
 }
 
 // canBeTimed reports why a timer may not run on n, or nil.
@@ -193,7 +216,28 @@ func canBeTimed(n domain.Node, children []domain.Node) error {
 // keyboard shortcut and Stage 4's sleep handler will all call it without
 // knowing, and an error there would be an error the user cannot act on.
 func (s *TimerService) Stop(ctx context.Context) (*domain.TimeEntry, error) {
-	open, err := s.entries.OpenEntry(ctx)
+	var stopped *domain.TimeEntry
+
+	err := runInTx(ctx, s.db, func(exec store.Executor) error {
+		var err error
+		stopped, err = s.stop(ctx, exec)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return stopped, nil
+}
+
+// stop is Stop's body, bound to an executor the caller owns — the closing half
+// of the coupling start's comment describes. D13 §3: a node that leaves doing
+// loses its open entry in the same transaction as the move that took it out,
+// because a card sitting in Done with a running timer is wrong in the data and
+// visibly wrong on screen.
+func (s *TimerService) stop(ctx context.Context, exec store.Executor) (*domain.TimeEntry, error) {
+	entries := s.entries.WithExecutor(exec)
+
+	open, err := entries.OpenEntry(ctx)
 	if errors.Is(err, store.ErrNotFound) {
 		return nil, nil
 	}
@@ -202,7 +246,7 @@ func (s *TimerService) Stop(ctx context.Context) (*domain.TimeEntry, error) {
 	}
 
 	at := s.clock()
-	if err := s.entries.Close(ctx, open.ID, at); err != nil {
+	if err := entries.Close(ctx, open.ID, at); err != nil {
 		return nil, err
 	}
 

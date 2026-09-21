@@ -71,8 +71,19 @@ func newFixture(t *testing.T) *fixture {
 		search:  store.NewSearchRepo(db),
 		now:     testNow,
 	}
-	f.tasks = service.NewTaskService(f.begin, f.nodes, f.tags, f.clock(), f.nextID)
+	f.tasks = service.NewTaskService(f.begin, f.nodes, f.tags, f.timers(), f.clock(), f.nextID)
 	return f
+}
+
+// tasksOver returns a task service over a substitute Beginner — the brittle and
+// blocked transactions the failure-path tests inject — with everything else the
+// fixture's. The timer collaborator is required (D13, S2-03), and it is the
+// fixture's own: the coupled path runs on the executor the TASK service's
+// transaction hands it, so an injected failure reaches the timer too.
+func (f *fixture) tasksOver(begin service.Beginner) *service.TaskService {
+	f.t.Helper()
+
+	return service.NewTaskService(begin, f.nodes, f.tags, f.timers(), f.clock(), f.nextID)
 }
 
 // clock is the injected Clock: it reads f.now every time, so a test can move
@@ -1271,8 +1282,7 @@ func TestMoveToColumnRollsBackAPartialCascade(t *testing.T) {
 
 	// One successful Exec — the due-date write — then the cascade's own
 	// statement fails.
-	brittle := service.NewTaskService(
-		failingBeginner{inner: f.begin, after: 1}, f.nodes, f.tags, f.clock(), f.nextID)
+	brittle := f.tasksOver(failingBeginner{inner: f.begin, after: 1})
 
 	_, err := brittle.MoveToColumn(ctx, ids["p"], domain.StatusToday)
 	if !errors.Is(err, errBoom) {
@@ -1296,8 +1306,7 @@ func TestCreateNodeRollsBackAFailedInsert(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
 
-	brittle := service.NewTaskService(
-		failingBeginner{inner: f.begin, after: 0}, f.nodes, f.tags, f.clock(), f.nextID)
+	brittle := f.tasksOver(failingBeginner{inner: f.begin, after: 0})
 
 	if _, err := brittle.CreateNode(ctx, draft("x", domain.NodeTypeTask, nil)); !errors.Is(err, errBoom) {
 		t.Fatalf("CreateNode = %v, want the injected errBoom", err)
@@ -1553,7 +1562,7 @@ func TestWritePathsSurfaceTransactionFailures(t *testing.T) {
 						}
 					}
 
-					brittle := service.NewTaskService(b.of(f), f.nodes, f.tags, f.clock(), f.nextID)
+					brittle := f.tasksOver(b.of(f))
 					if err := c.call(f, brittle); err == nil {
 						t.Fatal("the call succeeded; want the injected failure")
 					}
@@ -1569,10 +1578,9 @@ func TestAFailedRollbackIsJoinedOntoTheOriginalError(t *testing.T) {
 	f := newFixture(t)
 	n := f.create(draft("seed", domain.NodeTypeTask, nil))
 
-	brittle := service.NewTaskService(
-		wrappingBeginner{inner: f.begin, wrap: func(tx service.Tx) service.Tx {
-			return rollbackFailingTx{Tx: tx}
-		}}, f.nodes, f.tags, f.clock(), f.nextID)
+	brittle := f.tasksOver(wrappingBeginner{inner: f.begin, wrap: func(tx service.Tx) service.Tx {
+		return rollbackFailingTx{Tx: tx}
+	}})
 
 	_, err := brittle.MoveToColumn(context.Background(), n.ID, domain.StatusToday)
 	if !errors.Is(err, errBoom) {
@@ -1588,10 +1596,9 @@ func TestAFailedRollbackIsJoinedOntoTheOriginalError(t *testing.T) {
 func TestAFailedCommitIsReported(t *testing.T) {
 	f := newFixture(t)
 
-	brittle := service.NewTaskService(
-		wrappingBeginner{inner: f.begin, wrap: func(tx service.Tx) service.Tx {
-			return commitFailingTx{Tx: tx}
-		}}, f.nodes, f.tags, f.clock(), f.nextID)
+	brittle := f.tasksOver(wrappingBeginner{inner: f.begin, wrap: func(tx service.Tx) service.Tx {
+		return commitFailingTx{Tx: tx}
+	}})
 
 	if _, err := brittle.CreateNode(context.Background(), draft("x", domain.NodeTypeTask, nil)); !errors.Is(err, errCommit) {
 		t.Fatalf("CreateNode = %v, want the injected commit failure", err)
@@ -1608,4 +1615,289 @@ func (tx commitFailingTx) Commit() error {
 		return err
 	}
 	return errCommit
+}
+
+// ---------------------------------------------------------------------------
+// C1 / D13 — the Doing↔timer coupling.
+//
+// PLAN.md §4: "Moving a card to Doing opens a time_entry." Stage 1 wrote both
+// halves and wired neither; these are the tests that make the wiring impossible
+// to remove quietly.
+
+// D13 §1: a direct move of a timeable leaf to doing opens exactly one entry,
+// committed with the move.
+func TestMoveToDoingOpensExactlyOneTimeEntry(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	n := f.create(draft("the card", domain.NodeTypeTask, nil))
+
+	if _, err := f.tasks.MoveToColumn(ctx, n.ID, domain.StatusDoing); err != nil {
+		t.Fatalf("MoveToColumn(doing): %v", err)
+	}
+
+	if got := f.openEntries(); got != 1 {
+		t.Fatalf("%d open entries, want exactly 1", got)
+	}
+	entries := f.entriesOf(n.ID)
+	if len(entries) != 1 {
+		t.Fatalf("%d entries on the card, want 1", len(entries))
+	}
+	if !entries[0].IsOpen() {
+		t.Error("the entry is closed; the card is in Doing and the timer must be running")
+	}
+	if !entries[0].StartedAt.Equal(testNow) {
+		t.Errorf("started_at = %s, want the injected clock's %s", entries[0].StartedAt, testNow)
+	}
+	if got := f.get(n.ID).Status; got != domain.StatusDoing {
+		t.Errorf("the card's status = %q, want doing", got)
+	}
+}
+
+// Atomicity, the half that is easy to get wrong: the move must not survive a
+// timer that did not open. If it did, a card would sit in Doing with no entry
+// behind it and §4's coupling would be a lie for that card for ever.
+func TestMoveToDoingRollsBackWhenTheTimerInsertFails(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	n := f.create(draft("the card", domain.NodeTypeTask, nil))
+	before := f.all()
+
+	f.now = testNow.Add(time.Hour)
+
+	// Two Execs succeed — the due-date write and the cascade — and the third,
+	// which is the time entry's INSERT, fails.
+	brittle := f.tasksOver(failingBeginner{inner: f.begin, after: 2})
+
+	if _, err := brittle.MoveToColumn(ctx, n.ID, domain.StatusDoing); !errors.Is(err, errBoom) {
+		t.Fatalf("MoveToColumn = %v, want the injected errBoom", err)
+	}
+
+	if got := f.openEntries(); got != 0 {
+		t.Errorf("%d open entries, want 0", got)
+	}
+	if after := f.all(); !reflect.DeepEqual(before, after) {
+		t.Errorf("the move survived a timer that did not open:\n got %+v\nwant %+v", after, before)
+	}
+	if got := f.get(n.ID).Status; got == domain.StatusDoing {
+		t.Error("the card is in Doing with no time entry behind it")
+	}
+}
+
+// The single-active invariant, re-asserted through the coupled path: it is the
+// same TimerService.start underneath, not a second copy of the policy.
+func TestMovingASecondCardToDoingClosesTheFirstsEntry(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	a := f.create(draft("a", domain.NodeTypeTask, nil))
+	b := f.create(draft("b", domain.NodeTypeTask, nil))
+
+	if _, err := f.tasks.MoveToColumn(ctx, a.ID, domain.StatusDoing); err != nil {
+		t.Fatalf("MoveToColumn(a, doing): %v", err)
+	}
+	f.now = testNow.Add(10 * time.Minute)
+	if _, err := f.tasks.MoveToColumn(ctx, b.ID, domain.StatusDoing); err != nil {
+		t.Fatalf("MoveToColumn(b, doing): %v", err)
+	}
+
+	if got := f.openEntries(); got != 1 {
+		t.Fatalf("%d open entries, want exactly 1 — never two", got)
+	}
+
+	entriesA := f.entriesOf(a.ID)
+	if len(entriesA) != 1 || entriesA[0].IsOpen() {
+		t.Errorf("A's entries = %+v, want exactly one, closed", entriesA)
+	}
+	if entriesA[0].EndedAt == nil || !entriesA[0].EndedAt.Equal(f.now.UTC()) {
+		t.Errorf("A's entry ended at %v, want the injected clock's %s", entriesA[0].EndedAt, f.now)
+	}
+	entriesB := f.entriesOf(b.ID)
+	if len(entriesB) != 1 || !entriesB[0].IsOpen() {
+		t.Errorf("B's entries = %+v, want exactly one, open", entriesB)
+	}
+}
+
+// D13 §2: a cascade opens no timer. Dragging a parent to Doing puts every
+// unfinished leaf under it into the Doing column; the single active timer is
+// global, so at most one of them could have it and there is no principled way to
+// choose. A cascade is a planning gesture, not a "start working now" one.
+func TestACascadeToDoingOpensNoTimer(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	// A TASK with subtasks, not a project: a project is refused the Doing
+	// column outright (D9), so it could never reach the cascade at all.
+	p := f.create(draft("parent", domain.NodeTypeTask, nil))
+	one := f.create(draft("one", domain.NodeTypeTask, &p.ID))
+	two := f.create(draft("two", domain.NodeTypeTask, &p.ID))
+
+	if _, err := f.tasks.MoveToColumn(ctx, p.ID, domain.StatusDoing); err != nil {
+		t.Fatalf("MoveToColumn(parent, doing): %v", err)
+	}
+
+	// The parent itself gets no stored status — it DERIVES doing from the
+	// leaves (D2) — so the plan named only the two children.
+	if got := f.get(p.ID).Status; got == domain.StatusDoing {
+		t.Fatalf("the parent was stored as doing; the cascade must leave a parent's status alone")
+	}
+
+	// The cascade really did happen — otherwise "no timer" would be a fact
+	// about nothing.
+	for _, id := range []string{one.ID, two.ID} {
+		if got := f.get(id).Status; got != domain.StatusDoing {
+			t.Fatalf("child %q is %q, want doing — the cascade did not run", id, got)
+		}
+	}
+	if got := f.openEntries(); got != 0 {
+		t.Errorf("%d open entries, want 0 — a cascade opens none", got)
+	}
+}
+
+// D13 §3: leaving doing closes the entry, for every destination including done.
+func TestMovingOutOfDoingClosesTheEntry(t *testing.T) {
+	ctx := context.Background()
+
+	for _, target := range []domain.Status{
+		domain.StatusBacklog,
+		domain.StatusWeek,
+		domain.StatusToday,
+		domain.StatusDone,
+	} {
+		t.Run(string(target), func(t *testing.T) {
+			f := newFixture(t)
+			n := f.create(draft("the card", domain.NodeTypeTask, nil))
+
+			if _, err := f.tasks.MoveToColumn(ctx, n.ID, domain.StatusDoing); err != nil {
+				t.Fatalf("MoveToColumn(doing): %v", err)
+			}
+			if got := f.openEntries(); got != 1 {
+				t.Fatalf("%d open entries after the move to doing, want 1", got)
+			}
+
+			f.now = testNow.Add(25 * time.Minute)
+			if _, err := f.tasks.MoveToColumn(ctx, n.ID, target); err != nil {
+				t.Fatalf("MoveToColumn(%s): %v", target, err)
+			}
+
+			if got := f.openEntries(); got != 0 {
+				t.Errorf("%d open entries after moving to %s, want 0", got, target)
+			}
+			entries := f.entriesOf(n.ID)
+			if len(entries) != 1 {
+				t.Fatalf("%d entries on the card, want 1", len(entries))
+			}
+			if entries[0].EndedAt == nil {
+				t.Fatalf("the entry is still open after the card moved to %s", target)
+			}
+			if !entries[0].EndedAt.Equal(f.now.UTC()) {
+				t.Errorf("ended_at = %s, want the injected clock's %s", entries[0].EndedAt, f.now)
+			}
+		})
+	}
+}
+
+// D9, reached through the coupling: a project is refused the Doing column, so
+// there is no move for a timer to be coupled to. It must not open one, and it
+// must not close somebody else's.
+func TestMovingAProjectToDoingTouchesNoTimer(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	running := f.create(draft("a real task", domain.NodeTypeTask, nil))
+	p := f.create(draft("a project", domain.NodeTypeProject, nil))
+
+	if _, err := f.tasks.MoveToColumn(ctx, running.ID, domain.StatusDoing); err != nil {
+		t.Fatalf("MoveToColumn(task, doing): %v", err)
+	}
+
+	_, err := f.tasks.MoveToColumn(ctx, p.ID, domain.StatusDoing)
+	if !errors.Is(err, domain.ErrProjectNeverDoing) {
+		t.Fatalf("MoveToColumn(project, doing) = %v, want ErrProjectNeverDoing", err)
+	}
+
+	if got := f.openEntries(); got != 1 {
+		t.Errorf("%d open entries, want the task's 1 — the refused move must neither open nor close", got)
+	}
+	if got := len(f.entriesOf(p.ID)); got != 0 {
+		t.Errorf("%d entries on the project, want 0", got)
+	}
+	entries := f.entriesOf(running.ID)
+	if len(entries) != 1 || !entries[0].IsOpen() {
+		t.Errorf("the task's entries = %+v, want exactly one, still open", entries)
+	}
+}
+
+// A type with no Kanban column is refused the move as before (PLAN.md §4), and
+// the refusal reaches the timer no more than the move reaches the board.
+func TestMovingANoColumnTypeToDoingTouchesNoTimer(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	d := draft("stretch every morning", domain.NodeTypeHabit, nil)
+	d.Recurrence = ptr("FREQ=DAILY")
+	h := f.create(d)
+	memo := f.create(draft("a memo", domain.NodeTypeNote, nil))
+
+	for _, n := range []domain.Node{h, memo} {
+		t.Run(string(n.Type), func(t *testing.T) {
+			_, err := f.tasks.MoveToColumn(ctx, n.ID, domain.StatusDoing)
+			if !errors.Is(err, domain.ErrTypeHasNoColumn) {
+				t.Fatalf("MoveToColumn(%s, doing) = %v, want ErrTypeHasNoColumn", n.Type, err)
+			}
+			if got := f.openEntries(); got != 0 {
+				t.Errorf("%d open entries, want 0", got)
+			}
+			if got := len(f.entriesOf(n.ID)); got != 0 {
+				t.Errorf("%d entries on the %s, want 0", got, n.Type)
+			}
+		})
+	}
+}
+
+// A timer opened by the timer service directly is closed by the move as well:
+// the coupling is about the node the entry is running on, not about how the
+// entry came to be open.
+func TestMovingOutOfDoingClosesAnEntryTheTimerServiceOpened(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	n := f.create(draft("the card", domain.NodeTypeTask, nil))
+
+	if _, err := f.timers().Start(ctx, n.ID); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	f.now = testNow.Add(5 * time.Minute)
+	if _, err := f.tasks.MoveToColumn(ctx, n.ID, domain.StatusDone); err != nil {
+		t.Fatalf("MoveToColumn(done): %v", err)
+	}
+
+	if got := f.openEntries(); got != 0 {
+		t.Errorf("%d open entries, want 0", got)
+	}
+}
+
+// Re-dropping a card that is already in Doing onto Doing is not a restart: the
+// entry that is running keeps its original started_at, exactly as
+// TimerService.Start already promised, because it IS TimerService.start.
+func TestMovingToDoingTwiceKeepsTheSameEntry(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	n := f.create(draft("the card", domain.NodeTypeTask, nil))
+
+	if _, err := f.tasks.MoveToColumn(ctx, n.ID, domain.StatusDoing); err != nil {
+		t.Fatalf("MoveToColumn(doing): %v", err)
+	}
+	f.now = testNow.Add(20 * time.Minute)
+	if _, err := f.tasks.MoveToColumn(ctx, n.ID, domain.StatusDoing); err != nil {
+		t.Fatalf("MoveToColumn(doing) again: %v", err)
+	}
+
+	entries := f.entriesOf(n.ID)
+	if len(entries) != 1 {
+		t.Fatalf("%d entries, want 1 — the second drop must not fragment the log", len(entries))
+	}
+	if !entries[0].StartedAt.Equal(testNow) {
+		t.Errorf("started_at = %s, want the original %s", entries[0].StartedAt, testNow)
+	}
+	if got := f.openEntries(); got != 1 {
+		t.Errorf("%d open entries, want 1", got)
+	}
 }

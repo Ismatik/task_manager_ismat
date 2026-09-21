@@ -832,11 +832,9 @@ func (f *fixture) countedTree(ctx context.Context, t *testing.T) int {
 	t.Helper()
 
 	count := 0
-	svc := service.NewTaskService(
-		wrappingBeginner{inner: f.begin, wrap: func(tx service.Tx) service.Tx {
-			return countingTx{Tx: tx, queries: &count}
-		}},
-		f.nodes, f.tags, f.clock(), f.nextID)
+	svc := f.tasksOver(wrappingBeginner{inner: f.begin, wrap: func(tx service.Tx) service.Tx {
+		return countingTx{Tx: tx, queries: &count}
+	}})
 
 	if _, err := svc.Tree(ctx, nil); err != nil {
 		t.Fatalf("Tree: %v", err)
@@ -886,7 +884,7 @@ func TestReadPathsSurfaceStoreFailures(t *testing.T) {
 
 	for name, begin := range beginners {
 		t.Run(name, func(t *testing.T) {
-			svc := service.NewTaskService(begin, f.nodes, f.tags, f.clock(), f.nextID)
+			svc := f.tasksOver(begin)
 
 			if _, err := svc.Tree(ctx, nil); err == nil {
 				t.Error("Tree succeeded")
