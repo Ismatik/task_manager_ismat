@@ -90,9 +90,34 @@ func (r *HabitCheckRepo) ChecksForNode(ctx context.Context, nodeID string, from,
 	               WHERE node_id = ? AND date >= ? AND date <= ?
 	               ORDER BY date`
 
-	rows, err := r.exec.QueryContext(ctx, query, nodeID, from.String(), to.String())
+	return r.checks(ctx, fmt.Sprintf("for %q", nodeID), query, nodeID, from.String(), to.String())
+}
+
+// ChecksInRange returns the checks of EVERY habit between from and to, both
+// ends inclusive, ordered by (node_id, date).
+//
+// It exists so that the habit strip costs a fixed number of queries rather than
+// one per habit (S2-04): HabitService.Strip reads the habits in one query and
+// their whole check history in this one, then indexes the result by node id, in
+// the same shape the board's snapshot uses. Calling ChecksForNode in a loop
+// would be the N+1 that shape exists to avoid.
+//
+// Like ChecksForNode it counts nothing and decides nothing — a streak is
+// domain.Streak's, over the rows this returns.
+func (r *HabitCheckRepo) ChecksInRange(ctx context.Context, from, to domain.Date) ([]domain.HabitCheck, error) {
+	const query = `SELECT node_id, date FROM habit_checks
+	               WHERE date >= ? AND date <= ?
+	               ORDER BY node_id, date`
+
+	return r.checks(ctx, "in range", query, from.String(), to.String())
+}
+
+// checks runs a (node_id, date) query and scans every row. subject names what
+// was being read, for the error message.
+func (r *HabitCheckRepo) checks(ctx context.Context, subject, query string, args ...any) ([]domain.HabitCheck, error) {
+	rows, err := r.exec.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("store: listing habit checks for %q: %w", nodeID, err)
+		return nil, fmt.Errorf("store: listing habit checks %s: %w", subject, err)
 	}
 	defer rows.Close() //nolint:errcheck // the error surfaces from rows.Err below
 
@@ -103,15 +128,15 @@ func (r *HabitCheckRepo) ChecksForNode(ctx context.Context, nodeID string, from,
 			date string
 		)
 		if err := rows.Scan(&c.NodeID, &date); err != nil {
-			return nil, fmt.Errorf("store: listing habit checks for %q: %w", nodeID, err)
+			return nil, fmt.Errorf("store: listing habit checks %s: %w", subject, err)
 		}
 		if c.Date, err = domain.ParseDate(date); err != nil {
-			return nil, fmt.Errorf("store: habit check %q: date: %w", nodeID, err)
+			return nil, fmt.Errorf("store: habit check %q: date: %w", c.NodeID, err)
 		}
 		out = append(out, c)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("store: listing habit checks for %q: %w", nodeID, err)
+		return nil, fmt.Errorf("store: listing habit checks %s: %w", subject, err)
 	}
 	return out, nil
 }

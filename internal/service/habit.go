@@ -45,13 +45,22 @@ func NewHabitService(nodes *store.NodeRepo, checks *store.HabitCheckRepo, clock 
 	return &HabitService{nodes: nodes, checks: checks, clock: clock}
 }
 
+// isHabit reports whether n is one of the rows this service answers for.
+//
+// One spelling, asked of the TYPE: the per-node methods below use it to refuse
+// everything else, and Strip uses it to decide who is on the strip. A membership
+// test written out a second time in Strip — or, worse, in TypeScript as
+// `type === 'habit'` over the tree — is the defect class this project has paid
+// for three times.
+func isHabit(n domain.Node) bool { return n.Type == domain.NodeTypeHabit }
+
 // habit loads nodeID and refuses anything that is not a habit.
 func (s *HabitService) habit(ctx context.Context, nodeID string) (domain.Node, error) {
 	n, err := s.nodes.Get(ctx, nodeID)
 	if err != nil {
 		return domain.Node{}, err
 	}
-	if n.Type != domain.NodeTypeHabit {
+	if !isHabit(n) {
 		return domain.Node{}, fmt.Errorf("service: node %q is a %s: %w", nodeID, n.Type, ErrNotAHabit)
 	}
 	return n, nil
@@ -128,8 +137,18 @@ func (s *HabitService) DueOn(ctx context.Context, nodeID string, date domain.Dat
 	if err != nil {
 		return false, err
 	}
+	return scheduledOn(n, date)
+}
+
+// scheduledOn reports whether date is a scheduled occurrence of n's rule.
+//
+// It takes the node rather than an id because the strip has already loaded
+// fifty of them and must not go back to the database per habit. DueOn is this
+// function with the load in front of it, so "is this day scheduled?" has one
+// answer whichever door asks it.
+func scheduledOn(n domain.Node, date domain.Date) (bool, error) {
 	if n.Recurrence == nil {
-		return false, fmt.Errorf("service: schedule of %q: %w", nodeID, domain.ErrNoRecurrence)
+		return false, fmt.Errorf("service: schedule of %q: %w", n.ID, domain.ErrNoRecurrence)
 	}
 
 	rule, err := domain.ParseRecurrence(*n.Recurrence)
@@ -137,4 +156,121 @@ func (s *HabitService) DueOn(ctx context.Context, nodeID string, date domain.Dat
 		return false, err
 	}
 	return rule.Matches(domain.DateOf(n.CreatedAt), date), nil
+}
+
+// Strip is the habits strip's whole read: every non-archived habit, in
+// sort_order then id, each with everything the strip draws (S2-04).
+//
+// # Why this exists at all
+//
+// Board() excludes habits by design (D2) and every other method here is per
+// node, so without this the frontend would list the tree, filter it by
+// `type === 'habit'` and then ask three more questions per habit. That is a
+// membership rule in TypeScript, an N+1, and a streak computed away from D5's
+// single implementation. Everything the strip needs arrives here, computed in
+// Go, in a fixed number of queries.
+//
+// # Fixed cost
+//
+// Two queries, whatever the habit count: one for the nodes and one for the
+// checks, then an index by node id — the same shape loadSnapshot uses for tags.
+// A habit's whole check history is read (from the earliest habit's creation day
+// to today) because that is what a streak walks backwards through.
+//
+// # What is on the strip
+//
+//   - membership is isHabit, the same type question the per-node methods ask;
+//   - a habit NESTED under a project appears exactly once, like any other. It
+//     contributes nothing to that project (D10), which is a different question
+//     with a different answer;
+//   - archived habits are excluded, as everywhere else;
+//   - habits that are not scheduled today are INCLUDED, carrying
+//     ScheduledToday = false. Whether the strip draws them is presentation.
+func (s *HabitService) Strip(ctx context.Context) ([]HabitView, error) {
+	// ListAll is already ordered by (sort_order, id) and already excludes
+	// archived rows; neither ordering nor the archive filter is re-implemented
+	// here.
+	nodes, err := s.nodes.ListAll(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+
+	habits := make([]domain.Node, 0, len(nodes))
+	for _, n := range nodes {
+		if isHabit(n) {
+			habits = append(habits, n)
+		}
+	}
+
+	today := domain.Today(s.clock)
+	checks, err := s.checkIndex(ctx, habits, today)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]HabitView, 0, len(habits))
+	for _, n := range habits {
+		// A misconfigured habit is an error, not a zero: 0 reads as "you broke
+		// your streak" and an empty strip reads as "you have no habits", and
+		// both are worse than being told the row is wrong.
+		scheduled, err := scheduledOn(n, today)
+		if err != nil {
+			return nil, fmt.Errorf("service: habit strip: %w", err)
+		}
+		streak, err := domain.Streak(n, checks[n.ID], s.clock)
+		if err != nil {
+			return nil, fmt.Errorf("service: habit strip: %w", err)
+		}
+
+		out = append(out, HabitView{
+			Node:           n,
+			ScheduledToday: scheduled,
+			CheckedToday:   checkedOn(checks[n.ID], today),
+			Streak:         streak,
+		})
+	}
+	return out, nil
+}
+
+// checkIndex reads the checks of every habit in one query and groups them by
+// node id.
+//
+// The window starts at the earliest habit's creation day, which is where the
+// earliest schedule can begin, and ends today. With no habits there is nothing
+// to read and no query is issued.
+func (s *HabitService) checkIndex(ctx context.Context, habits []domain.Node, today domain.Date) (map[string][]domain.HabitCheck, error) {
+	index := map[string][]domain.HabitCheck{}
+	if len(habits) == 0 {
+		return index, nil
+	}
+
+	from := domain.DateOf(habits[0].CreatedAt)
+	for _, n := range habits[1:] {
+		if created := domain.DateOf(n.CreatedAt); created.Before(from) {
+			from = created
+		}
+	}
+
+	all, err := s.checks.ChecksInRange(ctx, from, today)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range all {
+		index[c.NodeID] = append(index[c.NodeID], c)
+	}
+	return index, nil
+}
+
+// checkedOn reports whether today's check is among the ones already loaded.
+//
+// It is a lookup in rows the strip is holding anyway, not a second spelling of
+// IsChecked: the question is the same and so is the table, but asking the
+// database again per habit is the N+1 Strip exists to avoid.
+func checkedOn(checks []domain.HabitCheck, date domain.Date) bool {
+	for _, c := range checks {
+		if c.Date == date {
+			return true
+		}
+	}
+	return false
 }

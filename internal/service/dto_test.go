@@ -234,6 +234,7 @@ func TestEveryWireFieldIsTagged(t *testing.T) {
 		reflect.TypeOf(service.ProgressView{}),
 		reflect.TypeOf(service.TimerView{}),
 		reflect.TypeOf(service.ColumnView{}),
+		reflect.TypeOf(service.HabitView{}),
 		reflect.TypeOf(domain.Node{}),
 		reflect.TypeOf(domain.Tag{}),
 		reflect.TypeOf(domain.TimeEntry{}),
@@ -265,5 +266,56 @@ func TestEveryWireFieldIsTagged(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// The habit strip's entry is on the same contract as the board's card: explicit
+// lowerCamelCase keys, visible here (S2-02, S2-04).
+const goldenHabit = `{
+  "node": {
+    "id": "h1",
+    "parentId": null,
+    "type": "habit",
+    "title": "Stretch every morning",
+    "descriptionMd": "",
+    "status": "backlog",
+    "due": null,
+    "dueSource": "manual",
+    "priority": 4,
+    "estimateMin": null,
+    "recurrence": "FREQ=DAILY",
+    "activity": null,
+    "sortOrder": 0,
+    "createdAt": "2026-09-01T08:00:00Z",
+    "updatedAt": "2026-09-21T09:00:00Z",
+    "completedAt": null,
+    "archivedAt": null
+  },
+  "scheduledToday": true,
+  "checkedToday": false,
+  "streak": 12
+}`
+
+func TestHabitViewJSONContract(t *testing.T) {
+	got, err := json.MarshalIndent(service.HabitView{
+		Node: domain.Node{
+			ID:         "h1",
+			Type:       domain.NodeTypeHabit,
+			Title:      "Stretch every morning",
+			Status:     domain.StatusBacklog,
+			DueSource:  domain.DueSourceManual,
+			Priority:   domain.Priority4,
+			Recurrence: ptr("FREQ=DAILY"),
+			CreatedAt:  time.Date(2026, time.September, 1, 8, 0, 0, 0, time.UTC),
+			UpdatedAt:  time.Date(2026, time.September, 21, 9, 0, 0, 0, time.UTC),
+		},
+		ScheduledToday: true,
+		Streak:         12,
+	}, "", "  ")
+	if err != nil {
+		t.Fatalf("marshalling the habit view: %v", err)
+	}
+	if string(got) != goldenHabit {
+		t.Errorf("the wire contract changed.\n--- got ---\n%s\n--- want ---\n%s", got, goldenHabit)
 	}
 }

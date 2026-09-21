@@ -2,7 +2,10 @@ package service_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -400,5 +403,410 @@ func TestHabitServiceSurfacesStoreFailures(t *testing.T) {
 	}
 	if err := habits.Check(ctx, h.ID, thisFriday); err == nil {
 		t.Error("Check succeeded against a closed database")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// S2-04 — the habit strip read.
+
+// stripOf returns the strip, failing the test if it cannot be read.
+func (f *fixture) stripOf(ctx context.Context) []service.HabitView {
+	f.t.Helper()
+
+	strip, err := f.habits().Strip(ctx)
+	if err != nil {
+		f.t.Fatalf("Strip: %v", err)
+	}
+	return strip
+}
+
+// viewOf returns the strip entry for one habit, or nil.
+func viewOf(strip []service.HabitView, id string) *service.HabitView {
+	for i := range strip {
+		if strip[i].Node.ID == id {
+			return &strip[i]
+		}
+	}
+	return nil
+}
+
+// D5 through the strip, not only through HabitService.Streak: a weekly habit
+// checked four Fridays running reads 4, and today's pending occurrence does not
+// break it.
+func TestStripReportsTheStreak(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	h := f.weeklyHabit()
+
+	for _, d := range []domain.Date{fourFridaysAgo, threeFridaysAgo, twoFridaysAgo, lastFriday} {
+		if err := f.habits().Check(ctx, h.ID, d); err != nil {
+			t.Fatalf("Check(%s) = %v", d, err)
+		}
+	}
+
+	t.Run("four consecutive Fridays, today still pending", func(t *testing.T) {
+		v := viewOf(f.stripOf(ctx), h.ID)
+		if v == nil {
+			t.Fatal("the habit is not on the strip")
+		}
+		if v.Streak != 4 {
+			t.Errorf("Streak = %d, want 4 — today is scheduled and unchecked, which is pending, not missed", v.Streak)
+		}
+		if !v.ScheduledToday {
+			t.Error("ScheduledToday = false, but today is a Friday and the rule is FREQ=WEEKLY;BYDAY=FR")
+		}
+		if v.CheckedToday {
+			t.Error("CheckedToday = true, but today was never checked")
+		}
+	})
+
+	t.Run("checking today makes it five", func(t *testing.T) {
+		if err := f.habits().Check(ctx, h.ID, thisFriday); err != nil {
+			t.Fatalf("Check: %v", err)
+		}
+		v := viewOf(f.stripOf(ctx), h.ID)
+		if v.Streak != 5 {
+			t.Errorf("Streak = %d, want 5", v.Streak)
+		}
+		if !v.CheckedToday {
+			t.Error("CheckedToday = false right after Check")
+		}
+	})
+
+	t.Run("unchecking today takes it back to four", func(t *testing.T) {
+		if err := f.habits().Uncheck(ctx, h.ID, thisFriday); err != nil {
+			t.Fatalf("Uncheck: %v", err)
+		}
+		v := viewOf(f.stripOf(ctx), h.ID)
+		if v.CheckedToday {
+			t.Error("CheckedToday = true right after Uncheck")
+		}
+		if v.Streak != 4 {
+			t.Errorf("Streak = %d, want 4", v.Streak)
+		}
+	})
+}
+
+// A habit that is not scheduled today is still ON the strip, carrying
+// ScheduledToday = false. Whether the strip draws it is the frontend's
+// presentation decision and must not cost a second call.
+func TestStripReportsScheduledTodayWithoutFiltering(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	friday := f.weeklyHabit()
+
+	// A Monday habit, on a Friday: on the strip, not scheduled.
+	f.now = fourFridaysAgo.Time().Add(9 * time.Hour)
+	d := draft("monday review", domain.NodeTypeHabit, nil)
+	d.Recurrence = ptr("FREQ=WEEKLY;BYDAY=MO")
+	monday := f.create(d)
+	f.now = testNow
+
+	strip := f.stripOf(ctx)
+	if len(strip) != 2 {
+		t.Fatalf("the strip holds %d habits, want both", len(strip))
+	}
+	if v := viewOf(strip, friday.ID); v == nil || !v.ScheduledToday {
+		t.Errorf("the Friday habit reports %+v, want ScheduledToday = true", v)
+	}
+	if v := viewOf(strip, monday.ID); v == nil || v.ScheduledToday {
+		t.Errorf("the Monday habit reports %+v, want it present with ScheduledToday = false", v)
+	}
+}
+
+// Membership is the TYPE, asked once: a habit under a project is on the strip
+// exactly once, and a task, a note, a project and a bug never are.
+func TestStripMembershipIsTheType(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	p := f.create(draft("a project", domain.NodeTypeProject, nil))
+	f.create(draft("a task", domain.NodeTypeTask, &p.ID))
+	f.create(draft("a note", domain.NodeTypeNote, nil))
+	f.create(draft("a bug", domain.NodeTypeBug, nil))
+
+	d := draft("a nested habit", domain.NodeTypeHabit, &p.ID)
+	d.Recurrence = ptr("FREQ=DAILY")
+	nested := f.create(d)
+
+	strip := f.stripOf(ctx)
+	if len(strip) != 1 {
+		t.Fatalf("the strip holds %d entries, want exactly the one habit: %+v", len(strip), strip)
+	}
+	if strip[0].Node.ID != nested.ID {
+		t.Errorf("the strip holds %q, want the nested habit %q", strip[0].Node.ID, nested.ID)
+	}
+
+	// D10's other half, asserted alongside: the habit contributes nothing to
+	// the project it is nested under, which is a different question.
+	if v := find(boardOf(ctx, t, f), nested.ID); v != nil {
+		t.Errorf("the habit is on the board too, in the %q column", v.Status)
+	}
+}
+
+// boardOf reads the board, failing the test if it cannot.
+func boardOf(ctx context.Context, t *testing.T, f *fixture) []service.ColumnView {
+	t.Helper()
+
+	board, err := f.tasks.Board(ctx)
+	if err != nil {
+		t.Fatalf("Board: %v", err)
+	}
+	return board
+}
+
+// Archived habits are excluded, as everywhere else.
+func TestStripExcludesArchivedHabits(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	h := f.weeklyHabit()
+
+	if got := len(f.stripOf(ctx)); got != 1 {
+		t.Fatalf("the strip holds %d habits before the archive, want 1", got)
+	}
+	if _, err := f.tasks.ArchiveNode(ctx, h.ID); err != nil {
+		t.Fatalf("ArchiveNode: %v", err)
+	}
+	if got := f.stripOf(ctx); len(got) != 0 {
+		t.Errorf("the strip holds %+v after archiving the only habit, want nothing", got)
+	}
+}
+
+// The strip is ordered by (sort_order, id), the same deterministic order every
+// other list uses.
+func TestStripIsOrderedBySortOrderThenID(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	var want []string
+	for i := range 4 {
+		d := draft(fmt.Sprintf("habit %d", i), domain.NodeTypeHabit, nil)
+		d.Recurrence = ptr("FREQ=DAILY")
+		want = append(want, f.create(d).ID)
+	}
+
+	var got []string
+	for _, v := range f.stripOf(ctx) {
+		got = append(got, v.Node.ID)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("the strip is ordered %v, want %v", got, want)
+	}
+}
+
+// The cost is fixed: fifty habits must not cost fifty queries. This is the
+// property that makes the strip a read rather than an N+1, and the reason
+// HabitCheckRepo gained a bulk ChecksInRange.
+func TestStripCostsAConstantNumberOfQueries(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	one := f.countedStrip(ctx, t, 1)
+	fifty := f.countedStrip(ctx, t, 50)
+
+	if one != fifty {
+		t.Errorf("1 habit cost %d queries and 50 cost %d; the count must not depend on the habit count",
+			one, fifty)
+	}
+	if fifty > 3 {
+		t.Errorf("the strip issued %d queries, want a small constant", fifty)
+	}
+}
+
+// countedStrip builds n habits in a fresh database and returns how many
+// statements one Strip() call issues.
+func (f *fixture) countedStrip(ctx context.Context, t *testing.T, n int) int {
+	t.Helper()
+
+	fresh := newFixture(t)
+	for i := range n {
+		d := draft(fmt.Sprintf("habit %d", i), domain.NodeTypeHabit, nil)
+		d.Recurrence = ptr("FREQ=DAILY")
+		h := fresh.create(d)
+		if err := fresh.habits().Check(ctx, h.ID, domain.Today(fresh.clock())); err != nil {
+			t.Fatalf("Check: %v", err)
+		}
+	}
+
+	count := 0
+	counting := countingExec{inner: fresh.db, queries: &count}
+	svc := service.NewHabitService(
+		store.NewNodeRepo(counting), store.NewHabitCheckRepo(counting), fresh.clock())
+
+	strip, err := svc.Strip(ctx)
+	if err != nil {
+		t.Fatalf("Strip: %v", err)
+	}
+	if len(strip) != n {
+		t.Fatalf("the strip holds %d habits, want %d", len(strip), n)
+	}
+	return count
+}
+
+// countingExec counts the statements a repository issues against the database.
+type countingExec struct {
+	inner   *sql.DB
+	queries *int
+}
+
+func (e countingExec) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	*e.queries++
+	return e.inner.ExecContext(ctx, query, args...)
+}
+
+func (e countingExec) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	*e.queries++
+	return e.inner.QueryContext(ctx, query, args...)
+}
+
+func (e countingExec) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	*e.queries++
+	return e.inner.QueryRowContext(ctx, query, args...)
+}
+
+// An empty database has an empty strip, and reads no checks at all.
+func TestStripOnAnEmptyDatabase(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	strip, err := f.habits().Strip(ctx)
+	if err != nil {
+		t.Fatalf("Strip: %v", err)
+	}
+	if len(strip) != 0 {
+		t.Errorf("the strip holds %+v, want nothing", strip)
+	}
+}
+
+// failingExec fails the (after+1)-th statement it is given, so that each of the
+// strip's two reads can be broken in turn.
+type failingExec struct {
+	inner     *sql.DB
+	remaining *int
+}
+
+func (e failingExec) spend() error {
+	if *e.remaining <= 0 {
+		return errBoom
+	}
+	*e.remaining--
+	return nil
+}
+
+func (e failingExec) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	if err := e.spend(); err != nil {
+		return nil, err
+	}
+	return e.inner.ExecContext(ctx, query, args...)
+}
+
+func (e failingExec) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	if err := e.spend(); err != nil {
+		return nil, err
+	}
+	return e.inner.QueryContext(ctx, query, args...)
+}
+
+func (e failingExec) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	if err := e.spend(); err != nil {
+		// A *sql.Row carrying an error is not constructible from here, so the
+		// query is run and the caller sees the row; Strip does not use
+		// QueryRowContext, which is what this stub is for.
+		return e.inner.QueryRowContext(ctx, query, args...)
+	}
+	return e.inner.QueryRowContext(ctx, query, args...)
+}
+
+// A strip that cannot reach the database says so, rather than returning an
+// empty strip that looks exactly like "you have no habits".
+func TestStripSurfacesStoreFailures(t *testing.T) {
+	ctx := context.Background()
+
+	for name, budget := range map[string]int{
+		"the habits cannot be read": 0,
+		"the checks cannot be read": 1,
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			f.weeklyHabit()
+
+			remaining := budget
+			exec := failingExec{inner: f.db, remaining: &remaining}
+			svc := service.NewHabitService(
+				store.NewNodeRepo(exec), store.NewHabitCheckRepo(exec), f.clock())
+
+			if _, err := svc.Strip(ctx); !errors.Is(err, errBoom) {
+				t.Fatalf("Strip = %v, want the injected errBoom", err)
+			}
+		})
+	}
+}
+
+// A habit row that is corrupt — no recurrence, or one that will not parse, or
+// no created_at to anchor the schedule — fails the strip loudly. None of these
+// can be produced through CreateNode; they are written straight through the
+// repository, which is how a bug or an older version would leave them.
+func TestStripRefusesACorruptHabitRow(t *testing.T) {
+	ctx := context.Background()
+
+	corrupt := map[string]func(n *domain.Node){
+		"no recurrence at all": func(n *domain.Node) { n.Recurrence = nil },
+		"a recurrence that will not parse": func(n *domain.Node) {
+			n.Recurrence = ptr("FREQ=FORTNIGHTLY")
+		},
+		"no created_at to anchor the schedule": func(n *domain.Node) { n.CreatedAt = time.Time{} },
+	}
+
+	for name, break_ := range corrupt {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+
+			n := bareNode("h1", nil, domain.NodeTypeHabit)
+			n.Recurrence = ptr("FREQ=DAILY")
+			break_(&n)
+			if err := f.nodes.Create(ctx, n); err != nil {
+				t.Fatalf("Create: %v", err)
+			}
+
+			if _, err := f.habits().Strip(ctx); err == nil {
+				t.Fatal("Strip succeeded on a corrupt habit row; want an error")
+			}
+		})
+	}
+}
+
+// The check window starts at the EARLIEST habit's creation day, whatever order
+// the habits come back in: a habit created long ago must not lose the checks
+// that its streak walks back through because a newer one was seen first.
+func TestStripReadsChecksFromTheEarliestHabitsCreation(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	// The NEWER habit sorts first, so the window's lower bound has to be
+	// lowered by the second one the loop sees.
+	f.now = testNow.Add(-24 * time.Hour)
+	recent := draft("recent", domain.NodeTypeHabit, nil)
+	recent.Recurrence = ptr("FREQ=DAILY")
+	f.create(recent)
+
+	f.now = fourFridaysAgo.Time().Add(9 * time.Hour)
+	old := draft("old", domain.NodeTypeHabit, nil)
+	old.Recurrence = ptr("FREQ=WEEKLY;BYDAY=FR")
+	h := f.create(old)
+	f.now = testNow
+
+	for _, d := range []domain.Date{threeFridaysAgo, twoFridaysAgo, lastFriday} {
+		if err := f.habits().Check(ctx, h.ID, d); err != nil {
+			t.Fatalf("Check(%s): %v", d, err)
+		}
+	}
+
+	v := viewOf(f.stripOf(ctx), h.ID)
+	if v == nil {
+		t.Fatal("the older habit is not on the strip")
+	}
+	if v.Streak != 3 {
+		t.Errorf("Streak = %d, want 3 — the check window must reach back to the oldest habit's creation", v.Streak)
 	}
 }

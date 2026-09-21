@@ -330,3 +330,58 @@ func TestHabitCheckRepoRunsInsideACallerTransaction(t *testing.T) {
 		t.Error("the check survived a rollback")
 	}
 }
+
+// ChecksInRange is ChecksForNode without the node filter: every habit's checks
+// in one query, which is what keeps the habit strip's cost constant (S2-04).
+func TestHabitCheckRepoChecksInRange(t *testing.T) {
+	ctx := context.Background()
+	r, _, _ := habitCheckRepo(t)
+
+	for day := 14; day <= 16; day++ {
+		mustCheck(t, ctx, r, "h1", domain.NewDate(2026, time.September, day))
+	}
+	mustCheck(t, ctx, r, "h2", domain.NewDate(2026, time.September, 15))
+
+	t.Run("every habit's checks, ordered by node then date", func(t *testing.T) {
+		got, err := r.ChecksInRange(ctx,
+			domain.NewDate(2026, time.September, 1), domain.NewDate(2026, time.September, 30))
+		if err != nil {
+			t.Fatalf("ChecksInRange: %v", err)
+		}
+
+		wantNodes := []string{"h1", "h1", "h1", "h2"}
+		wantDates := []string{"2026-09-14", "2026-09-15", "2026-09-16", "2026-09-15"}
+		if got := checkDates(got); !slices.Equal(got, wantDates) {
+			t.Errorf("dates = %v, want %v", got, wantDates)
+		}
+		nodes := make([]string, len(got))
+		for i, c := range got {
+			nodes[i] = c.NodeID
+		}
+		if !slices.Equal(nodes, wantNodes) {
+			t.Errorf("node ids = %v, want %v", nodes, wantNodes)
+		}
+	})
+
+	t.Run("both ends are inclusive", func(t *testing.T) {
+		got, err := r.ChecksInRange(ctx,
+			domain.NewDate(2026, time.September, 15), domain.NewDate(2026, time.September, 15))
+		if err != nil {
+			t.Fatalf("ChecksInRange: %v", err)
+		}
+		if len(got) != 2 {
+			t.Errorf("a single-day window returned %v, want both habits' 15th", checkDates(got))
+		}
+	})
+
+	t.Run("a window that misses everything returns an empty slice, not nil", func(t *testing.T) {
+		got, err := r.ChecksInRange(ctx,
+			domain.NewDate(2026, time.October, 1), domain.NewDate(2026, time.October, 31))
+		if err != nil {
+			t.Fatalf("ChecksInRange: %v", err)
+		}
+		if got == nil || len(got) != 0 {
+			t.Errorf("ChecksInRange = %v, want an empty slice", got)
+		}
+	})
+}

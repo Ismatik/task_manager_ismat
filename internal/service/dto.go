@@ -133,6 +133,33 @@ type TimerView struct {
 	ElapsedSeconds int        `json:"elapsedSeconds"`
 }
 
+// HabitView is one entry of the habits strip, with every derived value already
+// computed by Go (D5).
+//
+// Habits are not cards: they never appear in a Kanban column (D2), so the board
+// excludes them and this is their read. It carries everything the strip draws,
+// so that the frontend neither filters the tree by type nor asks three further
+// questions per habit — both of which would be rules in TypeScript.
+type HabitView struct {
+	// Node is the stored habit row.
+	Node domain.Node `json:"node"`
+
+	// ScheduledToday reports whether today is an occurrence of the habit's
+	// recurrence rule. The strip decides what to do with a habit that is not
+	// scheduled today — dim it, hide it — which is presentation; the service
+	// reports the fact and pre-filters nothing, so that decision costs no
+	// second call.
+	ScheduledToday bool `json:"scheduledToday"`
+
+	// CheckedToday reports whether the habit is ticked for today.
+	CheckedToday bool `json:"checkedToday"`
+
+	// Streak is consecutive SCHEDULED occurrences that were checked, ending at
+	// the present (D5) — occurrences, not days, and today's still-pending one
+	// does not break it.
+	Streak int `json:"streak"`
+}
+
 // ColumnView is one Kanban column: the status it stands for and the cards in
 // it, in sort_order.
 //
