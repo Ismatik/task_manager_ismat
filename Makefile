@@ -165,9 +165,15 @@ front-test: $(NODE_MODULES) ## Run the vitest suite in frontend/ (not a gate)
 # TypeScript, and the one defence that does not depend on a reviewer's attention
 # is a grep that runs every time. That is all this is.
 #
-# Five checks. Checks 1, 2 and 5 are EXACT — they look for a literal that has no
-# legitimate reason to exist in frontend/src, so a hit is a defect and there is
-# nothing to argue about. Checks 3 and 4 are NECESSARILY HEURISTIC: "is this a
+# Six checks. Checks 1, 2, 5 and 6 are EXACT — they look for a literal that has
+# no legitimate reason to exist in frontend/src, so a hit is a defect and there
+# is nothing to argue about. "Exact" also means CASE-INSENSITIVE where the
+# literal has more than one spelling: check 2 was `-E` and so read 'backlog' as
+# a defect while 'Backlog', 'Done' and 'Doing' walked past it, which made the
+# paragraph you are reading false. A check that claims to be exact and is not is
+# worse than a heuristic that admits it.
+#
+# Checks 3 and 4 are NECESSARILY HEURISTIC: "is this a
 # computation or a field read" and "is this string user-visible" are not
 # questions a regular expression can answer, and both are stated as heuristics
 # on purpose. They are tuned to be tight enough to be actionable (every hit
@@ -226,8 +232,8 @@ guard: ## The mechanical rules greps over frontend/src (not a gate)
 	fail() { status=1; echo; echo "  guard FAIL — $$1"; echo "$$2" | sed 's/^/      /'; }; \
 	out=$$(git grep -n --untracked -E '#[0-9a-fA-F]{3,8}' -- frontend/src | keep); \
 	[ -z "$$out" ] || { fail "check 1, hex literal. Colours resolve only through the Tailwind token names (bg, surface, elevated, line, ink, muted, accent, accent-2, on-accent, danger, warning, success) — design/ owns the values." "$$out"; }; \
-	out=$$(git grep -n --untracked -E "['\"\`](backlog|week|today|doing|done)['\"\`]" -- frontend/src ':!frontend/src/locales' | keep); \
-	[ -z "$$out" ] || { fail "check 2, status string literal. Which strings are Kanban columns is domain.Status's answer; a quoted copy in TypeScript is a second spelling of it. Compare against a value Go returned, or key off the ColumnView the board handed you." "$$out"; }; \
+	out=$$(git grep -n --untracked -iE "['\"\`](backlog|week|today|doing|done)['\"\`]" -- frontend/src ':!frontend/src/locales' | keep); \
+	[ -z "$$out" ] || { fail "check 2, status string literal. Which strings are Kanban columns is domain.Status's answer; a quoted copy in TypeScript is a second spelling of it, in ANY case — 'Done' and 'done' are the same second spelling. Compare against a value Go returned, or key off the ColumnView the board handed you." "$$out"; }; \
 	out=$$(git grep -n --untracked -E '(const|let|var)[[:space:]]+$(GUARD_DERIVED_ID)[[:space:]]*(:[^=]*)?=' -- frontend/src | grep -E '$(GUARD_COMPUTE_RE)' | keep); \
 	[ -z "$$out" ] || { fail "check 3a (heuristic), a derived value COMPUTED rather than read. overdue, status, progress, percent and streak are fields Go already filled in on the DTO — see internal/service/dto.go. If the value you need is not on the DTO, the fix is a Go change, not a TypeScript one." "$$out"; }; \
 	out=$$(git grep -n --untracked -E '(function[[:space:]]+$(GUARD_DERIVED_ID)[[:space:]]*\(|(const|let|var)[[:space:]]+$(GUARD_DERIVED_ID)[[:space:]]*(:[^=]*)?=[[:space:]]*(async[[:space:]]+)?(\([^()]*\)[[:space:]]*(:[^=]*)?=>|[A-Za-z0-9_$$]+[[:space:]]*=>|function))' -- frontend/src | keep); \
