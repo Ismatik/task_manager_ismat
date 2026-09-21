@@ -12,13 +12,16 @@
   [Stage 1 — DONE criteria](#stage-1--done-criteria) and
   [Carried into Stage 2](#carried-into-stage-2).
 - **[Stage 2 — Kanban + Habits strip](#stage-2--kanban--habits-strip): CURRENT,
-  PLANNED, nothing implemented.** Twenty-two tickets, **S2-01 … S2-22**. All five
-  items under [Carried into Stage 2](#carried-into-stage-2) are absorbed into named
+  IN PROGRESS.** Twenty-two tickets, **S2-01 … S2-22**; **S2-01 … S2-13 are committed**,
+  S2-14 … S2-22 remain. All five items under
+  [Carried into Stage 2](#carried-into-stage-2) are absorbed into named
   tickets — **C1 → S2-03, C2 → S2-01, C3 → S2-08, C4 → S2-06, C5 → S2-14** — and the
   fifth, *one rule one spelling*, is enforced by `make guard` (**S2-10**) and re-checked
-  on every frontend ticket.
+  on every frontend ticket. The remaining tickets were **corrected in place** after the
+  Dev reported that nothing owned `App.tsx` or `main.tsx` — see
+  [Composition — who mounts what](#composition--who-mounts-what).
 
-Decisions referenced as **D1–D15 / E1–E3** and known issues **K1–K4** live in
+Decisions referenced as **D1–D16 / E1–E3** and known issues **K1–K5** live in
 [`PLAN.md` §7](./PLAN.md). Four decisions were confirmed by the user *during* Stage 1
 and are recorded there — **D8** (a column move always overwrites the due date),
 **D9** (type beats leaf-ness — a project is never timeable), **D10** (a node with no
@@ -28,7 +31,9 @@ Stage 2 was planned: **D12** (force `LC_NUMERIC=C` and seed the window backgroun
 `settings` — the user's, closing **K1**), and the PM rulings **D13** (what the
 Doing↔timer coupling actually does), **D14** (archiving re-inspects a node that becomes
 a leaf — closing **K2**) and **D15** (a card whose progress is undefined says so —
-closing **K3**). **Every known issue now has a decision; none is open.**
+closing **K3**). **D16** was added *during* Stage 2, when the Dev asked what draws
+Aurora's background drift: the gate is built, the visual is deferred, and **K5** records
+the consequence. **Every known issue now has a decision; none is open.**
 
 **Do not implement anything that is not on a ticket**, and do not add tickets here —
 the PM writes them.
@@ -2211,9 +2216,20 @@ rounds.
 
 ## Stage 2 — Kanban + Habits strip
 
-**Status: CURRENT. PLANNED, nothing implemented.** Twenty-two tickets, **S2-01 …
-S2-22**, one conventional commit each. This is the **launch screen**: the first stage
-whose output a user can look at.
+**Status: CURRENT. IN PROGRESS — S2-01 … S2-13 committed, S2-14 … S2-22 remain.**
+Twenty-two tickets, **S2-01 … S2-22**, one conventional commit each. This is the
+**launch screen**: the first stage whose output a user can look at.
+
+**Corrected in place after S2-13.** The Dev reported, in `97873d9`'s body rather than by
+silently widening scope, that **no remaining ticket had `frontend/src/App.tsx` or
+`frontend/src/main.tsx` in its Scope** — so every ticket from S2-14 on could pass its own
+criteria while the running app stayed an empty screen. That was a planning defect, not a
+Dev defect, and it is fixed below: see
+[Composition — who mounts what](#composition--who-mounts-what). Two smaller corrections
+came with it — `frontend/src/lib/format.ts` is now in S2-11's Scope where its
+Requirements had already named it, and S2-13's six-line `main.tsx` widening is
+[ratified](#s2-13--feat-the-go-client-the-zustand-store-and-the-error-toast). **No
+committed ticket's meaning changed**; S2-01 … S2-13 stand as reviewed.
 
 ### ACCEPT
 
@@ -2346,7 +2362,7 @@ exited 0.
 | [S2-12](#s2-12--feat-the-appearance-runtime--palette-theme-accent) | The appearance runtime — palette, theme, accent | `feat:` |
 | [S2-13](#s2-13--feat-the-go-client-the-zustand-store-and-the-error-toast) | The Go client, the Zustand store and the error toast | `feat:` |
 | [S2-14](#s2-14--feat-the-card-c5-k3-d15) | The card (**C5**, **K3**, **D15**) | `feat:` |
-| [S2-15](#s2-15--feat-the-five-columns) | The five columns | `feat:` |
+| [S2-15](#s2-15--feat-the-app-shell-and-the-five-columns) | **The app shell** and the five columns | `feat:` |
 | [S2-16](#s2-16--feat-the-keyboard-model--focus-navigation-and-keyboard-move) | The keyboard model — focus, navigation, keyboard move | `feat:` |
 | [S2-17](#s2-17--feat-dnd-kit-drag-and-drop-with-optimistic-move-and-rollback) | dnd-kit drag and drop, optimistic move with rollback | `feat:` |
 | [S2-18](#s2-18--feat-the-habits-strip) | The habits strip | `feat:` |
@@ -2371,6 +2387,74 @@ real and must not be reshuffled:
   there is nothing for the frontend to call.
 - **S2-05 before S2-08.** D12 seeds the window background *from settings*; there must be
   a settings read to seed it from.
+
+### Composition — who mounts what
+
+**The defect this section exists to fix.** As first written, no ticket after S2-12 had
+`frontend/src/App.tsx` or `frontend/src/main.tsx` in its Scope. `ToastList` (S2-13), the
+Kanban view (S2-15) and the overlays (S2-19, S2-20) would each have been built, tested in
+isolation, and mounted by nobody. Every ticket would have passed, `make check`,
+`make front-test` and `make guard` would all have been green, and **the app would have
+opened on an empty page** — with the ACCEPT criterion, which is a property of the whole
+screen, impossible to demonstrate. It was reported by the Dev under S2-13.
+
+**The rule, from here to the end of the stage:**
+
+> **A component that is built and not mounted is an unfinished ticket.** The ticket that
+> builds a top-level piece is the ticket that mounts it, in the same commit. "Mounted"
+> means reachable in the running app from `main.tsx` — not merely exported, and not
+> merely rendered by its own test.
+
+**Why the pieces own their own mounting, rather than one assembly ticket at the end.**
+A single "assemble the screen" ticket reproduces the failure it is meant to prevent: nine
+tickets would pass in a row with nothing on screen, and the one ticket that finds out
+whether any of it composes is the last one, next to the deadline. An assembly ticket at
+the *front* cannot mount components that do not exist yet, so it would leave empty slots
+and every later ticket would have to touch `App.tsx` anyway — the distribution, without
+the honesty. So: **S2-15 creates the shell**, because it is the first ticket that renders
+a top-level region and because S2-13's `ToastList` is orphaned until it does; **every
+later ticket that adds a top-level piece has `App.tsx` in its Scope** and mounts its own.
+
+**The regions, and the ticket that fills each:**
+
+| Region in `App.tsx` | Filled by | Mounted in |
+|---|---|---|
+| shell, store provider, board hydration | the shell itself | **S2-15** |
+| `ToastList` layer (built in S2-13, orphaned until here) | `components/Toast.tsx` | **S2-15** |
+| board region | `views/Kanban.tsx` | **S2-15** |
+| global key handling and region order (`Tab` between regions) | `lib/keyboard.ts` | **S2-16** |
+| habits strip region | `components/HabitStrip.tsx` | **S2-18** |
+| overlay layer — quick add | `components/QuickAdd.tsx` | **S2-19** |
+| overlay layer — command palette | `components/CommandPalette.tsx` | **S2-20** |
+| header region — appearance and language | `components/AppearanceControls.tsx` | **S2-21** |
+
+Everything else is mounted by its parent: the card of S2-14 by S2-15's `Column`, the
+`AccentPicker` of S2-21 by its `AppearanceControls`, and so on. S2-14 is the one launch-
+screen ticket with no mounting obligation, because a card is not a region — it becomes
+reachable when S2-15 renders the column that holds it, which is one ticket later and is
+S2-15's criterion, not S2-14's.
+
+**How it is checked, rather than assumed.** Two halves, both mechanical:
+
+1. **The orphan check** — `frontend/src/App.mount.test.tsx`, created in S2-15 and green
+   from then on. It enumerates every non-test `.tsx` under `frontend/src/components/` and
+   `frontend/src/views/` with `import.meta.glob`, computes the import closure of
+   `frontend/src/main.tsx` by walking relative import specifiers, and **fails naming any
+   module that is in the first set and not in the second**. A component built and left
+   unmounted turns this test red on the commit that builds it. Walking from `main.tsx`
+   and not from the test file is the whole point: a component imported only by its own
+   test is still an orphan.
+2. **A reachability criterion per mounting ticket** — because "imported" is not
+   "reachable": a component can be mounted behind a condition that is never true. Each
+   mounting ticket therefore asserts its piece **through `render(<App />)`**, driven by
+   keyboard, with the test importing `App` and **not** importing the component it is
+   checking for. That import restriction is the assertion; without it the test passes by
+   rendering the component itself and proves nothing.
+
+The orphan check is a **vitest** test and runs under `make front-test`. It is deliberately
+not a `make guard` grep — reachability is a graph walk, not a pattern, and `make guard` is
+specified to stay a set of greps that finish in under two seconds. **The five gates stay
+five**, and `make front-test` and `make guard` stay non-gate targets.
 
 ---
 
@@ -2915,8 +2999,15 @@ Requirements:
 point. There is no `frontend/src/locales/` directory yet.
 
 **Scope (may touch):** `frontend/src/locales/en.json`, `frontend/src/locales/ru.json`,
-`frontend/src/lib/i18n.ts`, `frontend/src/main.tsx`, `frontend/package.json`, and the
-tests beside them.
+`frontend/src/lib/i18n.ts`, `frontend/src/lib/format.ts`, `frontend/src/main.tsx`,
+`frontend/package.json`, and the tests beside them.
+
+> **Scope correction, after the fact.** `frontend/src/lib/format.ts` is named in this
+> ticket's Requirements below — *"numbers, dates and durations are formatted in exactly
+> one module"* — and was missing from the Scope list above, which is a PM error. The Dev
+> created the file under this ticket and flagged the omission rather than inventing
+> permission. **The Scope list is corrected to match the Requirements it already
+> contained; the ticket's meaning is unchanged and `853077f` is not re-opened.**
 
 Requirements:
 
@@ -2989,13 +3080,44 @@ Requirements:
 - [ ] Restarting the app restores the last chosen palette, theme and accent.
 - [ ] A rejected `SetTheme` leaves the DOM on the service's value and raises one toast.
 - [ ] Under `prefers-reduced-motion: reduce`, the Aurora drift is **not** running —
-      asserted in a test, and confirmed by hand.
+      asserted in a test, and confirmed by hand. **Read the note below before judging
+      this one.**
 - [ ] No flash of the default theme on startup when the stored theme is `light`.
       Confirmed by hand, together with S2-08's GTK-side half.
 - [ ] `git grep -nE '#[0-9a-fA-F]{3,8}' frontend/src` returns nothing.
 - [ ] `make guard`, `make front-test`, `make check` all green.
 
 **Commit:** `feat(frontend): apply palette, theme and accent from settings (S2-12)`
+
+> **PM ruling on the Aurora drift — D16, made during Stage 2. Read this with the
+> criterion above.**
+>
+> This ticket asked for the drift to be **gated**, and `auroraDriftEnabled()` gates it:
+> the decision is taken in exactly one place, respects `prefers-reduced-motion`, and is
+> published on `<html>` as `data-drift="on"|"off"`. What no ticket in this stage ever
+> asked for is the drift itself — **nothing draws it**, so today `data-drift` is a
+> contract with no consumer. The Dev raised this rather than inventing a visual, which
+> was the correct call: `design/` names **no component and no drift geometry**, and
+> `PLAN.md` §3 and **D6 as amended** forbid inventing a spec and attributing it to the
+> export.
+>
+> **Ruling: the gate ships in Stage 2, the visual does not.** `design/README.md`'s one
+> sentence — *"Aurora's background drift (~60s) must also pause"* under reduced motion —
+> is a **constraint on a drift**, not a specification of one: it fixes the period and the
+> pause condition and says nothing about geometry, layer count, opacity or motion path.
+> Building from that means inventing four things and attributing them to a document that
+> contains none of them. Against that, the drift is pure decoration: it moves no card,
+> blocks no key, and has **zero bearing on the ACCEPT criterion**. Inventing it is
+> forbidden; guessing it and shipping it under the design export's name is worse than
+> not shipping it. So it is **deliberately out of Stage 2**, recorded as **K5** in
+> `PLAN.md`, and it becomes a Stage 3 ticket the moment a drift spec exists — at which
+> point the gate is already built, already tested, and the ticket is only the drawing.
+>
+> **What this criterion therefore means, stated honestly so the Reviewer does not hunt
+> for a visual that is not there:** the assertion is that `data-drift` is `off` under
+> `prefers-reduced-motion: reduce` and `on` otherwise on Aurora — which
+> `appearance.test.ts` asserts. Nobody may claim to have watched a drift pause. S2-22's
+> a11y audit and the ACCEPT verification table are corrected to say the same thing.
 
 ---
 
@@ -3042,6 +3164,37 @@ Requirements:
 - [ ] `make front-test`, `make guard`, `make check` all green.
 
 **Commit:** `feat(frontend): add the Go client, the store and the error toast (S2-13)`
+
+> **PM ruling — the `main.tsx` widening in `97873d9` is RATIFIED. The Reviewer does not
+> need to re-litigate it.**
+>
+> `frontend/src/main.tsx` is not in this ticket's Scope and six lines of it were changed:
+> S2-12 had created two hand-rolled stores there, and this ticket's zustand store
+> subsumes both. The widening is accepted on four counts, and the fourth is the one that
+> matters.
+>
+> 1. **It removed a second spelling, which is this stage's prime directive.** Leaving the
+>    two stores in the tree would have left client state with two owners — the exact
+>    defect that cost Stage 1 three review rounds, installed deliberately, in the stage
+>    written to prevent it. The Scope rule exists to stop silent sprawl; enforcing it here
+>    would have used it to *preserve* a duplicate rule.
+> 2. **It was disclosed, not smuggled.** The commit body names the file, the line count
+>    and the reason, under a heading. That is precisely the behaviour the Scope rule is
+>    for: stop and say so. The Dev said so.
+> 3. **It was minimal and mechanical** — construct one store instead of two, no behaviour
+>    invented, no rule moved into TypeScript. All gates and both non-gate targets green.
+> 4. **The cause was a PM defect, not a Dev defect.** Under the plan as written, S2-12 was
+>    the last ticket that owned `main.tsx`, so there was no later ticket to hand the fix
+>    to — the Dev was choosing between a permanent duplicate and a disclosed widening.
+>    That gap is now fixed: see
+>    [Composition — who mounts what](#composition--who-mounts-what).
+>
+> **The general rule this sets, so it is not re-argued per ticket:** a widening that is
+> (a) minimal, (b) required to avoid leaving a rule with two spellings, and (c) stated
+> plainly in the commit body naming the file and the reason, is **acceptable**. A
+> widening that is undisclosed, or that adds behaviour rather than removing a duplicate,
+> is **not** — it is still "stop and report". Nothing here loosens rule 15 or the Scope
+> discipline; it names the one exception that was already being applied correctly.
 
 ---
 
@@ -3106,10 +3259,61 @@ precisely because **neither 0% nor 100% is true** (**D7**, **D9**). The marker f
 
 ---
 
-## S2-15 — feat: the five columns
+## S2-15 — feat: the app shell and the five columns
 
-**Scope (may touch):** `frontend/src/views/Kanban.tsx`,
-`frontend/src/components/Column.tsx`, the locale files, tests beside them.
+**Two deliverables, and the first one is the reason this ticket is bigger than its
+title used to be.** After S2-13 the app mounts `App.tsx`, which is still S2-09's empty
+`<div>`: the store is built in `main.tsx` and handed to nobody, and `ToastList` is built
+and rendered by nothing. This ticket makes `App.tsx` the **composition root** — the shell
+with named regions that every later ticket mounts into — and then fills its board region
+with the five columns. Read
+[Composition — who mounts what](#composition--who-mounts-what) first; the rule and the
+orphan check it describes start here.
+
+**Scope (may touch):** `frontend/src/App.tsx`, `frontend/src/App.test.tsx`,
+`frontend/src/App.mount.test.tsx`, `frontend/src/main.tsx`,
+`frontend/src/views/Kanban.tsx`, `frontend/src/components/Column.tsx`,
+`frontend/src/store/**`, the locale files, tests beside them.
+
+`App.test.tsx` is listed explicitly because it exists: S2-10's smoke test asserts the
+shell is an empty `bg-bg` div, which stops being true here. Updating it is part of this
+ticket, not a scope widening.
+
+### Part 1 — the shell
+
+- **`App.tsx` is the composition root.** It renders the page background it already
+  renders — token classes only, no hex — plus the **named regions** of the launch screen,
+  in this DOM order, so that the `Tab` order S2-16 specifies falls out of the markup
+  rather than out of a `tabIndex` ladder:
+
+  | Order | Region | Filled by |
+  |---|---|---|
+  | 1 | header | **S2-21** — empty here, and an empty region renders nothing, not a blank bar |
+  | 2 | habits strip | **S2-18** — same |
+  | 3 | board | **this ticket** — `views/Kanban.tsx` |
+  | 4 | overlay layer | **S2-19**, **S2-20** — same |
+  | 5 | toast layer | **this ticket** — S2-13's `ToastList`, which nothing has mounted until now |
+
+  A region with nothing in it yet is an empty slot in the source, named in a comment with
+  its ticket. It is **not** a placeholder component, not localised filler text and not a
+  "coming soon" box — a placeholder is a thing somebody has to remember to delete.
+- **The store reaches the tree.** `main.tsx` builds the store today and drops it:
+  `createAppStore(wailsClient)` is called and `<App />` is rendered without it. Give it
+  one route down — a context provider, or the store passed in as a prop — chosen once,
+  here, and used by every consumer. **A second module-level store singleton is a second
+  spelling and is refused**; the factory exists so tests get a fresh store, and that
+  property must survive this ticket.
+- **The board is hydrated.** Something must call `Board()` before the columns can render.
+  `main.tsx` already reads settings before first paint (S2-12) — the board read follows
+  the same shape, and a failed read is a **toast and an empty board, never a blank
+  window** (S2-13's rule, unchanged).
+- **The orphan check lands here**, as `frontend/src/App.mount.test.tsx`, exactly as
+  specified in [Composition — who mounts what](#composition--who-mounts-what): enumerate
+  every non-test `.tsx` under `components/` and `views/`, walk the relative-import closure
+  of `main.tsx`, fail naming anything in the first set and not the second. It is an
+  acceptance criterion on **every ticket from here to S2-22**.
+
+### Part 2 — the five columns
 
 Requirements:
 
@@ -3126,16 +3330,40 @@ Requirements:
 - The board scrolls; the columns do not collapse below a legible width in **Russian**,
   which is ~30% wider.
 
-**Acceptance criteria**
+**Acceptance criteria — the shell**
+- [ ] **`render(<App />)` with a mocked client shows the board.** The test imports `App`
+      and **does not import `Kanban`, `Column` or `Card`** — importing the component you
+      are looking for turns this into a test of that component and proves nothing about
+      mounting. Assert on what the user would see: the column headings from the mocked
+      `Board()`.
+- [ ] **`render(<App />)` shows a toast when a call is rejected.** S2-13 built `ToastList`
+      and `Toast.test.tsx` renders it directly; this asserts it through `App`, which is
+      the thing that was missing. Exactly one toast, translated, dismissable by keyboard.
+- [ ] **The orphan check exists and is green**: `App.mount.test.tsx` enumerates
+      `components/**/*.tsx` and `views/**/*.tsx`, walks the import closure of `main.tsx`,
+      and reports the difference. **Proven to fire** — add a component that nothing
+      imports, watch the test fail **naming that file**, delete it. Record it in the
+      commit body; a check nobody has watched fail is a check nobody has checked.
+- [ ] The store has exactly one construction route into the tree, and
+      `createAppStore(...)` is still a factory: two tests in the same file get
+      independent stores. `git grep -n "createAppStore" frontend/src` shows no
+      module-level singleton.
+- [ ] The four regions this ticket does not fill render **nothing at all** — no empty
+      bar, no placeholder text, no reserved blank box. Asserted on the DOM.
+- [ ] The built binary opens on the board, not on an empty page. Confirmed by hand with
+      `make build && ./build/bin/nexus`, and reported.
+
+**Acceptance criteria — the columns**
 - [ ] With a mocked client returning five columns in a deliberately unusual order, the UI
       renders **that** order — proving the order comes from Go.
 - [ ] No status string literal in `frontend/src` outside `locales/` (`make guard` #2).
 - [ ] No `.sort(`, no `.filter(` on the board data in any component.
 - [ ] Column headings and empty states are translated; the RU board at 1024px wide shows
       all five columns with no clipping and no horizontal scroll inside a column.
+- [ ] `git grep -nE '#[0-9a-fA-F]{3,8}' frontend/src` returns nothing.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
-**Commit:** `feat(frontend): render the five kanban columns from the board (S2-15)`
+**Commit:** `feat(frontend): mount the app shell and render the five kanban columns (S2-15)`
 
 ---
 
@@ -3145,9 +3373,17 @@ Requirements:
 purpose. Built after a pointer API, the keyboard path becomes a bolted-on translation of
 mouse gestures; built first, the pointer is the alternative route.
 
-**Scope (may touch):** `frontend/src/lib/keyboard.ts`, `frontend/src/views/Kanban.tsx`,
-`frontend/src/components/{Column,Card}.tsx`, `frontend/src/store/**`, the locale files,
-tests beside them.
+**Scope (may touch):** `frontend/src/lib/keyboard.ts`, `frontend/src/App.tsx`,
+`frontend/src/views/Kanban.tsx`, `frontend/src/components/{Column,Card}.tsx`,
+`frontend/src/store/**`, the locale files, tests beside them.
+
+**`App.tsx` is in scope because two rows of the map below are not the board's.**
+`Tab`/`Shift+Tab` moves between **regions** — habits strip ⇄ board ⇄ overlays — and
+`Ctrl+N` and `Ctrl+K` must fire wherever focus happens to be, including in a region the
+board does not own. Both are properties of S2-15's shell. Put the region order and the
+global shortcut listener there, once, and leave the within-board arrows to the board:
+**the map has one spelling either way**, in `lib/keyboard.ts`, and S2-20 reads its hints
+from that module rather than restating them.
 
 **The keyboard map — normative, and the command palette (S2-20) must match it:**
 
@@ -3198,6 +3434,14 @@ Requirements:
 - [ ] The focus ring is visible on every focusable element — asserted by a test on the
       `:focus-visible` class/attribute, and confirmed by hand in both palettes.
 - [ ] `Enter` on a card does nothing and is not intercepted.
+- [ ] **Driven through `render(<App />)`, not through `<Kanban />`.** The navigation and
+      move tests mount the real shell — that is what makes them the ACCEPT criterion's
+      rehearsal rather than a component demo, and it is what catches a key handler
+      attached to a node the shell never renders.
+- [ ] `Tab` from the board reaches the next region in DOM order and `Shift+Tab` comes
+      back, asserted on the shell even though the strip and the overlays are still empty
+      — an empty region is skipped, not focused.
+- [ ] The orphan check (`App.mount.test.tsx`) is still green.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
 **Commit:** `feat(frontend): add the board keyboard model and keyboard column moves (S2-16)`
@@ -3240,6 +3484,10 @@ Requirements:
 - [ ] The keyboard map of S2-16 still works **unchanged** with dnd-kit mounted. The S2-16
       test suite passes untouched — that is the regression this criterion exists for.
 - [ ] Drop-target highlight uses token colours only.
+- [ ] The orphan check (`App.mount.test.tsx`) is still green. **`App.tsx` is deliberately
+      not in this ticket's scope**: dnd-kit adds no region, so its `DndContext` belongs
+      inside the board it wraps. If it turns out to need the shell, that is a stop-and-say
+      rather than a quiet edit.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
 **Commit:** `feat(frontend): add dnd-kit drag and drop with optimistic rollback (S2-17)`
@@ -3249,8 +3497,13 @@ Requirements:
 ## S2-18 — feat: the habits strip
 
 **Scope (may touch):** `frontend/src/components/HabitStrip.tsx`,
-`frontend/src/components/HabitChip.tsx`, `frontend/src/store/**`, the locale files,
-tests beside them.
+`frontend/src/components/HabitChip.tsx`, `frontend/src/App.tsx`,
+`frontend/src/store/**`, the locale files, tests beside them.
+
+**This ticket fills S2-15's habits-strip region** and hydrates the strip from
+`HabitStrip()` the same way S2-15 hydrates the board. A strip that exists and is not in
+the shell is an unfinished ticket — see
+[Composition — who mounts what](#composition--who-mounts-what).
 
 Requirements:
 
@@ -3277,7 +3530,11 @@ Requirements:
       rejection reverts and raises one toast.
 - [ ] `git grep -n "habit" frontend/src` shows **no** filtering of board data by type.
 - [ ] The strip is keyboard-reachable from the board and back, mouse untouched.
+- [ ] **Mounted and reachable**: `render(<App />)` with a mocked client shows the habits,
+      and `Tab` from the board reaches them. The test imports `App` and **does not import
+      `HabitStrip`** — that restriction is the assertion.
 - [ ] RU labels fit; nothing clips at 1024px.
+- [ ] The orphan check (`App.mount.test.tsx`) is still green.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
 **Commit:** `feat(frontend): add the habits strip with checks and streaks (S2-18)`
@@ -3290,8 +3547,14 @@ Requirements:
 parser are **Stage 4** and must not be started here. Stage 2's quick-add takes a title
 and creates a node.
 
-**Scope (may touch):** `frontend/src/components/QuickAdd.tsx`,
+**Scope (may touch):** `frontend/src/components/QuickAdd.tsx`, `frontend/src/App.tsx`,
 `frontend/src/store/**`, the locale files, tests beside them.
+
+**This ticket mounts its own overlay** into S2-15's overlay layer, on S2-16's `Ctrl+N`.
+An overlay that only opens in its own test is an unfinished ticket, and this one is
+**step 1 of the ACCEPT script** — if it is not reachable from the running app, the
+criterion cannot be demonstrated at all. See
+[Composition — who mounts what](#composition--who-mounts-what).
 
 Requirements:
 
@@ -3311,6 +3574,10 @@ Requirements:
 - An empty or whitespace-only title: Go refuses (`Node.Validate`), the toast says so.
 
 **Acceptance criteria**
+- [ ] **Mounted and reachable**: in `render(<App />)`, `Ctrl+N` opens the overlay. The
+      test imports `App` and **does not import `QuickAdd`**. Every criterion below is
+      driven through `App` for the same reason — this is the first half of the ACCEPT
+      flow and it has to work where the user is, not where the test is.
 - [ ] `Ctrl+N` → type → `Enter` creates a node with the typed title and calls
       `CreateNode` **once**.
 - [ ] Focus starts in the title field and, after creation, is on the **new card** in
@@ -3320,6 +3587,7 @@ Requirements:
 - [ ] Creating a habit with no recurrence raises **Go's** refusal in a toast; there is no
       recurrence validation in `frontend/src` (`make guard`).
 - [ ] Every string is translated; the RU overlay does not clip.
+- [ ] The orphan check (`App.mount.test.tsx`) is still green.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
 **Commit:** `feat(frontend): add the in-app quick add overlay (S2-19)`
@@ -3329,8 +3597,13 @@ Requirements:
 ## S2-20 — feat: the command palette (Ctrl+K)
 
 **Scope (may touch):** `frontend/src/components/CommandPalette.tsx`,
-`frontend/src/lib/commands.ts`, `frontend/src/store/**`, the locale files, tests beside
-them.
+`frontend/src/lib/commands.ts`, `frontend/src/App.tsx`, `frontend/src/store/**`, the
+locale files, tests beside them.
+
+**This ticket mounts its own overlay** into S2-15's overlay layer, on S2-16's `Ctrl+K`,
+alongside S2-19's. Step 8 of the hand ACCEPT script drives the completion leg through
+this palette, so "built but not mounted" would take the second independent keyboard route
+with it. See [Composition — who mounts what](#composition--who-mounts-what).
 
 Requirements — the action set from the brief, and **only** it:
 
@@ -3355,6 +3628,11 @@ Requirements — the action set from the brief, and **only** it:
 - Focus trapped while open; full a11y roles (`combobox`/`listbox`/`option`).
 
 **Acceptance criteria**
+- [ ] **Mounted and reachable**: in `render(<App />)`, `Ctrl+K` opens the palette. The
+      test imports `App` and **does not import `CommandPalette`**. Every criterion below
+      is driven through `App`.
+- [ ] Two overlays coexist: `Ctrl+N` and `Ctrl+K` each open their own, `Escape` closes
+      **the topmost** (S2-16's map), and neither is mounted over the other by accident.
 - [ ] Every action in the table is reachable and executable by keyboard alone.
 - [ ] "Move to column" lists exactly the columns Go returned, in Go's order, with no
       status literal in the component (`make guard` #2).
@@ -3364,6 +3642,7 @@ Requirements — the action set from the brief, and **only** it:
 - [ ] Shortcut hints match S2-16 exactly — a test compares the palette's hint strings
       against the keyboard map's single source.
 - [ ] `Escape` restores focus to the element that had it.
+- [ ] The orphan check (`App.mount.test.tsx`) is still green.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
 **Commit:** `feat(frontend): add the ctrl+k command palette (S2-20)`
@@ -3376,7 +3655,14 @@ S2-12 made palette, theme and accent **live**; this gives the user something to 
 with beyond the command palette.
 
 **Scope (may touch):** `frontend/src/components/AppearanceControls.tsx`,
-`frontend/src/components/AccentPicker.tsx`, the locale files, tests beside them.
+`frontend/src/components/AccentPicker.tsx`, `frontend/src/App.tsx`, the locale files,
+tests beside them.
+
+**This ticket fills S2-15's header region** — the last empty one. Its own requirement
+below, *"the controls live somewhere unobtrusive on the launch screen … and are reachable
+with `Tab`, not only through the palette"*, is unsatisfiable without the shell, which is
+why `App.tsx` is in scope. `AccentPicker` is mounted by `AppearanceControls`, not by the
+shell. See [Composition — who mounts what](#composition--who-mounts-what).
 
 Requirements:
 
@@ -3394,12 +3680,19 @@ Requirements:
   and are reachable with `Tab`, not only through the palette.
 
 **Acceptance criteria**
+- [ ] **Mounted and reachable**: in `render(<App />)`, `Tab` from the board reaches the
+      controls without opening the command palette. The test imports `App` and **does not
+      import `AppearanceControls`**.
+- [ ] **All five regions of the shell are now filled**, and the orphan check has nothing
+      to report: this is the last mounting ticket, so after it every component built in
+      Stage 2 is reachable from `main.tsx`. State it in the commit body.
 - [ ] All four settings are changeable by keyboard alone and survive a restart.
 - [ ] "Use the palette's accent" writes `""` and **removes** the inline `--accent`.
 - [ ] `git grep -nE '#[0-9a-fA-F]{3,8}' frontend/src` returns nothing — including the
       presets.
 - [ ] An invalid free accent value is refused by Go and produces a toast; the UI reverts.
 - [ ] Labels translated; the RU control strip does not clip at 1024px.
+- [ ] The orphan check (`App.mount.test.tsx`) is green with an **empty** difference.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
 **Commit:** `feat(frontend): add the appearance and language controls (S2-21)`
@@ -3411,9 +3704,13 @@ Requirements:
 The last ticket, and the one that makes the ACCEPT criterion a thing a machine can check
 rather than a thing somebody says.
 
-**Scope (may touch):** `frontend/src/views/Kanban.accept.test.tsx`, any test helper it
+**Scope (may touch):** `frontend/src/App.accept.test.tsx`, any test helper it
 needs, the locale files if the audit finds a missing key, and **no production behaviour**
 beyond fixing what the audit finds.
+
+> The file sits beside `App.tsx` rather than under `views/`, because since S2-15 the
+> thing under test is the **assembled screen**, not the Kanban view. `accept` is still in
+> the filename, so it is still findable by name.
 
 Requirements:
 
@@ -3422,6 +3719,11 @@ Requirements:
    `Ctrl+N` → type a title → `Enter` → four × `Ctrl+Shift+ArrowRight` → assert the card
    is in Done. It asserts the **exact sequence of client calls**: one `CreateNode`, then
    `MoveToColumn` with each of the four statuses Go supplied, in order.
+   **It renders `<App />`** — the real composition root of S2-15, with the store, the
+   overlays, the strip and the toast layer all mounted — and imports **no** component
+   below it. The ACCEPT criterion is a property of the assembled screen; a flow test that
+   mounts `<Kanban />` and passes a quick-add in by hand is testing an arrangement no user
+   ever gets. This is the criterion the whole composition rule exists to protect.
 2. **It can only press keys.** The test uses `user-event.keyboard` and `user-event.tab`
    and **nothing else** — no `click`, no `pointer`, no `fireEvent.mouse*`. This is
    asserted mechanically, as a `make guard` check over the test file, so the proof cannot
@@ -3434,16 +3736,34 @@ Requirements:
    horizontal scroll. Snapshot-tested at a fixed width where it can be, inspected by hand
    where it cannot, and **reported honestly either way**.
 5. **The a11y audit.** Every interactive element keyboard-reachable; `:focus-visible` in
-   `accent` visible on every one of them; `prefers-reduced-motion` respected **including
-   the Aurora drift**; sensible roles and labels on the overlays.
+   `accent` visible on every one of them; `prefers-reduced-motion` respected; sensible
+   roles and labels on the overlays.
+
+   **On the Aurora drift, and say it this way in the report (D16, K5):** what is audited
+   is that `tokens.css` kills transitions under `prefers-reduced-motion` and that
+   `auroraDriftEnabled()` sets `data-drift="off"`. **Nothing draws the drift** — the gate
+   shipped in S2-12, the visual is deliberately out of Stage 2 because `design/` specifies
+   no drift to build and inventing one is forbidden. Do **not** report having watched a
+   drift pause; report that the gate is correct and that there is nothing behind it yet.
+6. **The mounting audit.** `App.mount.test.tsx` reports an empty difference, and the
+   report names, one by one, every component Stage 2 built and where in the running app
+   it is reached. This is the last chance to catch a piece that exists and is not on
+   screen, and it is the defect the composition rule was written for.
 
 **Acceptance criteria**
 - [ ] The flow test passes and is named so it is findable (`accept`, in the filename).
+- [ ] **The flow test renders `<App />`** and imports no component beneath it —
+      `git grep -n "^import" frontend/src/App.accept.test.tsx` shows `App`, the
+      test helpers and nothing from `components/` or `views/`.
 - [ ] `make guard` fails if a mouse event is introduced into the accept test — proven by
       introducing one, watching it fail, and reverting. **Record it in the commit body.**
 - [ ] The timer indicator appears on Doing and is gone on Done.
 - [ ] The RU audit is done and reported, screen by screen, with any fix committed here.
 - [ ] Every interactive element is keyboard-reachable and shows the accent focus ring.
+- [ ] **`App.mount.test.tsx` reports an empty difference**, and the mounting audit is
+      reported component by component.
+- [ ] The Aurora drift is reported as **gated and not drawn** (D16 / K5), not as
+      "verified pausing".
 - [ ] The **hand** script below is executed on the real binary and reported step by step.
 - [ ] `make guard`, `make front-test`, `make cover`, `make check` all green.
 
@@ -3461,11 +3781,12 @@ actually works in a real WebKit window, which jsdom cannot tell anyone.
 
 ### Half 1 — mechanical, and re-run on every commit
 
-`frontend/src/views/Kanban.accept.test.tsx` (S2-22), run by `make front-test`.
+`frontend/src/App.accept.test.tsx` (S2-22), run by `make front-test`.
 
-It presses keys and nothing else. `make guard` asserts the file contains no `click`, no
-`pointer`, no `fireEvent.mouse*` — so "no mouse" is not a claim in a commit message, it is
-a check that fails.
+It renders **`<App />`** — the whole assembled screen of S2-15 onwards, not a hand-built
+arrangement of components — and then presses keys and nothing else. `make guard` asserts
+the file contains no `click`, no `pointer`, no `fireEvent.mouse*` — so "no mouse" is not a
+claim in a commit message, it is a check that fails.
 
 It asserts the exact call sequence: `CreateNode` once, then `MoveToColumn` with each of
 the four statuses **as Go supplied them**, in order, then the card in Done.
@@ -3502,13 +3823,21 @@ is half 1; this half is the real window, which is exactly what half 1 cannot see
 |---|---|
 | the whole keyboard flow, and that it uses no mouse event | that a real WebKit window opens and is usable |
 | the exact sequence and arguments of the Go calls | the **window background** and the absence of a startup flash (**D12** / K1) — GTK-side, invisible to jsdom |
-| the timer indicator appearing on Doing and gone on Done | that the Aurora drift actually pauses under `prefers-reduced-motion` |
-| Go-side atomicity, the single-active timer, the cascade rule (**S2-03**) | Russian text not clipping at a real 1024×768 |
-| `en.json`/`ru.json` key parity | that the focus ring is genuinely visible against both palettes |
+| the timer indicator appearing on Doing and gone on Done | Russian text not clipping at a real 1024×768 |
+| that every Stage 2 component is mounted and reached from `main.tsx` (`App.mount.test.tsx`) | that the focus ring is genuinely visible against both palettes |
+| that `data-drift` is `off` under `prefers-reduced-motion` and `on` otherwise | that the launch screen is actually assembled — header, strip, board, overlays, toasts — and not five tests that pass in isolation |
+| Go-side atomicity, the single-active timer, the cascade rule (**S2-03**) | |
+| `en.json`/`ru.json` key parity | |
 | no hex literal, no status literal, no recomputed rule (`make guard`) | |
 
 Nothing in the left column is claimed as hand-verified, and nothing in the right column
 is claimed as automated.
+
+**Verified by neither, and deliberately so:** that Aurora's background drift pauses. The
+*gate* is automated, above; the **drift itself is not drawn in Stage 2** — see **D16** and
+**K5**. It was on the hand list in the first draft of this plan, which would have had the
+Reviewer confirm the behaviour of something nothing renders. Removed rather than left to
+be discovered at review.
 
 ---
 
@@ -3560,7 +3889,17 @@ Stage 2 closes only when **all** of these hold, verified by the Reviewer. Per
     `frontend/wailsjs`, which is committed and not left dirty.
 19. [ ] `0001_settings.sql` and every Stage 1 migration are byte-identical to their
     closed state.
-20. [ ] **The Reviewer returns PASS.**
+20. [ ] **Every component Stage 2 built is reachable in the running app.**
+    `frontend/src/App.mount.test.tsx` reports an **empty** difference between the
+    components under `frontend/src/{components,views}` and the import closure of
+    `frontend/src/main.tsx`; the header, habits strip, board, overlay and toast regions of
+    the shell are all filled; and the ACCEPT flow test drives `<App />`. A stage whose
+    every ticket passed and whose app opens blank has not delivered a launch screen —
+    this is the criterion that says so.
+21. [ ] **Nothing is claimed that was not verified, specifically on the Aurora drift**:
+    the report says the drift is **gated and not drawn** (**D16**, **K5**) and nobody
+    claims to have watched it pause.
+22. [ ] **The Reviewer returns PASS.**
 
 Nothing may be marked done that was not actually verified. Stage 1 closed on its fourth
 review; a first-round FAIL here is a normal outcome, not a failure of the process.
@@ -3569,4 +3908,8 @@ review; a first-round FAIL here is a normal outcome, not a failure of the proces
 editor, inline subtasks, the tag/due/priority/estimate editors, the RRULE editor,
 attachments, the type switcher, the tree view, the archive view, the search **screen**,
 the standalone quick-add **window** and the NL parser, focus mode, the tray, autostart,
-D-Bus sleep/lock, backup, export, the PMP timelog screen, the calendar, stats and Gantt.
+D-Bus sleep/lock, backup, export, the PMP timelog screen, the calendar, stats and Gantt —
+and **Aurora's background drift**, whose reduced-motion gate ships and whose visual does
+not, by **D16**. That last one is the only item on this list that is out of scope because
+the design export does not specify it rather than because it belongs to a later stage;
+it returns when a spec exists, and **it is not to be invented** (**K5**).

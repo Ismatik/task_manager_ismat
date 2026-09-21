@@ -354,7 +354,8 @@ a second spelling is the defect that cost this project three review rounds.
 
 ### Stage 2 — CURRENT, planned
 
-**Twenty-two tickets, S2-01 … S2-22, in `TASKS.md`.** Nothing is implemented yet.
+**Twenty-two tickets, S2-01 … S2-22, in `TASKS.md`.** **S2-01 … S2-13 are committed**;
+S2-14 … S2-22 remain.
 
 The shape of the stage, and why it is in that order:
 
@@ -374,7 +375,19 @@ The shape of the stage, and why it is in that order:
 
 Four new decisions come out of this planning pass and are recorded in §7: **D12** (the
 locale/background fix, given by the user), and **D13**, **D14**, **D15** — PM rulings
-on the Doing↔timer coupling, on K2 and on K3, each open to the user's override.
+on the Doing↔timer coupling, on K2 and on K3, each open to the user's override. A fifth,
+**D16**, was added *during* the stage: Aurora's background drift is gated and not drawn.
+
+**One planning defect, found and corrected mid-stage.** After S2-13 the Dev reported that
+**no remaining ticket owned `frontend/src/App.tsx` or `frontend/src/main.tsx`** — so the
+toast list, the board and both overlays would each have been built, tested and mounted by
+nobody, every ticket would have passed, and the app would have opened blank with the
+ACCEPT criterion undemonstrable. The tickets S2-14 … S2-22 were corrected in place: the
+ticket that builds a top-level piece now mounts it, S2-15 creates the shell, and an
+orphan check walks the import closure of `main.tsx` so an unmounted component turns a test
+red on the commit that builds it. `TASKS.md`, *"Composition — who mounts what"*, carries
+the rule. Worth recording as process, not just as a fix: the Dev found it by **refusing to
+widen scope silently** and reporting it instead, which is exactly what that rule is for.
 
 **Three things Stage 2 is explicitly forbidden from doing.** They are the shape of
 Stage 1's four review rounds, turned into rules up front:
@@ -408,7 +421,7 @@ I am the **orchestrator**. Three sub-agents, delegated explicitly:
 
 ## 7. Resolved decisions
 
-The open questions are **closed**. Referenced as **D1–D15** and **E1–E3** from tickets
+The open questions are **closed**. Referenced as **D1–D16** and **E1–E3** from tickets
 in `TASKS.md`.
 
 **D1–D12 were given by the user and are authoritative** — they override anything
@@ -419,13 +432,14 @@ same authority. D10 and D11 came out of the second review, and **D10 generalises
 derivation rule in §4**, which has been amended accordingly. **D12** was confirmed by
 the user while Stage 2 was being planned and closes **K1**.
 
-**D13, D14 and D15 are PM rulings**, made during Stage 2 planning because `TASKS.md`
-**C1**, **C4** and **C5** demanded a decision and the user's brief did not contain one.
-They are written in the same form and bind the Dev exactly as the rest do — a rule with
-no single written spelling is the defect that cost Stage 1 three review rounds — but
-their provenance is different and **the user may overturn any of them**. If one is
-overturned, the ticket that implements it changes with it; nothing else in this document
-depends on them.
+**D13, D14, D15 and D16 are PM rulings.** D13, D14 and D15 were made during Stage 2
+planning because `TASKS.md` **C1**, **C4** and **C5** demanded a decision and the user's
+brief did not contain one; **D16** was made *during* Stage 2, when the Dev asked what
+draws Aurora's background drift and correctly declined to invent it. They are written in
+the same form and bind the Dev exactly as the rest do — a rule with no single written
+spelling is the defect that cost Stage 1 three review rounds — but their provenance is
+different and **the user may overturn any of them**. If one is overturned, the ticket
+that implements it changes with it; nothing else in this document depends on them.
 
 ### D1 — `due_source` (was Q1: due-date provenance)
 Add the column `due_source TEXT NOT NULL DEFAULT 'manual'`, values in
@@ -862,6 +876,55 @@ occupied. It never renders a percentage, a `0/0`, or an empty bar track.
 `progress.defined`. The strings are i18n keys in `en.json`/`ru.json` like every other
 string. The frontend still computes **nothing** — it branches on a flag Go set.
 
+### D16 — Aurora's background drift is gated in Stage 2 and drawn in a later one (PM ruling, during Stage 2; opens K5)
+
+**The question.** `design/README.md` says, in one sentence: *"Aurora's background drift
+(~60s) must also pause"* under `prefers-reduced-motion`. S2-12 built the gate —
+`auroraDriftEnabled()` decides it in one place, respects the media query, and publishes
+`data-drift="on"|"off"` on `<html>`. **No ticket ever asked anyone to draw the drift**,
+so the attribute has no consumer. The Dev raised it rather than inventing a visual, which
+was correct: `design/` holds `README.md`, `tokens.css`, `tailwind.config.js`, `SKILL.md`
+and `pmp-timelog-format.md`, and **not one of them specifies a drift** — and §3 and **D6
+as amended** forbid inventing a spec and attributing it to the export.
+
+**The ruling: the gate ships in Stage 2; the visual does not.**
+
+That sentence is a **constraint on a drift, not a specification of one**. It fixes two
+things — a period of about sixty seconds, and that it pauses under reduced motion — and
+leaves everything needed to actually draw it unsaid: how many layers, what geometry, what
+opacity, what path, whether it is a CSS animation or a canvas, whether it sits behind the
+board or behind the whole page. Building it means inventing at least four properties and
+shipping them under the design export's name. That is the precise failure D6's amendment
+exists to prevent, and it is worse than shipping nothing, because an invented drift is
+hard to tell from a specified one six months later.
+
+Against that, the cost of not having it is small and bounded: the drift moves no card,
+blocks no key, changes no contrast decision and has **zero bearing on the ACCEPT
+criterion**. It is decoration.
+
+**Rejected alternatives**, both of which were live:
+
+1. *Invent a modest drift and call it minimal* — two translating radial gradients in
+   `accent`/`accent-2`, say. Rejected: "modest" is still invented, and the token names
+   would give it a legitimacy the spec never granted.
+2. *Delete the gate as dead code.* Rejected: the gate is not dead, it is **early**. It is
+   correct, tested, and it is the part that is genuinely hard to retrofit — a motion
+   feature built first and made reduced-motion-safe afterwards is how a11y regressions
+   ship. `data-drift` is a published contract waiting for a consumer, and
+   `appearance.ts` says so in a comment.
+
+**What this obliges, and it is the part that matters.** Nobody may claim the drift was
+verified. S2-22's a11y audit reports that `data-drift` is `off` under
+`prefers-reduced-motion` and `on` otherwise, and reports that **nothing is drawn behind
+it** — it does not report having watched a drift pause. The ACCEPT verification table in
+`TASKS.md` listed exactly that hand-verification and has been corrected.
+
+**When it comes back.** It becomes a Stage 3 ticket the moment a drift specification
+exists — from the user, or from an authorised PM ruling that invents one *openly and in
+this document* rather than silently in a component. At that point the ticket is only the
+drawing: the gate, the media query and the test are already built and already green. The
+standing consequence is recorded as **K5** below.
+
 ### FTS5 — spike it, do not guess (was Q8, unchanged)
 **Spike FTS5 on `modernc.org/sqlite` in Stage 1**, first thing. If FTS5 is not
 available in the pinned version, **fall back to LIKE-based search on `title` +
@@ -894,12 +957,13 @@ and closed Stage 0. `pkg-config --exists gtk+-3.0 webkit2gtk-4.1` now succeeds.
 
 ### Known issues — all decided, none deleted
 
-**All four are now DECIDED, none is deleted.** K1, K2 and K3 were carried into Stage 2
+**All five are now DECIDED, none is deleted.** K1, K2 and K3 were carried into Stage 2
 as things to rule on, and Stage 2 planning ruled on all three: **K1 → D12**,
-**K2 → D14**, **K3 → D15**. Each is now **decided but not yet implemented** — the
-tickets are **S2-08**, **S2-06** and **S2-14** respectively — and each stays on the
-record below with its decision named, so the failure mode remains visible and so nobody
-re-opens a question that has an answer. **K4 is RESOLVED** in `9664506`, likewise kept.
+**K2 → D14**, **K3 → D15**. K1 and K2 are **implemented** (`2fe9e84`, `bff9a82`); K3's
+ticket is **S2-14** and is still ahead. Each stays on the record below with its decision
+named, so the failure mode remains visible and so nobody re-opens a question that has an
+answer. **K4 is RESOLVED** in `9664506`, likewise kept. **K5** was opened *during* Stage
+2 and decided in the same pass by **D16**.
 
 **K1 — `BackgroundColour` never reaches GTK under a comma-decimal locale.
 DECIDED by D12; implemented by S2-08.**
@@ -983,14 +1047,37 @@ of the rule. Nothing is parked out of sight because nothing can be parked there.
 Recorded here rather than deleted so the failure mode stays on the record; **K1–K3
 remain the open ones.**
 
+**K5 — `data-drift` is a gate with nothing behind it. DECIDED by D16; deliberately out
+of Stage 2, and no ticket is scheduled.**
+S2-12 built the reduced-motion gate for Aurora's background drift, exactly as
+`design/README.md` requires, and **nothing draws the drift**, because `design/` specifies
+none and inventing one is forbidden (§3, **D6** as amended). So
+`document.documentElement.dataset.drift` is set correctly, on every palette and under
+both motion preferences, and no code reads it.
+
+The failure mode this is written down against is not the missing decoration — it is the
+**false green**. S2-12's criterion *"under `prefers-reduced-motion: reduce`, the Aurora
+drift is not running"* is satisfied **vacuously**: nothing is running under any
+preference. A criterion that passes for the wrong reason is worse than a red one, so the
+vacuity is stated here, in S2-12's ticket, and in S2-22's audit instructions, and the
+ACCEPT table's claim that a human would watch the drift pause has been removed.
+
+**The ruling is D16.** The gate is early rather than dead — retrofitting reduced-motion
+safety onto a shipped animation is how a11y regressions happen — and it is exactly the
+half that is hard to add later. This becomes a Stage 3 ticket when a drift specification
+exists; until then `appearance.ts` carries a comment saying what `data-drift` is for and
+who is expected to read it.
+
 ---
 
-**Status: decisions locked — D1–D15, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
+**Status: decisions locked — D1–D16, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
 CLOSED (PASS) — all twenty-two tickets, S1-01 … S1-22, ACCEPT met at 100.0% / 92.9%,
 PASS returned on the fourth review at `a1f09b7` after three FAILs whose history is kept
-in §5. **Stage 2 is CURRENT and planned**: twenty-two tickets, S2-01 … S2-22, in
-`TASKS.md`, none implemented yet. All five carried obligations are absorbed into
+in §5. **Stage 2 is CURRENT and in progress**: twenty-two tickets, S2-01 … S2-22, in
+`TASKS.md`, **S2-01 … S2-13 committed**. All five carried obligations are absorbed into
 tickets — C1 → S2-03, C2 → S2-01, C3 → S2-08, C4 → S2-06, C5 → S2-14 — and every known
-issue now has a decision: **K1 → D12** (user), **K2 → D14** and **K3 → D15** (PM
-rulings, overturnable), **K4** RESOLVED in `9664506`. Nothing is open. See §5,
-"Stage 2 — CURRENT, planned".**
+issue now has a decision: **K1 → D12** (user), **K2 → D14**, **K3 → D15** and
+**K5 → D16** (PM rulings, overturnable), **K4** RESOLVED in `9664506`. Nothing is open.
+One planning defect was found mid-stage and corrected in `TASKS.md` — nothing owned
+`App.tsx` or `main.tsx`, so nothing mounted anything; see §5, "Stage 2 — CURRENT,
+planned", and `TASKS.md`, "Composition — who mounts what".**
