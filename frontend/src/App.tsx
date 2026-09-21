@@ -1,39 +1,16 @@
-import { useState, type ChangeEvent } from 'react';
-import logo from './assets/images/logo-universal.png';
 import './App.css';
-import { Greet } from '../wailsjs/go/main/App';
 
+// The scaffold's demo box is gone: S2-07 replaced the bound surface with the
+// real one — Board, Tree, the writes, the habit strip, the timer and the
+// settings — and the method it called no longer exists in Go, so its caller
+// could not stay either.
+//
+// This file is deliberately empty of everything else. S2-09 lays out
+// frontend/src, S2-11 brings i18n, and the board itself arrives in S2-14 and
+// S2-15. Nothing here renders a user-visible string, so there is nothing to
+// translate yet.
 function App() {
-  const [resultText, setResultText] = useState('Please enter your name below 👇');
-  const [name, setName] = useState('');
-  const updateName = (e: ChangeEvent<HTMLInputElement>) => setName(e.target.value);
-  const updateResultText = (result: string) => setResultText(result);
-
-  function greet() {
-    Greet(name).then(updateResultText);
-  }
-
-  return (
-    <div id="App">
-      <img src={logo} id="logo" alt="logo" />
-      <div id="result" className="result">
-        {resultText}
-      </div>
-      <div id="input" className="input-box">
-        <input
-          id="name"
-          className="input"
-          onChange={updateName}
-          autoComplete="off"
-          name="input"
-          type="text"
-        />
-        <button className="btn" onClick={greet}>
-          Greet
-        </button>
-      </div>
-    </div>
-  );
+  return <div id="App" />;
 }
 
 export default App;

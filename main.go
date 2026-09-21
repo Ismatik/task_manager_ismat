@@ -1,28 +1,104 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"embed"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
 	"nexus/internal/platform"
+	"nexus/internal/service"
+	"nexus/internal/store"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// openStore opens the database at the default path, applies every migration and
+// seeds the settings defaults.
+//
+// The caller owns the handle and must Close it. Everything it can fail at is
+// fatal to the caller (see main): opening a window onto a database that is not
+// there is worse than not opening one, because a silent empty board looks
+// exactly like "you have no tasks".
+func openStore(ctx context.Context) (*sql.DB, error) {
+	path, err := store.DefaultPath()
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := store.Open(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := store.Migrate(ctx, db); err != nil {
+		db.Close() //nolint:errcheck // the migration error is the one that matters
+		return nil, fmt.Errorf("nexus: migrating %s: %w", path, err)
+	}
+	if _, err := store.NewSettingsRepo(db).SeedDefaults(ctx); err != nil {
+		db.Close() //nolint:errcheck // as above
+		return nil, fmt.Errorf("nexus: seeding settings in %s: %w", path, err)
+	}
+	return db, nil
+}
+
+// newServices constructs every service over db, with the real wall clock and a
+// uuid generator.
+//
+// The clock and the id source are injected here and nowhere else: internal/
+// never reads either from the ambient environment, which is what makes every
+// rule in it testable at an exact instant (ARCHITECTURE.md §2).
+func newServices(db *sql.DB) Services {
+	var (
+		clock   = service.Clock(service.SystemClock)
+		newID   = func() string { return uuid.NewString() }
+		begin   = service.NewBeginner(db)
+		nodes   = store.NewNodeRepo(db)
+		tags    = store.NewTagRepo(db)
+		entries = store.NewTimeEntryRepo(db)
+		checks  = store.NewHabitCheckRepo(db)
+		search  = store.NewSearchRepo(db)
+	)
+
+	// The timer service is built first: the task service drives it inside the
+	// move's own transaction, which is what couples Doing to a time entry
+	// (C1, D13).
+	timers := service.NewTimerService(begin, nodes, entries, clock, newID)
+
+	return Services{
+		Tasks:    service.NewTaskService(begin, nodes, tags, timers, clock, newID),
+		Timers:   timers,
+		Habits:   service.NewHabitService(nodes, checks, clock),
+		Search:   service.NewSearchService(begin, nodes, tags, search, clock),
+		Settings: service.NewSettingsService(store.NewSettingsRepo(db)),
+	}
+}
+
 func main() {
 	socket := platform.SocketPath()
 
+	// The database is the application: if it cannot be opened or migrated,
+	// there is nothing to show and saying so is the only honest outcome.
+	db, err := openStore(context.Background())
+	if err != nil {
+		log.Printf("nexus: %v", err)
+		os.Exit(1)
+	}
+	defer db.Close() //nolint:errcheck // nothing useful to do at exit
+
 	// Create an instance of the app structure
-	app := NewApp()
+	app := NewApp(newServices(db))
 
 	// Nexus is single-instance: whoever manages to listen on the socket owns
 	// the window, and every later launch is a message to it.

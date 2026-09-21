@@ -2,29 +2,56 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"nexus/internal/domain"
 	"nexus/internal/platform"
+	"nexus/internal/service"
 )
+
+// Services is everything the bound surface delegates to, constructed in main.go
+// and handed over whole.
+//
+// It is a struct rather than six parameters so that adding a service later is
+// not a change at every construction site, and so that main.go reads as a list
+// of what the application is made of.
+type Services struct {
+	Tasks    *service.TaskService
+	Timers   *service.TimerService
+	Habits   *service.HabitService
+	Search   *service.SearchService
+	Settings *service.SettingsService
+}
 
 // App is the struct bound to Wails. Its exported methods are the frontend's
 // entire surface onto Go, and every one of them returns (T, error) — see
 // ARCHITECTURE.md §4: Wails turns the second return value into a rejected JS
 // promise, and without it the frontend cannot tell "empty result" from "it blew
-// up".
+// up". TestEveryBoundMethodReturnsAnError asserts that mechanically.
+//
+// # Every method here is a delegation and nothing else
+//
+// No branch in this file decides anything. Which column a card belongs in, who
+// may be `doing`, what a streak is, whether a palette name is allowed — every
+// one of those is a rule, and a rule in the binding layer is a rule with a
+// second spelling that no test in internal/ can see. The two conversions that do
+// appear — an empty rootID meaning "the whole forest", an empty due date meaning
+// "clear it" — are wire conventions, not decisions: the frontend cannot send a
+// Go nil, and both are documented on the method that performs them.
 type App struct {
 	// mu guards ctx, which is written by startup on the main goroutine and read
 	// by onIPCMessage on the single-instance listener's goroutine.
 	mu  sync.RWMutex
 	ctx context.Context
+
+	svc Services
 }
 
-// NewApp creates a new App application struct
-func NewApp() *App {
-	return &App{}
+// NewApp returns the bound application over the constructed services.
+func NewApp(svc Services) *App {
+	return &App{svc: svc}
 }
 
 // startup is called when the app starts. The context is saved
@@ -35,13 +62,215 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-// Greet returns a greeting for the given name.
+// context returns the context Wails handed startup, or a background context
+// when a call somehow arrives before it.
 //
-// It cannot currently fail, and still returns an error: adding a failure mode
-// later must not be a breaking change at every call site (ARCHITECTURE.md §4).
-func (a *App) Greet(name string) (string, error) {
-	return fmt.Sprintf("Hello %s, It's show time!", name), nil
+// A bound method cannot take a context.Context — Wails does not supply one — so
+// this is where every call below gets theirs. Falling back rather than failing
+// is deliberate: the fallback is unreachable from the frontend, which cannot
+// call anything before the runtime has started, and an error there would be one
+// no user could act on.
+func (a *App) context() context.Context {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	if a.ctx == nil {
+		return context.Background()
+	}
+	return a.ctx
 }
+
+// ---------------------------------------------------------------------------
+// The board and the tree.
+
+// Board returns the five Kanban columns, in order, each with its cards.
+func (a *App) Board() ([]service.ColumnView, error) {
+	return a.svc.Tasks.Board(a.context())
+}
+
+// Tree returns the subtree rooted at rootID, or the whole forest when rootID is
+// empty.
+//
+// The empty string stands for "no root" because JavaScript cannot send a Go
+// nil. It is a wire convention and not a decision: what a nil root means is
+// TaskService.Tree's, unchanged.
+func (a *App) Tree(rootID string) ([]service.NodeView, error) {
+	if rootID == "" {
+		return a.svc.Tasks.Tree(a.context(), nil)
+	}
+	return a.svc.Tasks.Tree(a.context(), &rootID)
+}
+
+// Progress returns the done-over-total progress of a subtree.
+func (a *App) Progress(nodeID string) (service.ProgressView, error) {
+	return a.svc.Tasks.Progress(a.context(), nodeID)
+}
+
+// ---------------------------------------------------------------------------
+// Writes.
+
+// CreateNode inserts a node and returns it as it was stored.
+func (a *App) CreateNode(draft service.NewNode) (domain.Node, error) {
+	return a.svc.Tasks.CreateNode(a.context(), draft)
+}
+
+// MoveToColumn drags a card to a Kanban column.
+//
+// This is the COUPLED move (C1, D13): moving a card to Doing opens a time entry
+// in the same transaction, and moving it out closes one. There is no uncoupled
+// variant to bind — see TaskService.MoveToColumn.
+func (a *App) MoveToColumn(nodeID string, target domain.Status) (domain.Node, error) {
+	return a.svc.Tasks.MoveToColumn(a.context(), nodeID, target)
+}
+
+// MoveNode re-parents a node, with its whole subtree, at a position among its
+// new siblings. An empty newParentID makes it a root — the same wire convention
+// Tree uses.
+func (a *App) MoveNode(nodeID string, newParentID string, toIndex int) (domain.Node, error) {
+	if newParentID == "" {
+		return a.svc.Tasks.MoveNode(a.context(), nodeID, nil, toIndex)
+	}
+	return a.svc.Tasks.MoveNode(a.context(), nodeID, &newParentID, toIndex)
+}
+
+// SetDue is the user editing a due date by hand (D1). An empty due CLEARS the
+// date, which is the same wire convention again: there is no Go nil to send.
+//
+// The date arrives as the "YYYY-MM-DD" string domain.Date marshals to (S2-02),
+// and is parsed by domain.ParseDate — the one parser, which refuses a date that
+// does not exist.
+func (a *App) SetDue(nodeID string, due string) (domain.Node, error) {
+	if due == "" {
+		return a.svc.Tasks.SetDue(a.context(), nodeID, nil)
+	}
+
+	parsed, err := domain.ParseDate(due)
+	if err != nil {
+		return domain.Node{}, err
+	}
+	return a.svc.Tasks.SetDue(a.context(), nodeID, &parsed)
+}
+
+// ArchiveNode hides a node and its subtree, and reports how many rows it
+// archived.
+func (a *App) ArchiveNode(nodeID string) (int, error) {
+	return a.svc.Tasks.ArchiveNode(a.context(), nodeID)
+}
+
+// RestoreNode brings a node and its subtree back, and reports how many rows it
+// restored.
+func (a *App) RestoreNode(nodeID string) (int, error) {
+	return a.svc.Tasks.RestoreNode(a.context(), nodeID)
+}
+
+// ---------------------------------------------------------------------------
+// Search, habits and the timer.
+
+// Search returns the cards whose title or description match, most relevant
+// first.
+func (a *App) Search(query string, opts service.SearchOptions) ([]service.NodeView, error) {
+	return a.svc.Search.Search(a.context(), query, opts)
+}
+
+// HabitStrip returns every non-archived habit with its schedule, today's check
+// and its streak (D5).
+func (a *App) HabitStrip() ([]service.HabitView, error) {
+	return a.svc.Habits.Strip(a.context())
+}
+
+// CheckHabit ticks a habit for a day, given as "YYYY-MM-DD", and returns the
+// strip as it now is — so the caller re-renders from the answer.
+func (a *App) CheckHabit(nodeID string, date string) ([]service.HabitView, error) {
+	parsed, err := domain.ParseDate(date)
+	if err != nil {
+		return nil, err
+	}
+	if err := a.svc.Habits.Check(a.context(), nodeID, parsed); err != nil {
+		return nil, err
+	}
+	return a.svc.Habits.Strip(a.context())
+}
+
+// UncheckHabit removes a day's tick and returns the strip as it now is.
+func (a *App) UncheckHabit(nodeID string, date string) ([]service.HabitView, error) {
+	parsed, err := domain.ParseDate(date)
+	if err != nil {
+		return nil, err
+	}
+	if err := a.svc.Habits.Uncheck(a.context(), nodeID, parsed); err != nil {
+		return nil, err
+	}
+	return a.svc.Habits.Strip(a.context())
+}
+
+// TimerStart opens a timer on a node and reports it as the card renders it.
+func (a *App) TimerStart(nodeID string) (service.TimerView, error) {
+	if _, err := a.svc.Timers.Start(a.context(), nodeID); err != nil {
+		return service.TimerView{}, err
+	}
+	return a.TimerCurrent()
+}
+
+// TimerStop closes the running timer, if any, and reports the timer as it now
+// is — which is "not running". Stopping when nothing runs is not an error.
+func (a *App) TimerStop() (service.TimerView, error) {
+	if _, err := a.svc.Timers.Stop(a.context()); err != nil {
+		return service.TimerView{}, err
+	}
+	return a.TimerCurrent()
+}
+
+// TimerCurrent reports the single global timer, running or not.
+//
+// It returns the same TimerView a card carries (S2-02) rather than the service's
+// own Running struct, so the indicator on a card and the one in the toolbar
+// cannot disagree about a shape.
+func (a *App) TimerCurrent() (service.TimerView, error) {
+	running, err := a.svc.Timers.Current(a.context())
+	if err != nil {
+		return service.TimerView{}, err
+	}
+	if running == nil {
+		return service.TimerView{}, nil
+	}
+	return service.TimerView{
+		Running:        true,
+		EntryID:        running.Entry.ID,
+		StartedAt:      &running.Entry.StartedAt,
+		ElapsedSeconds: int(running.Elapsed.Seconds()),
+	}, nil
+}
+
+// ---------------------------------------------------------------------------
+// Settings.
+
+// Settings returns the four persisted preferences (D6).
+func (a *App) Settings() (service.SettingsView, error) {
+	return a.svc.Settings.Settings(a.context())
+}
+
+// SetPalette stores the palette and returns the settings as they now are.
+func (a *App) SetPalette(value string) (service.SettingsView, error) {
+	return a.svc.Settings.SetPalette(a.context(), value)
+}
+
+// SetTheme stores the theme and returns the settings as they now are.
+func (a *App) SetTheme(value string) (service.SettingsView, error) {
+	return a.svc.Settings.SetTheme(a.context(), value)
+}
+
+// SetAccent stores the accent override — "" means "use the palette's own" — and
+// returns the settings as they now are.
+func (a *App) SetAccent(value string) (service.SettingsView, error) {
+	return a.svc.Settings.SetAccent(a.context(), value)
+}
+
+// SetLanguage stores the UI language and returns the settings as they now are.
+func (a *App) SetLanguage(value string) (service.SettingsView, error) {
+	return a.svc.Settings.SetLanguage(a.context(), value)
+}
+
+// ---------------------------------------------------------------------------
 
 // onIPCMessage handles one line from a secondary instance. It is unexported, so
 // Wails does not bind it; it is wired to the single-instance lock in main.go.
