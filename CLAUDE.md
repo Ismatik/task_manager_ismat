@@ -17,10 +17,10 @@ It does not restate the plan: [`PLAN.md`](./PLAN.md) is the brief and the decisi
 
 | | |
 |---|---|
-| Last commit | `a1f09b7`, 50 commits on `main`, pushed to `origin` |
+| Last commit | `e101f60`, 52 commits on `main` |
 | Stage 0 | **CLOSED** — Reviewer PASS |
-| Stage 1 | **Reviewer PASS, but the docs do not say so yet** |
-| Stage 2 | Not started |
+| Stage 1 | **CLOSED** — Reviewer PASS on the fourth round, at `a1f09b7` |
+| Stage 2 | Not started, not yet planned |
 
 Coverage: `internal/domain` **100.0%**, `internal/service` **92.9%** (bar is ≥90%),
 `internal/store` 86.4% (not gated). All five `make check` gates green, including
@@ -28,12 +28,18 @@ Coverage: `internal/domain` **100.0%**, `internal/service` **92.9%** (bar is ≥
 
 ### Do this first
 
-1. **Mark Stage 1 CLOSED** in `PLAN.md` and `TASKS.md`. Both still say
-   `IMPLEMENTED, NOT CLOSED`; the Reviewer passed it on the fourth round at
-   `a1f09b7`. Record the ACCEPT criterion as met (100.0% / 92.9%), **keep the
-   four-round review history** — it is the most useful thing in the document — and
-   keep K4 on the record as RESOLVED rather than deleting it.
-2. Then plan Stage 2 (Kanban + Habits strip, the launch screen).
+**Plan Stage 2** — Kanban + Habits strip, the launch screen. Nothing else is
+outstanding: Stage 1 closed at `e101f60`, and `TASKS.md` has a `## Carried into Stage 2`
+section with criteria **C1–C5** that Stage 2's tickets must absorb rather than rediscover.
+
+The Go engine is complete and tested but **nothing is wired to a UI yet**. `main.go`
+still does not open the store or construct a service, so Stage 2's first job is that
+wiring. `frontend/src` is still the untouched Wails scaffold (an `App.tsx` demo with a
+`Greet` box) and there is no `locales/` directory yet, even though i18n is required from
+the first component.
+
+If `frontend/wailsjs/*` ever shows as modified with files truncated to zero bytes, an
+interrupted `wails build` did it. `make build` regenerates them.
 
 ### Stage 2 must not forget these
 
