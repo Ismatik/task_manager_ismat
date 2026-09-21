@@ -44,6 +44,46 @@ import type { AppState } from './index';
 // TimerView.elapsedSeconds itself is never written to. See
 // displayElapsedSeconds below.
 
+/**
+ * One end of a drag: a column Go named, and a position inside it.
+ *
+ * `status` is always a string that came off `Board()` — the frontend still does
+ * not know what the five columns are called — and `index` is the position in
+ * THAT COLUMN as Go returned it. It is the gesture's destination and not a
+ * sibling index: a column holds cards from many different parents, so the two
+ * are not the same list. Go reconciles the one with the other (domain.PlanMove
+ * splices into the real sibling range and clamps an index that is past its
+ * end), which is the correct place for it — working it out here would need a
+ * copy of the sibling ordering rule, and a copy is a second rule.
+ */
+export interface DropTarget {
+  status: string;
+  index: number;
+}
+
+/**
+ * A copy of `board` with one card taken out of one column and put into another
+ * at a given position.
+ *
+ * Array surgery and nothing else: no field is read for its meaning, no status
+ * is rewritten, and `view.status` on the moved card still says whatever Go last
+ * said it was. The card is in a different array; that is the whole optimistic
+ * guess, and the re-read that follows replaces it either way.
+ */
+function relocated(
+  board: ColumnView[],
+  source: number,
+  from: number,
+  destination: number,
+  to: number,
+): ColumnView[] {
+  const next = board.map((column) => ({ ...column, nodes: [...column.nodes] }) as ColumnView);
+  const [moving] = next[source].nodes.splice(from, 1);
+
+  next[destination].nodes.splice(to, 0, moving);
+  return next;
+}
+
 export interface DataSlice {
   /** The five columns, in order, or null before the first read. */
   board: ColumnView[] | null;
@@ -75,6 +115,45 @@ export interface DataSlice {
    * order, and knows nothing at all about their names.
    */
   moveToAdjacentColumn(nodeId: string, offset: number): Promise<boolean>;
+
+  /**
+   * Applies a drag: the card lands where it was dropped at once, and Go is
+   * asked to make it true (S2-17).
+   *
+   * `from` and `to` are the two ends of the GESTURE, read straight off the drag
+   * event by views/Kanban.tsx — a column Go named, and a position in it. This
+   * decides only which of the two calls the gesture was:
+   *
+   *   same column      MoveNode — a reorder among siblings
+   *   another column   MoveToColumn — which is the coupled one (S2-03, D13)
+   *
+   * and nothing else. What a move MEANS is Go's: the due date it rewrites (D8),
+   * the cascade to the subtree (D2), the subtree that travels with the card
+   * (MoveNode moves parent_id + sort_order and leaves every descendant's own
+   * parent_id and status alone). Nothing here walks a subtree, and nothing here
+   * decides whether a card may go where it was dropped — a project dropped on
+   * Doing is refused by Go (D9), not pre-empted here.
+   *
+   * # The optimism, and what pays for it
+   *
+   * This is one of the two exceptions named at the top of this file. The board
+   * is re-written locally BEFORE the call goes out, because a card that snaps
+   * back for 80ms on every successful drag is a card that looks broken. Then
+   * the board is re-read unconditionally, whichever way the call went:
+   *
+   *   accepted   Go's answer replaces the guess — the due date and the cascade
+   *              arrive with it, and the guess never becomes the truth.
+   *   refused    callGo has already raised the one toast, and the re-read puts
+   *              the card back. FROM GO'S ANSWER, never from a snapshot taken
+   *              before the call: a snapshot is only right if nothing else
+   *              changed in the meantime, and that is not something this can
+   *              know.
+   *
+   * Returns whether Go accepted. False also covers a gesture that moved
+   * nothing — dropped where it was picked up, or on a column the board does not
+   * hold — and in that case there is no call and no toast.
+   */
+  dropCard(nodeId: string, from: DropTarget, to: DropTarget): Promise<boolean>;
 
   /**
    * Ticks or un-ticks today's check for a habit, and re-reads the strip.
@@ -224,6 +303,53 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
     return true;
   },
 
+  async dropCard(nodeId, from, to) {
+    const { board } = get();
+    if (board === null) {
+      return false;
+    }
+
+    const source = board.findIndex((column) => column.status === from.status);
+    const destination = board.findIndex((column) => column.status === to.status);
+    if (source === -1 || destination === -1) {
+      return false;
+    }
+
+    // The card the gesture claims to have picked up must really be where it
+    // says it was. A drag that started before a re-read landed is stale, and
+    // acting on a stale index would move SOME OTHER CARD — silently, and to a
+    // place nobody asked for. Refusing is the only safe answer, and it is not
+    // a failure: nothing happened, so there is nothing to say about it.
+    const moving = board[source].nodes[from.index];
+    if (moving === undefined || moving.node.id !== nodeId) {
+      return false;
+    }
+
+    if (source === destination && from.index === to.index) {
+      // Picked up and put back. No call, no toast, no re-read.
+      return false;
+    }
+
+    // The guess. It is on screen before the call leaves.
+    set({ board: relocated(board, source, from.index, destination, to.index) });
+
+    const answer =
+      source === destination
+        ? await callGo(get(), () =>
+            // '' is app.go's wire spelling of "no parent": there is no Go nil
+            // to send, and the binding turns the empty string back into one.
+            get().client.MoveNode(nodeId, moving.node.parentId ?? '', to.index),
+          )
+        : await callGo(get(), () => get().client.MoveToColumn(nodeId, to.status));
+
+    // Unconditional, and that is the point of it. Accepted, Go's answer
+    // replaces the guess — with the rewritten due date (D8) and the cascade
+    // (D2) that the guess knows nothing about. Refused, the same read is the
+    // rollback, and it is a read rather than the array captured above.
+    await get().loadBoard();
+    return answer !== null;
+  },
+
   async toggleHabit(nodeId) {
     const { habits } = get();
     if (habits === null) {
@@ -243,9 +369,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
     // checkbox the user presses twice. Only `checkedToday` moves — the streak
     // is D5's and waits for Go.
     set({
-      habits: habits.map((habit) =>
-        habit.node.id === nodeId ? withCheckFlipped(habit) : habit,
-      ),
+      habits: habits.map((habit) => (habit.node.id === nodeId ? withCheckFlipped(habit) : habit)),
     });
 
     const answer = await callGo(get(), () =>

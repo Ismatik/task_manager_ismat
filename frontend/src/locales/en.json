@@ -5,6 +5,14 @@
   "board": {
     "label": "Board",
     "empty": "There is no board to show yet.",
+    "dnd": {
+      "instructions": "Drag a card with the pointer to move it to another column, or to a new place in the one it is in. Without a pointer, move the card that has focus with {{left}} and {{right}}.",
+      "lifted": "Picked up the card {{card}}.",
+      "over": "The card {{card}} is over {{column}}.",
+      "outside": "The card {{card}} is not over a column.",
+      "dropped": "The card {{card}} was dropped on {{column}}.",
+      "cancelled": "Moving the card {{card}} was cancelled."
+    },
     "column": {
       "cardCount_one": "{{count}} card",
       "cardCount_other": "{{count}} cards",

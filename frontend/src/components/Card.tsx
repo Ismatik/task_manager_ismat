@@ -57,9 +57,21 @@ export interface CardProps {
    * caller that is not the board wants.
    */
   tabIndex?: number;
+  /**
+   * The id of the element that says how this card is dragged, or undefined when
+   * nothing has made it draggable.
+   *
+   * dnd-kit renders that element — one hidden node per DndContext, holding the
+   * TRANSLATED instructions views/Kanban.tsx hands it — and publishes its id.
+   * It arrives as a prop rather than out of a dnd-kit hook here because this
+   * card is not the draggable: components/Column.tsx is, and this is only the
+   * focusable element inside it, which is the one an assistive technology can
+   * read a description off at all.
+   */
+  describedBy?: string;
 }
 
-export function Card({ view, tabIndex }: CardProps) {
+export function Card({ view, tabIndex, describedBy }: CardProps) {
   const { t, i18n } = useTranslation();
 
   // `optional` because the wire sends null where the generator declares `?`.
@@ -75,6 +87,7 @@ export function Card({ view, tabIndex }: CardProps) {
       // the column, and nothing for a later ticket to forget to pass down.
       data-node-id={view.node.id}
       tabIndex={tabIndex}
+      aria-describedby={describedBy}
       className="flex flex-col gap-2 rounded-md border border-line bg-surface p-2 text-ink shadow-sm backdrop-blur-glass"
     >
       <div className="flex min-w-0 items-start gap-2">

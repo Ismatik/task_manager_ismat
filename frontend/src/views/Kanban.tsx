@@ -1,14 +1,31 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
+import {
+  closestCorners,
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type Active,
+  type Announcements,
+  type DragEndEvent,
+  type DragStartEvent,
+  type Over,
+  type ScreenReaderInstructions,
+} from '@dnd-kit/core';
+import { hasSortableData } from '@dnd-kit/sortable';
 import { useTranslation } from 'react-i18next';
 
 import { Column } from '../components/Column';
-import { boardActionFor, nextFocusId, rovingNodeId } from '../lib/keyboard';
+import type { ColumnView } from '../lib/client';
+import { boardActionFor, KEYS, nextFocusId, rovingNodeId } from '../lib/keyboard';
+import type { DropTarget } from '../store/data';
 import { useAppState, useAppStore } from '../store/context';
 
 // Nexus — the board, and the keyboard model inside it.
@@ -55,6 +72,65 @@ import { useAppState, useAppStore } from '../store/context';
 // focus is lost to nothing, because being lost to nothing is exactly the unmount
 // case. So the board never grabs focus on startup, and never takes it back from
 // a toast button the user has tabbed to.
+//
+// # Drag and drop (S2-17), and how the Space collision was resolved
+//
+// **dnd-kit's KeyboardSensor is not registered.** That is the resolution, and
+// TASKS.md S2-17 names the direction: "S2-16's map is normative ... if dnd-kit's
+// default `Space`-to-lift conflicts with the habit-strip `Space`, dnd-kit
+// yields." Its default sensor list is `[PointerSensor, KeyboardSensor]` and its
+// default keyboard codes are `start: [Space, Enter]` — both of which S2-16 has
+// already spent: `Space` toggles a habit, and `Enter` on a card is RESERVED for
+// Stage 3 and must not be intercepted. So `sensors` below is passed explicitly
+// with PointerSensor alone. `useDraggable` builds its listeners out of the
+// registered sensors' activators, so with no KeyboardSensor there is no
+// `onKeyDown` on a card at all — nothing competes, rather than something
+// competing and losing. The keyboard route to the same outcome already exists
+// and is better: Ctrl+Shift+Arrow, S2-16, which needs no lift and no drop.
+//
+// The accessibility strings are ours. dnd-kit's defaults are hard-coded English
+// ("Picked up draggable item ...", "To pick up a draggable item, press the space
+// bar") — the second of which would also be a lie here — so both the
+// announcements and the screen-reader instructions are `t()` keys, and the
+// instructions name the keyboard chords by reading KEYS out of lib/keyboard.ts
+// rather than spelling them a second time in a locale file.
+//
+// What a drop MEANS is not decided here. The handler reads the two ends of the
+// gesture off the event and hands them to the store; which call that becomes,
+// and what happens to the due date and the subtree, is store/data.ts and Go.
+
+/**
+ * How far a pointer must travel before a press becomes a drag.
+ *
+ * Without it every click on a card is a zero-distance drag, and Stage 3's
+ * click-to-open would never fire. Half a step of the 8px grid.
+ */
+const DRAG_THRESHOLD_PX = 4;
+
+/**
+ * Where one end of a drag is, as a column Go named and a position in it.
+ *
+ * A card reports its own seat through `SortableContext` — `containerId` is the
+ * column's status because components/Column.tsx keys the context with it. A
+ * drop on the column itself has no seat, and means the end of that column: an
+ * empty column, or the padding below the last card.
+ */
+function placeOf(board: ColumnView[], item: Active | Over): DropTarget | null {
+  if (hasSortableData(item)) {
+    const { containerId, index } = item.data.current.sortable;
+    return { status: String(containerId), index };
+  }
+
+  const status = String(item.id);
+  const column = board.find((each) => each.status === status);
+  return column === undefined ? null : { status, index: column.nodes.length };
+}
+
+/** A string a drag event published about itself, or the id as a last resort. */
+function published(item: Active | Over | null, key: string): string {
+  const value = item?.data.current?.[key];
+  return typeof value === 'string' ? value : String(item?.id ?? '');
+}
 
 export function Kanban() {
   const { t } = useTranslation();
@@ -85,6 +161,48 @@ export function Kanban() {
     }
     focusCard(roving);
   }, [board, roving, focusCard]);
+
+  // PointerSensor, and nothing else. See the note at the top of this file: the
+  // default list also installs a KeyboardSensor on Space and Enter, both of
+  // which S2-16 has already assigned.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: DRAG_THRESHOLD_PX } }),
+  );
+
+  const announcements: Announcements = useMemo(
+    () => ({
+      onDragStart: ({ active }) => t('board.dnd.lifted', { card: published(active, 'title') }),
+      onDragOver: ({ active, over }) =>
+        over === null
+          ? t('board.dnd.outside', { card: published(active, 'title') })
+          : t('board.dnd.over', {
+              card: published(active, 'title'),
+              column: published(over, 'column'),
+            }),
+      onDragEnd: ({ active, over }) =>
+        over === null
+          ? t('board.dnd.cancelled', { card: published(active, 'title') })
+          : t('board.dnd.dropped', {
+              card: published(active, 'title'),
+              column: published(over, 'column'),
+            }),
+      onDragCancel: ({ active }) => t('board.dnd.cancelled', { card: published(active, 'title') }),
+    }),
+    [t],
+  );
+
+  const screenReaderInstructions: ScreenReaderInstructions = useMemo(
+    () => ({
+      // The chords are READ from lib/keyboard.ts, never written here. S2-16's
+      // map is the one spelling of them, and an instruction that named a key
+      // the map did not bind would be an instruction that lies.
+      draggable: t('board.dnd.instructions', {
+        left: KEYS.moveLeft.hint,
+        right: KEYS.moveRight.hint,
+      }),
+    }),
+    [t],
+  );
 
   if (board === null) {
     return null;
@@ -147,22 +265,61 @@ export function Kanban() {
     }
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    store.getState().setDragging(String(event.active.id));
+  };
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    store.getState().setDragging(null);
+    if (over === null) {
+      // Let go over nothing. Not an error, and nothing to undo: the card was
+      // never moved anywhere but on its own transform.
+      return;
+    }
+
+    const from = placeOf(board, active);
+    const to = placeOf(board, over);
+    if (from === null || to === null) {
+      return;
+    }
+
+    void store.getState().dropCard(String(active.id), from, to);
+  };
+
+  const handleDragCancel = () => {
+    store.getState().setDragging(null);
+  };
+
   return (
-    // `overflow-x-auto` on the board and nowhere else: when five columns will
-    // not fit even at their floor width, the BOARD scrolls. A column never
-    // scrolls sideways inside itself, which is what "no horizontal scroll
-    // inside a column" means.
-    <div
-      ref={boardRef}
-      onKeyDown={handleKeyDown}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
-      className="flex min-w-0 items-start gap-2 overflow-x-auto"
+    <DndContext
+      sensors={sensors}
+      // The columns and the cards are both drop targets, nested, so the
+      // question "which one is the pointer nearest" has to be answered by
+      // corner distance rather than by containment — `pointerWithin` would
+      // report the column every time the pointer was inside it, which is
+      // always.
+      collisionDetection={closestCorners}
+      accessibility={{ announcements, screenReaderInstructions }}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
-      {board.map((column) => (
-        <Column key={column.status} column={column} rovingNodeId={roving} />
-      ))}
-    </div>
+      {/* `overflow-x-auto` on the board and nowhere else: when five columns will
+          not fit even at their floor width, the BOARD scrolls. A column never
+          scrolls sideways inside itself, which is what "no horizontal scroll
+          inside a column" means. */}
+      <div
+        ref={boardRef}
+        onKeyDown={handleKeyDown}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        className="flex min-w-0 items-start gap-2 overflow-x-auto"
+      >
+        {board.map((column) => (
+          <Column key={column.status} column={column} rovingNodeId={roving} />
+        ))}
+      </div>
+    </DndContext>
   );
 }
 
