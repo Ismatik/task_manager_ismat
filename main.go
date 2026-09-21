@@ -121,6 +121,17 @@ func main() {
 	stopSignals := releaseSocketOnSignal(instance)
 	defer stopSignals()
 
+	// K1, closed by D12. Wails formats the window background in C with the
+	// PROCESS locale, so under a comma-decimal locale GTK silently discards the
+	// colour; this has to happen before wails.Run, because GTK reads the
+	// environment once, when it initialises. Only LC_NUMERIC is forced — see
+	// forceNumericLocale for why not LC_ALL.
+	if err := forceNumericLocale(); err != nil {
+		// Not fatal: the window still opens, it is only the first frame's
+		// colour that is at risk.
+		log.Printf("nexus: %v", err)
+	}
+
 	// Create application with options
 	err = wails.Run(&options.App{
 		Title:  "nexus",
@@ -129,16 +140,12 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		// Every field of options.RGBA is a uint8 in 0..255, alpha included, so
-		// an opaque window is A: 255. It read A: 1 — roughly 0.4% opacity, not
-		// "opaque".
-		//
-		// The corrected value is not observable on this machine: under a
-		// comma-decimal locale Wails formats the alpha with the process locale
-		// and emits "rgba(27, 38, 54, 0,0)", which GTK's CSS parser discards
-		// whole. That is K1 in PLAN.md — an upstream bug, recorded and deferred
-		// to Stage 2, and deliberately not worked around here.
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 255},
+		// The background GTK paints before the WebView has evaluated anything,
+		// so it is the first colour the user sees: it is read from the palette
+		// and theme the user last chose (D12) against design/tokens.css, which
+		// owns every colour in this application. No colour is named here, or
+		// anywhere else in Go — see background.go.
+		BackgroundColour: windowBackground(startupAppearance(context.Background(), app.svc.Settings)),
 		OnStartup:        app.startup,
 		Bind: []interface{}{
 			app,
