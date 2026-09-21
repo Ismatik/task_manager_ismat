@@ -26,6 +26,31 @@ import (
 //     when they are empty, which is what the MarshalJSON methods below are for.
 //     A frontend that has to guard every list against null will forget once, and
 //     the crash will be in whichever view was written last.
+//
+// # ts_type, and why the json tag alone was not the whole contract
+//
+// Wails generates frontend/wailsjs/go/models.ts by REFLECTING over these
+// structs, and reflection cannot see a MarshalJSON method. So the first half of
+// S2-02 shipped a generated file that named every field correctly and typed two
+// of them wrongly: `due` was a {Year,Month,Day} class that the wire has never
+// carried, and every instant was `any`. A generated type the frontend cannot
+// trust defeats the point of computing everything in Go.
+//
+// The fix is at the BOUNDARY and changes no domain representation: exactly the
+// two Go types whose JSON shape differs from their Go shape — domain.Date and
+// time.Time — carry `ts_type:"string"` wherever they appear on a wire struct,
+// which is what the generator emits. Nothing else needs one, because every other
+// field already crosses as the Go kind it is.
+//
+// Three tests hold it together, in package service unless noted:
+//
+//   - TestWireDates walks the wire types by reflection and fails any Date or
+//     time.Time field that lacks the tag, so a field added later cannot forget;
+//   - TestNewNodeDateRoundTrip sends a date out and takes it back in;
+//   - TestGeneratedModelsMatchTheWire, in package main, READS the checked-in
+//     models.ts and pins what the generator actually wrote. It is the test this
+//     defect existed for want of: the tags were right in Go long before anybody
+//     opened the generated file.
 
 // NodeView is one card, with every derived value ALREADY COMPUTED by Go.
 //
@@ -129,7 +154,7 @@ func progressView(p domain.Progress) ProgressView {
 type TimerView struct {
 	Running        bool       `json:"running"`
 	EntryID        string     `json:"entryId"`
-	StartedAt      *time.Time `json:"startedAt"`
+	StartedAt      *time.Time `json:"startedAt" ts_type:"string"` // RFC 3339, null when not running
 	ElapsedSeconds int        `json:"elapsedSeconds"`
 }
 

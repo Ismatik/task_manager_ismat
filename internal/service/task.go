@@ -131,17 +131,33 @@ func (s *TaskService) inTx(ctx context.Context, fn func(exec store.Executor) err
 // Status is backlog, where a new card starts, and a zero Priority is 4, the
 // schema's own default and the least urgent. A nil Activity takes D4's default
 // for the type; a non-nil one is the user overriding it up front.
+//
+// # It is an INPUT on the same wire contract as every output (S2-02)
+//
+// This struct is bound: App.CreateNode takes it, so the frontend builds one and
+// Wails json.Unmarshals it. It therefore needs the tags for the same reason
+// NodeView does, and it did not have them — which made the create input
+// PascalCase while every read was lowerCamelCase, and generated `Due?: Date`,
+// an object shape domain.Date.UnmarshalJSON would have rejected on arrival.
+//
+// Due stays a *domain.Date rather than becoming a string field with a parse step
+// here: domain.Date.UnmarshalJSON already reads "YYYY-MM-DD" through
+// domain.ParseDate, the one parser, and rejects anything else with an error
+// naming the offending value. A string field would be a second place that turns
+// text into a date, and the second one is always the one without the leap-year
+// test. The generated TypeScript says `due?: string` because of the ts_type tag,
+// which is what actually crosses.
 type NewNode struct {
-	ParentID      *string
-	Type          domain.NodeType
-	Title         string
-	DescriptionMD string
-	Status        domain.Status
-	Due           *domain.Date
-	Priority      domain.Priority
-	EstimateMin   *int
-	Recurrence    *string
-	Activity      *domain.Activity
+	ParentID      *string          `json:"parentId"`
+	Type          domain.NodeType  `json:"type"`
+	Title         string           `json:"title"`
+	DescriptionMD string           `json:"descriptionMd"`
+	Status        domain.Status    `json:"status"`
+	Due           *domain.Date     `json:"due" ts_type:"string"` // "YYYY-MM-DD"
+	Priority      domain.Priority  `json:"priority"`
+	EstimateMin   *int             `json:"estimateMin"`
+	Recurrence    *string          `json:"recurrence"`
+	Activity      *domain.Activity `json:"activity"`
 }
 
 // CreateNode inserts a new node and returns it as it was stored.

@@ -57,10 +57,46 @@ const dateLayout = "2006-01-02"
 //
 // Date is comparable, so it works as a map key and with ==; Compare, Before and
 // After give the ordering. The zero Date is not a real date — use IsZero.
+//
+// # Why the three fields carry an empty json tag (S2-02)
+//
+// A Date has no JSON fields. MarshalJSON and UnmarshalJSON below replace field
+// encoding entirely, so Year, Month and Day are never written and never read:
+// the wire value is the string "2026-10-02" and nothing else. The tags say so,
+// and they change no behaviour, because encoding/json never consults a field tag
+// on a type that implements those two interfaces.
+//
+// They are there for Wails' TypeScript generator, which cannot see a MarshalJSON
+// method and emitted `export class Date { Year; Month; Day }` into models.ts — a
+// generated type describing a shape the wire has never carried, and one an
+// autocomplete would offer to whoever writes the frontend store.
+//
+// Keeping it out takes two independent things, which is why removing either one
+// brings the class straight back:
+//
+//   - ts_type:"string" on every FIELD holding a Date. It makes the generator
+//     write the field as a string instead of recursing into the struct behind
+//     it. Node.Due and NewNode.Due carry it.
+//   - these empty tags on Date ITSELF. Separately from the fields, wails
+//     registers for generation every struct it can reach by reflection from a
+//     bound type, and Date is reachable through Node.Due whatever that field is
+//     tagged. The test it applies is hasExportedJSONFields, and an empty tag is
+//     the answer that makes it compute the right one — Date has no JSON fields.
+//
+// The tag is EMPTY rather than "-" — which is what this means, and what was
+// tried first — because `json:"-"` is a no-op there: wails v2.16.0's
+// hasExportedJSONFields reads the tag's first part, sees the non-empty "-", and
+// counts the field in regardless. The other way to satisfy it, unexporting the
+// three fields, would change the domain's own representation to suit a code
+// generator, which is the wrong direction entirely.
+//
+// TestDateIsNotAStructOnTheWire pins the Go half — Date still marshals to the
+// string and still parses back — and TestGeneratedModelsMatchTheWire in package
+// main fails if the class ever comes back.
 type Date struct {
-	Year  int
-	Month time.Month
-	Day   int
+	Year  int        `json:""`
+	Month time.Month `json:""`
+	Day   int        `json:""`
 }
 
 // NewDate returns the date year-month-day. It does not normalise: use Valid to
@@ -168,6 +204,17 @@ func (d Date) DaysUntil(o Date) int {
 // display is the point.
 //
 // A nil *Date needs nothing here: encoding/json writes null for a nil pointer.
+//
+// # Every field holding a Date must be tagged ts_type:"string" (S2-02)
+//
+// Wails' TypeScript generator reflects over the Go STRUCT and does not know this
+// method exists, so a `*Date` field generates `due?: Date`, a class with Year,
+// Month and Day — precisely the three numbers this method was written to keep
+// off the wire, and a type the frontend would have been entitled to trust. The
+// `ts_type` tag is how the generator is told the real wire type; TestWireDates
+// asserts by reflection that no Date or time.Time field on a wire type is
+// missing it, and TestGeneratedModelsMatchTheWire in package main asserts it
+// against the checked-in models.ts.
 func (d Date) MarshalJSON() ([]byte, error) { return json.Marshal(d.String()) }
 
 // UnmarshalJSON reads the "YYYY-MM-DD" string MarshalJSON writes, and rejects
@@ -203,6 +250,16 @@ func (d *Date) UnmarshalJSON(data []byte) error {
 // deliberate act: dropping the `Md` from DescriptionMD would otherwise silently
 // break every TypeScript call site. Nullable columns are pointers and marshal as
 // null; Date marshals as "YYYY-MM-DD" and time.Time as RFC 3339.
+//
+// # ts_type is the same contract, said to the TypeScript generator
+//
+// The json tag fixes the NAME on the wire; ts_type fixes the TYPE in the
+// generated frontend/wailsjs/go/models.ts. Both are needed because Wails'
+// generator reflects over the Go struct and ignores MarshalJSON: without the
+// tag it described `due` as a {Year,Month,Day} class and the four instants as
+// `any`, neither of which is what crosses. Only the two types whose Go shape and
+// JSON shape differ carry it — Date and time.Time — and TestWireDates asserts
+// that every such field does.
 type Node struct {
 	ID            string     `json:"id"`
 	ParentID      *string    `json:"parentId"` // nil at the root of the tree
@@ -210,17 +267,17 @@ type Node struct {
 	Title         string     `json:"title"`
 	DescriptionMD string     `json:"descriptionMd"`
 	Status        Status     `json:"status"`
-	Due           *Date      `json:"due"` // a date, not an instant
+	Due           *Date      `json:"due" ts_type:"string"` // "YYYY-MM-DD", not an instant
 	DueSource     DueSource  `json:"dueSource"`
 	Priority      Priority   `json:"priority"`
 	EstimateMin   *int       `json:"estimateMin"` // minutes
 	Recurrence    *string    `json:"recurrence"`  // RRULE; required for habits
 	Activity      *Activity  `json:"activity"`
 	SortOrder     int        `json:"sortOrder"`
-	CreatedAt     time.Time  `json:"createdAt"`
-	UpdatedAt     time.Time  `json:"updatedAt"`
-	CompletedAt   *time.Time `json:"completedAt"` // set when the node becomes done
-	ArchivedAt    *time.Time `json:"archivedAt"`  // archived rows are hidden, never deleted
+	CreatedAt     time.Time  `json:"createdAt" ts_type:"string"` // RFC 3339
+	UpdatedAt     time.Time  `json:"updatedAt" ts_type:"string"` // RFC 3339
+	CompletedAt   *time.Time `json:"completedAt" ts_type:"string"`
+	ArchivedAt    *time.Time `json:"archivedAt" ts_type:"string"`
 }
 
 // Validate reports the first field of n that holds a value the schema or the

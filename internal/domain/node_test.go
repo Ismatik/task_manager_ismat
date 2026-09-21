@@ -3,6 +3,7 @@ package domain_test
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -835,4 +836,63 @@ func TestTimestampsMarshalAsRFC3339(t *testing.T) {
 	if string(got) != want {
 		t.Errorf("Marshal(TimeEntry) =\n\t%s\nwant\n\t%s", got, want)
 	}
+}
+
+// A Date is not a struct on the wire, and the empty json tags are what make the
+// code generator agree (S2-02).
+//
+// Two independent things are pinned here, because the fix to one can silently
+// undo the other:
+//
+//   - the tags change NOTHING about encoding/json. A Date implements
+//     MarshalJSON, so no field tag on it is ever consulted, and the value is
+//     still the "YYYY-MM-DD" string wherever it appears.
+//   - the tags are present and EMPTY. `json:"-"` is what an empty tag means here
+//     and is the obvious "correction" for a future reader to make — but it is
+//     the one wails v2.16.0 ignores, and making it would put
+//     `export class Date { Year; Month; Day }` back into models.ts describing a
+//     shape nothing sends. TestGeneratedModelsMatchTheWire is the other end of
+//     this; this end explains why.
+func TestDateIsNotAStructOnTheWire(t *testing.T) {
+	t.Run("every field of Date is tagged with an empty json name", func(t *testing.T) {
+		typ := reflect.TypeOf(domain.Date{})
+		for i := range typ.NumField() {
+			f := typ.Field(i)
+			tag, ok := f.Tag.Lookup("json")
+			if !ok {
+				t.Errorf("Date.%s has no json tag; it needs an empty one, see the type's doc", f.Name)
+				continue
+			}
+			if tag != "" {
+				t.Errorf("Date.%s is tagged json:%q, want the empty tag json:\"\"", f.Name, tag)
+			}
+		}
+	})
+
+	t.Run("the tags change nothing: a Date still marshals as the string", func(t *testing.T) {
+		type holder struct {
+			Due  *domain.Date `json:"due"`
+			Flat domain.Date  `json:"flat"`
+		}
+		due := domain.NewDate(2026, time.October, 2)
+
+		got, err := json.Marshal(holder{Due: &due, Flat: domain.NewDate(2026, time.January, 2)})
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		want := `{"due":"2026-10-02","flat":"2026-01-02"}`
+		if string(got) != want {
+			t.Errorf("Marshal =\n\t%s\nwant\n\t%s", got, want)
+		}
+	})
+
+	t.Run("and a Date still parses back out of the string", func(t *testing.T) {
+		var got domain.Date
+		if err := json.Unmarshal([]byte(`"2026-10-02"`), &got); err != nil {
+			t.Fatalf("Unmarshal: %v", err)
+		}
+		if want := domain.NewDate(2026, time.October, 2); got != want {
+			t.Errorf("Unmarshal gave %s, want %s", got, want)
+		}
+	})
 }

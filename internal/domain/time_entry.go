@@ -12,12 +12,14 @@ import (
 // The JSON names are the wire contract (S2-02): explicit lowerCamelCase tags,
 // chosen here rather than inherited from the Go identifiers. The timestamps are
 // RFC 3339 and a nil EndedAt is null, which is how the frontend tells a running
-// entry from a finished one without asking a second question.
+// entry from a finished one without asking a second question. ts_type says the
+// same thing to the TypeScript generator, which otherwise describes a time.Time
+// as `any` (S2-02).
 type TimeEntry struct {
 	ID        string     `json:"id"`
 	NodeID    string     `json:"nodeId"`
-	StartedAt time.Time  `json:"startedAt"`
-	EndedAt   *time.Time `json:"endedAt"` // nil means the timer is still running
+	StartedAt time.Time  `json:"startedAt" ts_type:"string"`
+	EndedAt   *time.Time `json:"endedAt" ts_type:"string"` // nil means the timer is still running
 }
 
 // IsOpen reports whether the entry is still running.

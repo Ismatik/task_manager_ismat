@@ -15,7 +15,7 @@ export function HabitStrip():Promise<Array<service.HabitView>>;
 
 export function MoveNode(arg1:string,arg2:string,arg3:number):Promise<domain.Node>;
 
-export function MoveToColumn(arg1:string,arg2:domain.Status):Promise<domain.Node>;
+export function MoveToColumn(arg1:string,arg2:string):Promise<domain.Node>;
 
 export function Progress(arg1:string):Promise<service.ProgressView>;
 

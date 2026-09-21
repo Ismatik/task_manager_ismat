@@ -13,14 +13,20 @@ import (
 // Tag, type, status and date filters are Stage 3 and deliberately absent: the
 // struct is here to be extended, not to be half-filled now with fields no caller
 // sets and no test covers.
+//
+// App.Search takes it, so it crosses the wire and carries the same explicit
+// lowerCamelCase tags every other wire type does (S2-02). Without them the
+// search input was the only bound shape spelled in PascalCase, and a frontend
+// that sent `includeArchived` — the casing everything else uses — would have had
+// it silently ignored, which is the worst way for a filter to fail.
 type SearchOptions struct {
 	// IncludeArchived brings archived nodes back into the results. Off by
 	// default, like every other read: archiving is how the user hides something
 	// and search is the easiest place to undo that by accident.
-	IncludeArchived bool
+	IncludeArchived bool `json:"includeArchived"`
 
 	// Limit caps the number of results. Zero or negative means no cap.
-	Limit int
+	Limit int `json:"limit"`
 }
 
 // SearchService answers the search box, returning the same NodeView cards the

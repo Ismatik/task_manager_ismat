@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"nexus/internal/domain"
@@ -253,7 +254,10 @@ func TestBoardThroughTheBoundSurface(t *testing.T) {
 			t.Fatalf("the backlog column holds %+v, want the new card", board[0].Nodes)
 		}
 
-		if _, err := app.MoveToColumn(created.ID, domain.StatusDoing); err != nil {
+		// The target is the wire value, as the frontend sends it (S2-02) —
+		// spelled from the constant so this call site cannot drift from the
+		// domain's own list.
+		if _, err := app.MoveToColumn(created.ID, domain.StatusDoing.String()); err != nil {
 			t.Fatalf("MoveToColumn: %v", err)
 		}
 
@@ -272,6 +276,18 @@ func TestBoardThroughTheBoundSurface(t *testing.T) {
 		}
 		if len(strip) != 0 {
 			t.Errorf("the habit strip holds %+v, want nothing — the card is a task", strip)
+		}
+
+		// MoveToColumn takes the target as a string, so that the generated
+		// client does not refer to a domain.Status it never declares (S2-02).
+		// The cast that makes it a domain.Status checks nothing: which strings
+		// are columns is still the domain's answer, and this is the assertion
+		// that no rule quietly moved up into the binding layer with the
+		// signature.
+		if _, err := app.MoveToColumn(created.ID, "in progress"); err == nil {
+			t.Error("MoveToColumn accepted the status \"in progress\"; want the domain to refuse it")
+		} else if !strings.Contains(err.Error(), `"in progress"`) {
+			t.Errorf("MoveToColumn rejected an unknown status with %v, want the message to name it", err)
 		}
 	})
 

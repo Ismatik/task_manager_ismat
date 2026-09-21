@@ -114,13 +114,32 @@ func (a *App) CreateNode(draft service.NewNode) (domain.Node, error) {
 	return a.svc.Tasks.CreateNode(a.context(), draft)
 }
 
-// MoveToColumn drags a card to a Kanban column.
+// MoveToColumn drags a card to a Kanban column, named by its wire value —
+// "backlog", "week", "today", "doing" or "done".
 //
 // This is the COUPLED move (C1, D13): moving a card to Doing opens a time entry
 // in the same transaction, and moving it out closes one. There is no uncoupled
 // variant to bind — see TaskService.MoveToColumn.
-func (a *App) MoveToColumn(nodeID string, target domain.Status) (domain.Node, error) {
-	return a.svc.Tasks.MoveToColumn(a.context(), nodeID, target)
+//
+// # Why the parameter is a string (S2-02)
+//
+// It took a domain.Status, and Wails' client generator wrote that into
+// frontend/wailsjs/go/main/App.d.ts as `arg2: domain.Status` — a type it never
+// emitted into models.ts, because it only generates a TypeScript enum for a type
+// registered with EnumBind. The generated client therefore did not compile:
+// "Namespace 'domain' has no exported member 'Status'". Nothing caught it
+// because tsconfig only includes src/, and nothing in src/ imports the client
+// yet; S2-13 is the ticket that would have found it the hard way.
+//
+// A string is what a status IS on the wire — models.ts has always described
+// Node.status as one — and it is the convention the rest of this file already
+// follows: SetPalette, SetTheme and SetLanguage all take the value as a string
+// and let the service validate it. The conversion below is a cast and not a
+// check: which strings are columns is domain.Status.Valid's answer, asked by
+// domain.PlanCascade, which refuses an unknown one with the message naming it.
+// No rule moves up here.
+func (a *App) MoveToColumn(nodeID string, target string) (domain.Node, error) {
+	return a.svc.Tasks.MoveToColumn(a.context(), nodeID, domain.Status(target))
 }
 
 // MoveNode re-parents a node, with its whole subtree, at a position among its
