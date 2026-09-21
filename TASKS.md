@@ -11,15 +11,21 @@
   the most useful thing in this file. See
   [Stage 1 — DONE criteria](#stage-1--done-criteria) and
   [Carried into Stage 2](#carried-into-stage-2).
-- **[Stage 2 — Kanban + Habits strip](#stage-2--kanban--habits-strip): CURRENT,
-  IN PROGRESS.** Twenty-two tickets, **S2-01 … S2-22**; **S2-01 … S2-13 are committed**,
-  S2-14 … S2-22 remain. All five items under
-  [Carried into Stage 2](#carried-into-stage-2) are absorbed into named
+- **[Stage 2 — Kanban + Habits strip](#stage-2--kanban--habits-strip): IMPLEMENTED,
+  NOT CLOSED.** Twenty-two tickets, **S2-01 … S2-22, all committed**, plus the
+  gap-closing `7af4d1d`. `make check` green (all five gates), `make cover` **100.0% /
+  93.8%**, `make front-test` **22 files / 251 tests**, `make guard` clean over all **six**
+  checks with `GUARD_ALLOW_RE` **empty**. **The Reviewer has not ruled — a stage closes
+  only on PASS**, and four checks are recorded as
+  [owed to a hand pass](#owed-to-a-hand-pass--not-verified), not as verified. All five
+  items under [Carried into Stage 2](#carried-into-stage-2) are absorbed into named
   tickets — **C1 → S2-03, C2 → S2-01, C3 → S2-08, C4 → S2-06, C5 → S2-14** — and the
   fifth, *one rule one spelling*, is enforced by `make guard` (**S2-10**) and re-checked
-  on every frontend ticket. The remaining tickets were **corrected in place** after the
-  Dev reported that nothing owned `App.tsx` or `main.tsx` — see
-  [Composition — who mounts what](#composition--who-mounts-what).
+  on every frontend ticket. Two planning defects were **corrected in place** mid-stage,
+  both reported by the Dev rather than silently widened: nothing owned `App.tsx` or
+  `main.tsx` (see [Composition — who mounts what](#composition--who-mounts-what)), and
+  the out-of-scope line contradicted the brief on *set priority* (see
+  [The plan correction](#the-plan-correction--set-priority-from-the-palette-is-stage-2)).
 
 Decisions referenced as **D1–D16 / E1–E3** and known issues **K1–K5** live in
 [`PLAN.md` §7](./PLAN.md). Four decisions were confirmed by the user *during* Stage 1
@@ -2216,9 +2222,26 @@ rounds.
 
 ## Stage 2 — Kanban + Habits strip
 
-**Status: CURRENT. IN PROGRESS — S2-01 … S2-13 committed, S2-14 … S2-22 remain.**
+**Status: IMPLEMENTED, NOT CLOSED — S2-01 … S2-22 all committed, plus the gap-closing
+`7af4d1d`. The Reviewer runs next.**
 Twenty-two tickets, **S2-01 … S2-22**, one conventional commit each. This is the
 **launch screen**: the first stage whose output a user can look at.
+
+**It is not closed, and this document must not be read as saying it is.** Per
+`PLAN.md` §5 a stage closes only on a Reviewer **PASS**, and none has been returned. The
+[DONE criteria](#stage-2--done-criteria) below are therefore still **unticked**: they are
+the Reviewer's to verify, not the PM's to assert. What the PM *can* state is what was
+measured on the tree as committed:
+
+| | |
+|---|---|
+| `make check` | green — all five gates, unchanged in number and definition |
+| `make cover` | `internal/domain` **100.0%**, `internal/service` **93.8%** (bar ≥90%) |
+| `make front-test` | **22 files, 251 tests** |
+| `make guard` | all **six** checks pass, `GUARD_ALLOW_RE` **empty** |
+
+Four things nobody on this machine can check are listed under
+[Owed to a hand pass](#owed-to-a-hand-pass--not-verified). They are **owed**, not done.
 
 **Corrected in place after S2-13.** The Dev reported, in `97873d9`'s body rather than by
 silently widening scope, that **no remaining ticket had `frontend/src/App.tsx` or
@@ -2230,6 +2253,108 @@ came with it — `frontend/src/lib/format.ts` is now in S2-11's Scope where its
 Requirements had already named it, and S2-13's six-line `main.tsx` widening is
 [ratified](#s2-13--feat-the-go-client-the-zustand-store-and-the-error-toast). **No
 committed ticket's meaning changed**; S2-01 … S2-13 stand as reviewed.
+
+### The plan correction — "set priority" from the palette is Stage 2
+
+**This document contradicted the brief, and the brief wins.**
+
+[What Stage 2 must NOT do](#what-stage-2-must-not-do) and the out-of-scope paragraph
+under the DONE criteria both listed *"the tag/due/priority/estimate **editors**"*. The
+user's brief specifies the Stage 2 command palette's action set as *"new, move to column,
+**set priority**, start/stop timer, switch view, toggle theme, switch language"* — and
+[S2-20](#s2-20--feat-the-command-palette-ctrlk)'s own Requirements table has carried the
+`set priority` row since the ticket was written.
+
+**The contradiction had teeth.** No binding set a priority, so S2-20 (`8aeb6e1`)
+registered its four `set priority` rows as **unavailable with a reason**, and said so in
+the commit body: the criterion *"every action in the table is reachable and executable by
+keyboard alone"* could not be met for that row without a Go change the ticket's Scope did
+not permit, so it **needs a PM ruling**. The Dev **refused to widen into Go and reported
+it** — the second time in this stage that rule caught a planning defect rather than a
+coding one.
+
+**The ruling.** Setting a priority **from the palette** is **Stage 2**. The **priority
+editor in a detail panel** is **Stage 3**, together with the tag, due and estimate
+editors. The out-of-scope line said *editors* and meant *editors*; it was too coarse to
+say so, and it is corrected in both places it appears. This is a **plan correction, not a
+scope change by the Dev**: the Dev did the right thing by stopping.
+
+**What landed, in `7af4d1d`** — `feat(service): add a priority setter and wire the palette
+rows (S2-20)`:
+
+- `TaskService.SetPriority`, built to `SetDue`'s shape — read, apply one field, let
+  `domain.Node.Validate` decide, write, read back. A refused value writes nothing.
+- **The 1..4 range is stated exactly once**, in `domain.Priority.Valid` — not in the
+  service, not in `app.go`, not in `lib/client.ts`, not in the palette. One rule, one
+  spelling; the stage's prime directive is intact.
+- `App.SetPriority` takes a plain `int` for the reason `MoveToColumn` does: a
+  `domain.Priority` parameter generates a type name the binding generator never emits into
+  `models.ts`. The regenerated client says `arg2:number`, which is what `models.ts` has
+  always called `Node.priority`. `frontend/wailsjs` is committed in the same commit
+  (rule 12).
+- The palette's rows take their set from the `palette.priority` label table as before and
+  call the **store**, never the client. Nothing is written locally, so a Go rejection
+  raises its one toast and leaves no applied change on screen.
+
+**S2-20's criterion *"every action in the table is reachable and executable by keyboard
+alone"* is therefore now met.**
+
+### Three disclosed scope widenings — all ratified
+
+Each was minimal, each was **stated in its commit body** naming the file and the reason,
+and each falls under the general rule set in
+[S2-13's ratification](#s2-13--feat-the-go-client-the-zustand-store-and-the-error-toast):
+a widening that is minimal, disclosed, and needed to avoid leaving a rule with two
+spellings is **acceptable**; an undisclosed one, or one that adds behaviour rather than
+removing a duplicate, is **not**. **The Reviewer does not need to re-litigate any of the
+three.**
+
+| Ticket | Commit | Widening | Ruling |
+|---|---|---|---|
+| **S2-13** | `97873d9` | `frontend/src/main.tsx`, six lines | **RATIFIED** — recorded in full at the foot of [S2-13](#s2-13--feat-the-go-client-the-zustand-store-and-the-error-toast). The zustand store subsumed two hand-rolled stores, so enforcing Scope would have *preserved* a duplicate rule. Kept on the record here so it stays ratified. |
+| **S2-21** | `642e677` | six existing test files, plus a new shared `frontend/src/test/render.tsx` | **RATIFIED** — see below. |
+| **S2-22** | `58552bf` | the `Makefile`, to add `make guard` check 6 | **RATIFIED** — see below. |
+
+**S2-21 — the six test files and `test/render.tsx`.** Mounting the appearance controls
+into the header put focusable elements **ahead of the board in DOM order**, so six test
+files that asserted *"the first `Tab` lands on the board"* (or *"the only button on the
+page"*) became mechanically wrong the moment region 1 stopped being empty — which is
+precisely what that ticket was for. The Dev introduced **`tabUntil(user, arrived)`** in a
+new shared helper: **one spelling of "walk past the header" instead of six hard-coded
+tab-stop counts.** So the widening **removed duplication rather than adding it**, which is
+the same ground S2-13 was ratified on. **No assertion was weakened** — every updated test
+still makes the same claim about the same element; the files are named one by one in the
+commit body with what changed in each. Nothing outside `frontend/src` changed.
+
+**S2-22 — the `Makefile`.** The ticket's Scope named the accept test and its helpers but
+not the `Makefile`; its own acceptance criterion, however, is *"`make guard` fails if a
+mouse event is introduced into the accept test"*. **The rule was required to live in
+`make guard`**, so the Scope list was simply **incomplete** — this is a Scope-list
+omission, not a widening in substance. Check 6 is scoped to that one file, greps the
+three words a pointing device is spelt with (case-insensitively, code or comment), and
+**fails if the file is missing or empty**, because otherwise the cheapest way to pass
+would be to delete the thing being checked. The rest of the suite stays free to use a
+pointer where a pointer is what is under test (S2-17's drag). **The five gates are still
+five**: `guard` is not one of them and `make check` is untouched.
+
+### Two known limits, recorded so nobody over-trusts them
+
+- **The orphan check has a blind spot.** `App.mount.test.tsx` walks the **static import**
+  closure of `main.tsx`, so **deleting an element while keeping its import leaves the
+  check green.** The Dev demonstrated this deliberately, twice — removing
+  `<CommandPalette />` from `App.tsx` under S2-20 and `<AppearanceControls />` under
+  S2-21, each time watching the per-ticket reachability tests go red while the orphan walk
+  stayed green. That is the two halves of the composition check doing **different jobs**,
+  and it is exactly why the `render(<App />)` reachability criterion exists on every
+  mounting ticket alongside the walk. **Neither half is sufficient alone**, and a future
+  reader should not treat an empty orphan difference as proof the screen is assembled.
+- **The palette's remaining unavailable rows are honest and transient.** After `7af4d1d`
+  the only rows still registered unavailable are `view:tree`, `view:calendar` and
+  `view:kanban`, and each carries a reason tied to a **later stage** — *"you are looking
+  at it"* for Kanban, *"coming in stage N"* for the others — not a permanent limitation.
+  `TASKS.md` offered *"disabled with a localised coming-in-stage-N, or omitted — pick one
+  and be consistent"*; registered-with-a-reason is the choice, applied to every view row
+  including Kanban's own. **No row silently does nothing.**
 
 ### ACCEPT
 
@@ -2258,11 +2383,22 @@ only press keys, and once by hand against the real binary, following a numbered 
 
 ### What Stage 2 must NOT do
 
-Out of scope, and it must stay out: the detail slide-over, the Markdown editor, the tree
+Out of scope, and it must stay out: the detail slide-over, the Markdown editor, the
+**tag / due / priority / estimate editors** (see the qualification below), the tree
 view, the RRULE editor, attachments, the archive view, the search UI (the *service*
 exists; the screen is Stage 3), the standalone quick-add **window** and the NL parser
 (Stage 4 — Stage 2's quick-add is **in-app** and takes a plain title), the tray,
 D-Bus sleep/lock, backup/export, the PMP timelog screen, the calendar, stats and Gantt.
+
+> **Qualification on "the priority editor" — corrected, see
+> [The plan correction](#the-plan-correction--set-priority-from-the-palette-is-stage-2).**
+> What is out of Stage 2 is the **editor**: a field in a detail panel where a user sets a
+> tag, a due date, a priority or an estimate. The **command palette's `set priority`
+> action is in Stage 2**, because the brief names it in the palette's action set and
+> S2-20's Requirements table has always carried the row. The earlier, uncorrected wording
+> of this line said only *"the priority editor"* and was read as forbidding the palette
+> action too; that reading blocked S2-20's own acceptance criterion and is now settled the
+> other way. The detail-panel editors remain **Stage 3**.
 
 `README.md` is still deliberately unwritten. Every screenshot it needs belongs to this
 stage or later; it is written once the board exists, not before.
@@ -2336,7 +2472,7 @@ Stage 2 adds two targets alongside it, on the same precedent as Stage 1's `make 
 | Target | Ticket | What it does |
 |---|---|---|
 | `make front-test` | S2-10 | `npm run test -- --run` in `frontend/` — the vitest suite. |
-| `make guard` | S2-10 | The mechanical rules greps: no hex literal, no status-string literal, no recomputed rule, no bare user-visible string. Exits non-zero on any hit. |
+| `make guard` | S2-10 | The mechanical rules greps: no hex literal, no status-string literal, no recomputed rule, no bare user-visible string. Exits non-zero on any hit. **As shipped it runs six checks** — S2-10's five, plus **check 6**, the no-mouse rule over `App.accept.test.tsx`, added by S2-22 because that ticket's own criterion required the rule to live here ([ratified](#s2-22--test-the-no-mouse-accept-flow-and-the-ru--a11y-audit)). |
 
 Both are **acceptance criteria on every frontend ticket from S2-10 onwards**, and both
 are Stage 2 DONE criteria. Neither is a sixth gate. "Green" still means `make check`
@@ -3611,7 +3747,7 @@ Requirements — the action set from the brief, and **only** it:
 |---|---|
 | new task | opens quick-add (S2-19) |
 | move to column | one entry **per column Go returned**, labelled from `locales/` |
-| set priority | 1–4; the chip mapping stays in `lib/priority.ts` |
+| set priority | 1–4; the chip mapping stays in `lib/priority.ts`. **In Stage 2 scope** — see the ruling below; the *editor* in a detail panel is Stage 3 |
 | start / stop timer | `TimerStart` / `TimerStop`; a node Go refuses (**D9**) produces a toast, and the palette does **not** hide the entry — hiding it would be re-deriving `DoingRefusal` in TypeScript |
 | switch view | Kanban is the only view in Stage 2; the others are registered as **disabled with a localised "coming in stage N"**, or omitted. **Pick one and be consistent** — a dead entry that silently does nothing is the worse option. |
 | toggle theme | through `SetTheme` (S2-05) |
@@ -3646,6 +3782,35 @@ Requirements — the action set from the brief, and **only** it:
 - [ ] `make guard`, `make front-test`, `make check` green.
 
 **Commit:** `feat(frontend): add the ctrl+k command palette (S2-20)`
+
+> **PM ruling — `set priority` is a Stage 2 palette action, and the criterion is now
+> met. This is a plan correction, not a scope change by the Dev.**
+>
+> S2-20 shipped in `8aeb6e1` with its four `set priority` rows registered **unavailable
+> with a reason**, because no binding set a priority and adding one was a Go change
+> outside the ticket's Scope — while
+> [What Stage 2 must NOT do](#what-stage-2-must-not-do) separately listed *"the
+> tag/due/priority/estimate editors"* as out of scope. The Dev said so in the commit body
+> and **asked for a ruling instead of widening**. The criterion *"every action in the
+> table is reachable and executable by keyboard alone"* was therefore unmet on this row,
+> through no fault of the implementation.
+>
+> **The brief wins over the plan.** The user's brief names the Stage 2 palette's actions
+> as *"new, move to column, **set priority**, start/stop timer, switch view, toggle
+> theme, switch language"*, and this ticket's own Requirements table has carried the row
+> since it was written. The out-of-scope line meant the **editors** and was too coarse to
+> say it; it is corrected in both places it appears.
+>
+> **`7af4d1d`** closes the gap: `TaskService.SetPriority` (`SetDue`'s shape),
+> `App.SetPriority` taking a plain `int`, the regenerated `frontend/wailsjs` committed
+> alongside, and the palette rows wired through the **store**. The 1..4 range lives
+> **only** in `domain.Priority.Valid` — no second spelling in the service, in `app.go`, in
+> the client or in the palette — and a refused value writes nothing and raises one toast.
+> Full reasoning in
+> [The plan correction](#the-plan-correction--set-priority-from-the-palette-is-stage-2).
+>
+> **Status: this ticket's action-set criterion is MET.** The only rows still unavailable
+> are the `switch view` rows, whose reasons are transient and point at later stages.
 
 ---
 
@@ -3696,6 +3861,35 @@ Requirements:
 - [ ] `make guard`, `make front-test`, `make check` green.
 
 **Commit:** `feat(frontend): add the appearance and language controls (S2-21)`
+
+> **PM ruling — the six test files and `frontend/src/test/render.tsx` in `642e677` are
+> RATIFIED. The Reviewer does not need to re-litigate it.**
+>
+> This ticket's Scope is `AppearanceControls.tsx`, `AccentPicker.tsx`, `App.tsx`, the
+> locale files and tests beside them. Filling region 1 put **focusable elements ahead of
+> the board in the shell's DOM order** — which is the entire point of the ticket — and six
+> existing test files asserted *"one `Tab` lands on the board / the strip"* or *"the only
+> button / textbox on the page"*. Those assertions were about a header that was empty and
+> is no longer.
+>
+> Ratified on the same three counts as S2-13, plus one specific to it:
+>
+> 1. **It removed duplication rather than adding it.** The fix is a new shared
+>    `tabUntil(user, arrived)` helper — **one spelling of "walk past the header" instead
+>    of six hard-coded tab-stop counts**. Updating six copies of a magic number would have
+>    been the worse outcome and would have broken again on the next mounting ticket.
+> 2. **No assertion was weakened.** Every updated test still makes the **same claim about
+>    the same element**; the queries that changed were narrowed (the toast button by name,
+>    the quick-add title field scoped to its dialog, because the accent field is a textbox
+>    too), not loosened.
+> 3. **It was disclosed, not smuggled** — the commit body names all seven files under a
+>    heading with what changed in each and why, exactly as rule 15 and the Scope
+>    discipline ask.
+> 4. **It was mechanical**, confined to `frontend/src`, with `design/` untouched and all
+>    gates plus both non-gate targets green.
+>
+> Nothing here loosens the Scope rule: a widening that adds **behaviour**, or that is not
+> disclosed, is still "stop and report".
 
 ---
 
@@ -3769,6 +3963,28 @@ Requirements:
 
 **Commit:** `test(frontend): add the no-mouse accept flow and the ru and a11y audit (S2-22)`
 
+> **PM ruling — the `Makefile` change in `58552bf` is RATIFIED, and it is a Scope-list
+> omission rather than a widening. The Reviewer does not need to re-litigate it.**
+>
+> This ticket's Scope names `App.accept.test.tsx`, its helpers and the locale files. It
+> does **not** name the `Makefile` — but requirement 2 and acceptance criterion 3 say the
+> no-mouse proof must be *"asserted mechanically, as a `make guard` check over the test
+> file"*. **The rule was required by the ticket to live in `make guard`**, so the Scope
+> list was incomplete; the Dev had no way to satisfy the criterion inside it, disclosed
+> the change under a heading, and kept it minimal.
+>
+> Check 6 is **scoped to that one file**, greps the three words a pointing device is spelt
+> with, case-insensitively, in code or in a comment, and **fails if the file is missing or
+> empty** — because otherwise the cheapest way to pass the check would be to delete the
+> thing it checks. The rest of the suite stays free to use a pointer where a pointer is
+> what is under test (S2-17's drag), and check 6 says so.
+>
+> **The five gates are still five.** `make guard` is a non-gate target by construction
+> (see [Two non-gate make targets](#two-non-gate-make-targets--the-five-gates-stay-five))
+> and `make check` is untouched. The negative control the criterion asks for was run both
+> ways: a `user.click(...)` added to the accept test made check 6 fail naming the file and
+> line, and the file removed entirely made it fail rather than pass quietly.
+
 ---
 
 ## ACCEPT — how the no-mouse flow is demonstrated
@@ -3839,6 +4055,42 @@ is claimed as automated.
 Reviewer confirm the behaviour of something nothing renders. Removed rather than left to
 be discovered at review.
 
+### Owed to a hand pass — NOT VERIFIED
+
+**Four checks are outstanding, and no document in this repository may describe them as
+done.** They are not outstanding through negligence: **there is no display on this
+machine**, and `xvfb-run`, `scrot`, `import` and `grim` are **all absent**, so the
+Reviewer cannot run them either. They are owed to a human at a real keyboard in front of
+a real window, and they are the precise contents of the right-hand column above.
+
+1. **Steps 1–10 of [half 2](#half-2--by-hand-on-the-real-binary-mouse-untouched)** on
+   `./build/bin/nexus`, mouse untouched, reported step by step. **Including the due-badge
+   assertions at steps 3, 4 and 7** — the upcoming Friday, today, and cleared on the way
+   back. The automated flow's fake client **does not model D8's due rewrite**, so those
+   three claims have **no mechanical backing at all**; nothing in the suite stands behind
+   them. This is DONE criterion 5's hand half.
+2. **No flash of the wrong background on the first frame, in *both* themes**
+   (**D12** / **K1**). GTK-side and pre-paint; jsdom cannot see it. This is DONE
+   criterion 8's last clause, and it is the one still open on it.
+3. **Russian not clipping at a real 1024×768.** jsdom has **no layout engine** — every
+   `offsetWidth` is 0 and nothing ever overflows — so the suite asserts the **mechanisms**
+   that prevent clipping (`flex-wrap` on the header, the strip, the type row and the
+   palette rows; `break-words`; no `truncate`; no `nowrap`; `min-w`/`basis-0` on the
+   columns; `overflow-x` on the board and never inside a column) and **never the absence
+   of clipping**. The mechanisms being right is a different claim from the text fitting.
+   This is DONE criterion 13's last clause.
+4. **The `:focus-visible` accent ring actually painted, in both palettes.** jsdom
+   evaluates `:focus-visible` as **false** for programmatic focus, and the test host runs
+   with `css: false`, so what is asserted mechanically is **reachability and
+   focusability**, element by element — not a painted ring. This is the right-hand
+   column's fourth row.
+
+**And, held to the same standard, the Aurora drift.** The gate is implemented and was
+audited **both ways** in S2-22 — `data-drift` is `on` without reduced motion and `off`
+with it — but **nothing draws a drift, so nobody has watched one pause**, and this is not
+owed to a human either, because there is nothing to look at. Do not let any document imply
+the visual exists (**D16**, **K5**, DONE criterion 21).
+
 ---
 
 ## Stage 2 — DONE criteria
@@ -3846,9 +4098,21 @@ be discovered at review.
 Stage 2 closes only when **all** of these hold, verified by the Reviewer. Per
 `PLAN.md` §5 a stage cannot close without a **PASS**.
 
+**The boxes below are deliberately still unticked.** Every ticket is implemented and
+committed, but these are the **Reviewer's** to verify, not the PM's to assert — ticking
+them here would be exactly the "marked done, not verified" failure the last line of this
+section forbids. What the PM has recorded is the **measurement** (`make check` green,
+`make cover` 100.0% / 93.8%, `make front-test` 22 files / 251 tests, `make guard` clean
+over six checks with an empty `GUARD_ALLOW_RE`) and, separately, the four things
+**nobody on this machine can check** — see
+[Owed to a hand pass](#owed-to-a-hand-pass--not-verified), which carries the hand half of
+criterion 5, the last clause of criterion 8 and the last clause of criterion 13.
+
 1. [ ] All twenty-two tickets are committed, one conventional commit each, in order,
    `S2-01` … `S2-22`, authored solely by `Ismat <mukhamejanov.ismat@gmail.com>` with **no
-   AI author and no co-author trailer**.
+   AI author and no co-author trailer**. **One further commit, `7af4d1d`, closes the
+   `set priority` gap under S2-20** and is part of the stage — see
+   [The plan correction](#the-plan-correction--set-priority-from-the-palette-is-stage-2).
 2. [ ] `make check` is green — **all five gates, unchanged in number and definition**.
 3. [ ] `make cover` is green: `internal/domain` ≥ 90.0% **and** `internal/service` ≥ 90.0%,
    measured per package after `go clean -testcache`.
@@ -3905,7 +4169,10 @@ Nothing may be marked done that was not actually verified. Stage 1 closed on its
 review; a first-round FAIL here is a normal outcome, not a failure of the process.
 
 **Out of Stage 2 scope, and it must stay out**: the detail slide-over, the Markdown
-editor, inline subtasks, the tag/due/priority/estimate editors, the RRULE editor,
+editor, inline subtasks, the tag/due/priority/estimate **editors** — the detail-panel
+fields, **not** the command palette's `set priority` action, which is **in** Stage 2 by
+[the plan correction](#the-plan-correction--set-priority-from-the-palette-is-stage-2) and
+shipped in `7af4d1d` — the RRULE editor,
 attachments, the type switcher, the tree view, the archive view, the search **screen**,
 the standalone quick-add **window** and the NL parser, focus mode, the tray, autostart,
 D-Bus sleep/lock, backup, export, the PMP timelog screen, the calendar, stats and Gantt —

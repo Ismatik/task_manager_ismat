@@ -2,7 +2,9 @@
 
 My restatement of the brief, written before any code. It stays the source of truth for
 the data model and the decisions; only the stage status below moves. **Stage 0 and
-Stage 1 are both CLOSED (PASS); Stage 2 is current** — see §5 and `TASKS.md`.
+Stage 1 are both CLOSED (PASS); Stage 2 is IMPLEMENTED, NOT CLOSED** — all twenty-two
+tickets are committed, the Reviewer has not ruled yet, and a stage closes only on a
+PASS. See §5 and `TASKS.md`.
 
 ---
 
@@ -185,7 +187,7 @@ and stop for your "next".
 |---|---|---|
 | 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) — **CLOSED, PASS** | `make check` green, empty window opens, second launch focuses the first |
 | 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **CLOSED, PASS** (PASS on the **fourth** review, at `a1f09b7`; it failed the first three — the history is kept below) | **≥90% coverage** on `internal/domain` + `internal/service` — **MET: 100.0% / 92.9%** |
-| 2 | **Kanban + Habits strip** (launch screen) — **CURRENT, planned as S2-01 … S2-22** — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — demonstrated twice, by the automated flow test of S2-22 and by the hand script in `TASKS.md` — **and moving a card to Doing must itself open a `time_entry`** (§4 coupling, **D13**; ticket S2-03) |
+| 2 | **Kanban + Habits strip** (launch screen) — **IMPLEMENTED, NOT CLOSED — S2-01 … S2-22 all committed, plus the gap-closing `7af4d1d`; awaiting the Reviewer** — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — demonstrated twice, by the automated flow test of S2-22 and by the hand script in `TASKS.md` — **and moving a card to Doing must itself open a `time_entry`** (§4 coupling, **D13**; ticket S2-03) |
 | 3 | **Detail + Tree + Search/Archive** — slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | Every field round-trips through Go; reparent in tree shows on Kanban instantly |
 | 4 | **Quick-add + Focus mode** — frameless standalone window, Go-side NL parser (date, `!priority`, `#tag`, `>Project` fuzzy, `~estimate`, `@type`), live preview chips, Enter creates & closes, Esc closes; Focus mode (one card, large timer, Esc exits); sleep/lock timer handling | `deploy KA Avto fri 15:00 !high #work >KA Avto ~2h` parses correctly in tests **and** in the UI |
 | 5 | **Platform integration** — tray via `energye/systray`, badge = overdue + due today, menu (Open / Quick add / Start-Stop timer / Quit); `.desktop` + `install.sh` → autostart, GNOME `gsettings` shortcut Super+Space → `nexus --quick`, warn if AppIndicator missing | Reboot → app opens; Super+Space → quick-add |
@@ -352,10 +354,25 @@ Go returns and re-implements none of these rules: not "can this card go to Doing
 streak, not an overdue flag. A rule re-derived in a component is a second spelling, and
 a second spelling is the defect that cost this project three review rounds.
 
-### Stage 2 — CURRENT, planned
+### Stage 2 — IMPLEMENTED, NOT CLOSED
 
-**Twenty-two tickets, S2-01 … S2-22, in `TASKS.md`.** **S2-01 … S2-13 are committed**;
-S2-14 … S2-22 remain.
+**Twenty-two tickets, S2-01 … S2-22, in `TASKS.md`. All twenty-two are committed**, one
+conventional commit each, plus one gap-closing commit — `7af4d1d`, which added
+`SetPriority` and wired the palette's priority rows (see *"The one plan correction"*
+below). The stage is **implemented and awaiting review**; it closes only on a Reviewer
+**PASS**, which has not happened. Nothing below may be read as "closed".
+
+Measured on the tree as committed:
+
+| | |
+|---|---|
+| `make check` | green — all five gates |
+| `make cover` | `internal/domain` **100.0%**, `internal/service` **93.8%** (bar ≥90%) |
+| `make front-test` | **22 files, 251 tests** |
+| `make guard` | all **six** checks pass, with `GUARD_ALLOW_RE` **empty** |
+
+Four things the Reviewer cannot verify on this machine are listed under
+*"Owed to a hand pass"* below. They are owed, not done.
 
 The shape of the stage, and why it is in that order:
 
@@ -388,6 +405,77 @@ orphan check walks the import closure of `main.tsx` so an unmounted component tu
 red on the commit that builds it. `TASKS.md`, *"Composition — who mounts what"*, carries
 the rule. Worth recording as process, not just as a fix: the Dev found it by **refusing to
 widen scope silently** and reporting it instead, which is exactly what that rule is for.
+
+**The one plan correction — the brief wins over the plan.** `TASKS.md` listed *"the
+tag/due/priority/estimate **editors**"* among the things Stage 2 must not do, while §2's
+restatement of the brief names the Stage 2 command palette's action set as *"new, move to
+column, **set priority**, start/stop timer, switch view, toggle theme, switch language"*.
+Those two sentences contradicted each other, and the contradiction had teeth: S2-20
+registered its four `set priority` rows as **unavailable, with a reason**, because no
+binding set a priority — which left S2-20's own criterion, *"every action in the table is
+reachable and executable by keyboard alone"*, unmet. The Dev **refused to widen into Go**
+and reported it, which is the second time in this stage that rule caught a planning
+defect rather than a coding one.
+
+**The ruling: the brief wins.** Setting a priority **from the palette** is Stage 2; the
+**priority editor in a detail panel** is Stage 3, along with the tag, due and estimate
+editors. The out-of-scope line in `TASKS.md` said *editors* and meant *editors*; it was
+simply too coarse to say so. `7af4d1d` added `TaskService.SetPriority`, the `App`
+binding, the regenerated client and the palette wiring, with the 1..4 range stated
+**exactly once**, in `domain.Priority.Valid`. This is recorded as a **plan correction,
+not a scope change by the Dev** — the Dev did the right thing by stopping.
+
+**Three disclosed scope widenings, all ratified. The Reviewer does not need to
+re-litigate them.** Each was minimal, each was stated in its commit body naming the file
+and the reason, and each falls under the general rule set in S2-13's ratification: a
+widening that is minimal, disclosed, and needed to avoid leaving a rule with two
+spellings is acceptable; an undisclosed one, or one that adds behaviour, is not.
+
+| Ticket | Widening | Ruling |
+|---|---|---|
+| **S2-13** (`97873d9`) | `frontend/src/main.tsx`, six lines | **RATIFIED** (already, in `TASKS.md`); the zustand store subsumed two hand-rolled stores, so enforcing Scope would have *preserved* a duplicate |
+| **S2-21** (`642e677`) | six existing test files plus a new shared `frontend/src/test/render.tsx` | **RATIFIED.** Mounting the header put focusable elements ahead of the board, so six tests asserting *"the first `Tab` lands on the board"* were mechanically wrong. The fix introduces `tabUntil(user, arrived)` — **one spelling instead of six hard-coded tab-stop counts** — so it **removed** duplication rather than adding it. **No assertion was weakened**; every one still makes the same claim about the same element |
+| **S2-22** (`58552bf`) | the `Makefile`, to add `make guard` check 6 | **RATIFIED.** The ticket's own criterion is *"`make guard` fails if a mouse event is introduced into the accept test"* — the rule was **required** to live in `make guard`, so the ticket's Scope list was simply incomplete. Not a widening in substance, a Scope-list omission. **The five gates are still five**; `guard` is not one of them |
+
+**Owed to a hand pass — not verified, and no document may imply otherwise.** There is no
+display on this machine and `xvfb-run`, `scrot`, `import` and `grim` are all absent, so
+the Reviewer cannot execute these. They are owed to a human at a real keyboard in front
+of a real window:
+
+1. **Steps 1–10 of the hand script** in `TASKS.md` against `./build/bin/nexus`,
+   including the **due-badge assertions at steps 3, 4 and 7** — the automated flow's fake
+   does not model **D8**'s due rewrite, so the badge claims have no mechanical backing at
+   all.
+2. **No flash of the wrong background on the first frame, in *both* themes** (**D12**,
+   **K1**). GTK-side; jsdom cannot see it.
+3. **Russian not clipping at a real 1024×768.** jsdom has **no layout engine** — every
+   `offsetWidth` is 0 and nothing ever overflows — so the suite asserts the *mechanisms*
+   that prevent clipping (`flex-wrap`, `break-words`, no `truncate`, no `nowrap`, no
+   fixed widths) and **never** the absence of clipping. The mechanisms being right is not
+   the same claim as the text fitting.
+4. **The `:focus-visible` accent ring actually painted, in both palettes.** jsdom
+   evaluates `:focus-visible` as **false** for programmatic focus, so what is asserted is
+   reachability and focusability, not a painted ring.
+
+And, held to the same standard: **the Aurora drift gate is implemented and audited both
+ways, but nothing draws a drift, so nobody has watched one pause** (**D16**, **K5**).
+That is not on the list above, because it is not owed to a human either — there is
+nothing to look at. See K5 in §7.
+
+**Two known limits found during the work, recorded so nobody over-trusts them.**
+
+- **The orphan check has a blind spot.** `App.mount.test.tsx` walks the **static import**
+  closure from `main.tsx`, so **deleting an element while keeping its import leaves the
+  check green** — the Dev demonstrated this deliberately, twice, by removing
+  `<CommandPalette />` and later `<AppearanceControls />` from `App.tsx` and watching the
+  orphan walk stay green while the per-ticket reachability tests went red. That is the two
+  halves of the composition check doing **different** jobs, and it is exactly why the
+  per-mounting-ticket `render(<App />)` criterion exists alongside the walk. Neither half
+  is sufficient alone.
+- **The palette's remaining unavailable rows are honest and transient.** After `7af4d1d`
+  only `view:tree`, `view:calendar` and `view:kanban` are registered unavailable, and each
+  carries a reason tied to a **later stage** ("you are looking at it", "coming in stage
+  N") rather than a permanent limitation. No row silently does nothing.
 
 **Three things Stage 2 is explicitly forbidden from doing.** They are the shape of
 Stage 1's four review rounds, turned into rules up front:
@@ -1062,6 +1150,12 @@ preference. A criterion that passes for the wrong reason is worse than a red one
 vacuity is stated here, in S2-12's ticket, and in S2-22's audit instructions, and the
 ACCEPT table's claim that a human would watch the drift pause has been removed.
 
+**As implemented and audited (S2-22, `58552bf`), this still holds exactly.** The audit
+checked the gate **both ways** — `data-drift` is `on` without reduced motion and `off`
+with it, on every palette — and reported, in those words, that **nothing draws the
+drift** and that nobody has watched one pause. That is the correct report, and no
+document in this repository may be edited into implying the visual exists.
+
 **The ruling is D16.** The gate is early rather than dead — retrofitting reduced-motion
 safety onto a shipped animation is how a11y regressions happen — and it is exactly the
 half that is hard to add later. This becomes a Stage 3 ticket when a drift specification
@@ -1073,11 +1167,18 @@ who is expected to read it.
 **Status: decisions locked — D1–D16, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
 CLOSED (PASS) — all twenty-two tickets, S1-01 … S1-22, ACCEPT met at 100.0% / 92.9%,
 PASS returned on the fourth review at `a1f09b7` after three FAILs whose history is kept
-in §5. **Stage 2 is CURRENT and in progress**: twenty-two tickets, S2-01 … S2-22, in
-`TASKS.md`, **S2-01 … S2-13 committed**. All five carried obligations are absorbed into
+in §5. **Stage 2 is IMPLEMENTED, NOT CLOSED**: twenty-two tickets, S2-01 … S2-22, in
+`TASKS.md`, **all twenty-two committed**, plus the gap-closing `7af4d1d`. `make check`
+green, `make cover` 100.0% / 93.8%, `make front-test` 22 files / 251 tests, `make guard`
+clean over all six checks with an empty `GUARD_ALLOW_RE`. **The Reviewer has not ruled;
+a stage closes only on PASS.** All five carried obligations are absorbed into
 tickets — C1 → S2-03, C2 → S2-01, C3 → S2-08, C4 → S2-06, C5 → S2-14 — and every known
 issue now has a decision: **K1 → D12** (user), **K2 → D14**, **K3 → D15** and
 **K5 → D16** (PM rulings, overturnable), **K4** RESOLVED in `9664506`. Nothing is open.
-One planning defect was found mid-stage and corrected in `TASKS.md` — nothing owned
-`App.tsx` or `main.tsx`, so nothing mounted anything; see §5, "Stage 2 — CURRENT,
-planned", and `TASKS.md`, "Composition — who mounts what".**
+**Two planning defects were found mid-stage, both by the Dev refusing to widen scope
+silently, and both corrected in `TASKS.md`:** nothing owned `App.tsx` or `main.tsx`, so
+nothing mounted anything; and the out-of-scope line contradicted the brief on *set
+priority*, resolved in the brief's favour. Three disclosed widenings (S2-13, S2-21,
+S2-22) are **ratified**, and four checks are recorded as **owed to a hand pass, not
+verified**. See §5, "Stage 2 — IMPLEMENTED, NOT CLOSED", and `TASKS.md`,
+"Composition — who mounts what".**
