@@ -8,10 +8,10 @@ It does not restate the plan: [`PLAN.md`](./PLAN.md) is the brief and the decisi
 
 ---
 
-## RESUME HERE — temporary handoff, delete when Stage 2 starts
+## RESUME HERE — temporary handoff, delete when Stage 3 starts
 
 > This section is scaffolding for picking the work back up on another machine.
-> **Delete it once Stage 2 is underway.** Everything below it is permanent.
+> **Delete it once Stage 3 is underway.** Everything below it is permanent.
 
 ### Where the work stopped
 
@@ -19,59 +19,67 @@ It does not restate the plan: [`PLAN.md`](./PLAN.md) is the brief and the decisi
 |---|---|
 | Stage 0 | **CLOSED** — Reviewer PASS |
 | Stage 1 | **CLOSED** — Reviewer PASS on the fourth round, at `a1f09b7` |
-| Stage 2 | **IN PROGRESS** — `S2-01` … `S2-16` committed. **Next: `S2-17`.** |
+| Stage 2 | **CLOSED** — Reviewer PASS on the second round, at `8818db4` |
+| Stage 3 | Not started, not yet planned |
 
-Coverage: `internal/domain` **100.0%**, `internal/service` **93.8%** (bar is ≥90%),
-`internal/store` 86.4% (not gated). At `33a90c8`: all five `make check` gates green,
-`make front-test` 150 tests across 15 files, `make guard` clean, tree clean.
+At `138b040` (85 commits): all five `make check` gates green including
+`wails build -tags webkit2_41`; `make cover` `internal/domain` **100.0%**,
+`internal/service` **93.8%** (bar ≥90%), `internal/store` 86.4% (not gated);
+`make front-test` **247 tests across 22 files**; `make guard` six of six; tree clean.
 
 ### Do this first
 
-**Implement `S2-17`** (dnd-kit drag and drop with optimistic rollback), then `S2-18`
-… `S2-22`. One ticket at a time, one commit each.
+**Plan Stage 3** — task detail panel, tree view, search and archive. Nothing else is
+outstanding. `TASKS.md` has a `## Carried into Stage 3` section that Stage 3's tickets
+must absorb rather than rediscover.
 
-Done so far: the Go half (`S2-01`–`S2-08`) — the `Board()` index fix, the JSON wire
-contract, the Doing↔timer coupling, the habit strip read, `SettingsService`, the D14
-archive rewrite, the app wiring, and `LC_NUMERIC=C` with the background seeded from
-`design/tokens.css` via `go:embed`. Then the frontend foundation (`S2-09`–`S2-13`) and
-the launch screen so far (`S2-14` card, `S2-15` app shell + five columns, `S2-16`
-keyboard model).
+**The app runs now.** The Kanban board, habits strip, quick add (Ctrl+N) and command
+palette (Ctrl+K) are all live and keyboard-reachable, in EN and RU.
 
-**Two traps waiting in `S2-17`:**
+### ⚠️ A green `make guard` is NOT a proof
 
-- **dnd-kit's `KeyboardSensor` defaults to Space-to-lift**, which collides with the
-  habit-strip Space. `S2-16` is **normative** — rebind or disable the sensor's default
-  and re-run `S2-16`'s suite **unmodified**.
-- **`App.mount.test.tsx` is an acceptance criterion on every ticket through `S2-22`.**
-  It walks the import closure from `main.tsx` and fails naming any component that is
-  built but never mounted. Prove it fires before trusting it.
+This is the most important thing Stage 2 learned. `make guard`'s checks 3a/3b are
+**name-based heuristics** — they fire on identifiers matching
+`overdue|derive|streak|progress|percent`. A frontend function called `wireDate` computed
+the local calendar day and sent it to Go for an entire stage, behind a permanently green
+guard, until the Reviewer read the diff. The Reviewer then reproduced it: a planted
+regression recomputing today, recomputing the overdue flag, and inlining a percentage in
+JSX **passed all six checks**.
 
-`GUARD_ALLOW_RE` in the Makefile is **empty and must stay empty** — every `make guard`
-hit so far has been a real bug fixed at the source, never allow-listed.
+**No status line may offer a green `make guard` as evidence that the frontend computes
+nothing. Reading the diff is still the check.** See `PLAN.md` §7 **D17**.
 
-If `frontend/wailsjs/*` ever shows as modified with files truncated to zero bytes, an
-interrupted `wails build` did it. `make build` regenerates them.
+`GUARD_ALLOW_RE` is **empty and must stay empty** — every hit so far has been a real bug
+fixed at the source, never allow-listed.
 
-### Stage 2 must not forget these
+### Stage 3 must not forget these
 
-- **Wire `MoveToColumn(doing)` to `TimerService.Start`** — `PLAN.md` §4 couples them and
-  no Stage 1 ticket did it. **Now S2-03**, with **D13** settling the three things §4
-  leaves open (same transaction; a cascade opens no timer; leaving `doing` closes it).
-- **`Board()` is O(n²·log n)** — `snapshot.view` rebuilds its index per node. **Now
-  S2-01**, scheduled first, because the instruction was *fix it before the board is on
-  screen*.
-- **No type rule may be spelled twice.** Three of Stage 1's four review failures were
-  the same defect: a rule written down in two places and edited in one. The inventory
-  is currently clean — `HasColumn`, `HasDue`, `DoingRefusal`/`CanBeDoing`,
-  `countsAsWork`, habit-requires-recurrence and `DefaultActivity` are each the single
-  definition of their rule. **This applies to TypeScript too**: the frontend renders
-  what Go returns and re-implements none of it.
-- **Screenshots and README.** `README.md` is deliberately not written yet — every
-  screen it needs belongs to Stage 2+. Write it once the board exists. Automated
-  capture will need `sudo apt install xvfb imagemagick` (none of `xvfb-run`, `scrot`,
-  `import`, `grim` are installed).
+- **Five things are owed to a hand pass** and cannot be verified on this machine (no
+  display; `xvfb-run`, `scrot`, `import`, `grim` all absent): the ten-step keyboard-only
+  run on `./build/bin/nexus` — including three D8 due-badge assertions that have **no**
+  mechanical backing at all; no flash of the wrong background in either theme
+  (D12/K1); Russian not clipping at a real 1024×768 (jsdom has no layout engine, so the
+  suite asserts the anti-clipping *mechanisms*, never the absence of clipping); the
+  `:focus-visible` ring actually painted in both palettes; and "a window opens and the
+  first `Board()` returns five columns".
+- **C6** — five enum sets (statuses, types, themes, palettes, accents) are spelled a
+  second time as keys in `en.json`/`ru.json`, with nothing tying them to Go. Ruled a
+  judgement call rather than a defect, since locale files must name what they translate.
+  Stage 3 either binds a set-publishing method or adds a parity test, so that adding a
+  value to a Go set turns something red.
+- **No type rule may be spelled twice.** Three of Stage 1's four review failures, and
+  one of Stage 2's two, were the same defect: a rule written down in two places and
+  edited in one. The Go inventory is clean — `HasColumn`, `HasDue`,
+  `DoingRefusal`/`CanBeDoing`, `countsAsWork`, habit-requires-recurrence and
+  `DefaultActivity` are each the single definition of their rule. **This applies to
+  TypeScript**: the frontend renders what Go returns and re-implements none of it.
+- **Screenshots and README.** `README.md` is still not written. The board exists now, so
+  it is finally writable — but automated capture needs
+  `sudo apt install xvfb imagemagick` first.
+- If `frontend/wailsjs/*` ever shows as modified with files truncated to zero bytes, an
+  interrupted `wails build` did it. `make build` regenerates them.
 
-### Known issues — all now DECIDED and scheduled (rulings in `PLAN.md` §7)
+### Known issues — decided; K1 shipped in Stage 2 (rulings in `PLAN.md` §7)
 
 - **K1** — `BackgroundColour` never reaches GTK on this machine. `LC_NUMERIC=ru_RU.UTF-8`
   makes Wails' `window.c:205` emit `rgba(27, 38, 54, 0,0)` with a comma, so GTK fails to
