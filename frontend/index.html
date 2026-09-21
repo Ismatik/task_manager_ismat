@@ -1,11 +1,31 @@
 <!doctype html>
 <!-- Static defaults per D6 / design/README.md: palette "aurora", theme "dark".
-     Runtime palette/theme/accent switching is Stage 2 and is not wired here. -->
-<html lang="en" data-palette="aurora" class="dark">
+     They are only the defaults: lib/appearance.ts overwrites all three from
+     `settings` as soon as SettingsService answers.
+
+     data-appearance="pending" is the boot gate. The three real values live in
+     SQLite behind an async IPC call, so they cannot be known before the first
+     paint — which means the only honest way not to flash the WRONG theme is to
+     paint nothing until they are known. While the gate is set, the style block
+     below hides the body and makes the page background transparent, so what
+     shows through is the window colour GTK already painted from those same
+     settings (D12). lib/appearance.ts removes the gate, and removes it even
+     when the settings read fails, so a Go error can never leave a blank window. -->
+<html lang="en" data-palette="aurora" class="dark" data-appearance="pending">
   <head>
     <meta charset="UTF-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>nexus</title>
+    <style>
+      /* Not one colour is named here. `transparent` is the absence of one, and
+         every real value belongs to design/tokens.css. The selector outranks
+         style.css's `body { @apply bg-bg }` on specificity, so load order does
+         not matter. */
+      html[data-appearance='pending'] body {
+        visibility: hidden;
+        background: transparent;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
