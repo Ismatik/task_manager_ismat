@@ -64,11 +64,54 @@
       "label": "Streak {{value}}"
     }
   },
+  "palette": {
+    "label": "Command palette",
+    "filter": "Type a command",
+    "empty": "Nothing matches that.",
+    "results": "Commands",
+    "action": {
+      "newTask": "New task",
+      "moveToColumn": "Move the card to {{column}}",
+      "setPriority": "Set the priority to {{priority}}",
+      "startTimer": "Start the timer on the card",
+      "stopTimer": "Stop the timer",
+      "switchView": "Switch to {{view}}",
+      "toggleTheme": "Toggle the theme",
+      "switchLanguage": "Switch the language"
+    },
+    "priority": {
+      "1": "highest",
+      "2": "high",
+      "3": "normal",
+      "4": "no priority"
+    },
+    "view": {
+      "kanban": "the board",
+      "tree": "the tree",
+      "calendar": "the calendar"
+    },
+    "reason": {
+      "noCard": "Focus a card first.",
+      "noSettings": "Settings could not be read.",
+      "currentView": "You are looking at it.",
+      "stage": "Arrives in stage {{stage}}."
+    }
+  },
   "quickAdd": {
     "label": "Quick add",
     "title": "What needs doing?",
     "type": "Type",
     "submit": "Add it"
+  },
+  "settings": {
+    "theme": {
+      "dark": "Dark",
+      "light": "Light"
+    },
+    "language": {
+      "en": "English",
+      "ru": "Russian"
+    }
   },
   "toast": {
     "error": {

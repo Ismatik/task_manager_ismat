@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { CommandPalette } from './components/CommandPalette';
 import { HabitStrip } from './components/HabitStrip';
 import { QuickAdd } from './components/QuickAdd';
 import { ToastList } from './components/Toast';
@@ -29,7 +30,8 @@ import { Kanban } from './views/Kanban';
 //   1  header        S2-21 — appearance and language controls
 //   2  habits strip  S2-18 — components/HabitStrip.tsx
 //   3  board         S2-15 — views/Kanban.tsx
-//   4  overlay layer S2-19 — components/QuickAdd.tsx; S2-20 the palette
+//   4  overlay layer S2-19 — components/QuickAdd.tsx;
+//                    S2-20 — components/CommandPalette.tsx
 //   5  toast layer   THIS TICKET — S2-13's ToastList, orphaned until now
 //
 // S2-16 specifies Tab/Shift+Tab as movement between regions. That order is this
@@ -147,9 +149,11 @@ function Shell() {
         <Kanban />
       </main>
 
-      {/* Region 4 — overlay layer. Each overlay renders nothing while closed.
-          S2-20 mounts the command palette beside this one. */}
+      {/* Region 4 — overlay layer. Each overlay renders nothing while closed,
+          and store/ui.ts holds ONE open overlay, so the two can never be on
+          screen together however they are opened. */}
       <QuickAdd />
+      <CommandPalette />
 
       {/* Region 5 — toast layer. Renders nothing while there is nothing wrong. */}
       <ToastList toasts={toasts} onDismiss={dismissToast} />

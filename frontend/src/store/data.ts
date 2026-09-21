@@ -102,6 +102,21 @@ export interface DataSlice {
   hydrate(): Promise<void>;
 
   /**
+   * Moves a card to a column GO NAMED, and re-reads the board.
+   *
+   * `status` is always a string off `Board()`'s own answer — the keyboard model
+   * reads it from the adjacent column, the command palette from the column the
+   * entry stands for — and never a status this file composed. Returns whether
+   * Go accepted; a refusal has already raised its one toast in callGo.
+   *
+   * This is the ONE place MoveToColumn is called from outside a drag, and both
+   * of its callers go through it rather than through the client: two call sites
+   * would be two spellings of the re-read that has to follow, and the second
+   * one is the one that would forget.
+   */
+  moveToColumn(nodeId: string, status: string): Promise<boolean>;
+
+  /**
    * Moves a card one column left (-1) or right (+1), and re-reads the board.
    *
    * Returns whether the board moved, which is what the caller needs to know to
@@ -183,6 +198,22 @@ export interface DataSlice {
    * would disagree with Go the first time one of them changed.
    */
   createNode(title: string, type: string): Promise<StoredNode | null>;
+
+  /**
+   * Starts the one global timer on a node, and re-reads what changed.
+   *
+   * Nothing is checked first. Whether a node may be timed at all is
+   * `domain.DoingRefusal`'s answer (D9 — a project never can), and whichever
+   * other entry was open is closed by `TimerService.Start`'s single-active
+   * invariant, not here. Returns whether Go accepted.
+   *
+   * The board is re-read as well as the timer, because `NodeView.timer.running`
+   * is what draws the indicator on the card and it is a field Go fills in.
+   */
+  startTimer(nodeId: string): Promise<boolean>;
+
+  /** Stops the one global timer, and re-reads what changed. */
+  stopTimer(): Promise<boolean>;
 
   /**
    * The elapsed seconds to PUT ON SCREEN at wall-clock time `now`.
@@ -276,6 +307,22 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
     await Promise.all([get().loadBoard(), get().loadHabits(), get().loadTimer()]);
   },
 
+  async moveToColumn(nodeId, status) {
+    if ((await callGo(get(), () => get().client.MoveToColumn(nodeId, status))) === null) {
+      // Refused — a project to doing (D9), say. callGo already raised the one
+      // toast, and the board is untouched, so the card has not moved and
+      // focus is still on it.
+      return false;
+    }
+
+    // Re-read rather than patch. Go's answer is the truth: the move rewrites a
+    // due date (D8), cascades to the subtree (D2) and opens or closes a
+    // time_entry (D13), and a local edit that tried to keep up would be a
+    // second implementation of all three.
+    await get().loadBoard();
+    return true;
+  },
+
   async moveToAdjacentColumn(nodeId, offset) {
     const { board } = get();
     if (board === null) {
@@ -289,18 +336,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
       return false;
     }
 
-    if ((await callGo(get(), () => get().client.MoveToColumn(nodeId, target.status))) === null) {
-      // Refused — a project to doing (D9), say. callGo already raised the one
-      // toast, and the board is untouched, so the card has not moved and
-      // focus is still on it.
-      return false;
-    }
-
-    // Re-read rather than patch. Go's answer is the truth: the move rewrites a
-    // due date (D8) and cascades to the subtree (D2), and a local edit that
-    // tried to keep up would be a second implementation of both.
-    await get().loadBoard();
-    return true;
+    return get().moveToColumn(nodeId, target.status);
   },
 
   async dropCard(nodeId, from, to) {
@@ -426,6 +462,28 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
     // both is one extra call; deciding between them here would be the rule.
     await Promise.all([get().loadBoard(), get().loadHabits()]);
     return created;
+  },
+
+  async startTimer(nodeId) {
+    const timer = await callGo(get(), () => get().client.TimerStart(nodeId));
+    if (timer === null) {
+      return false;
+    }
+
+    set({ timer, timerReadAt: get().now() });
+    await get().loadBoard();
+    return true;
+  },
+
+  async stopTimer() {
+    const timer = await callGo(get(), () => get().client.TimerStop());
+    if (timer === null) {
+      return false;
+    }
+
+    set({ timer, timerReadAt: get().now() });
+    await get().loadBoard();
+    return true;
   },
 
   displayElapsedSeconds(now = get().now()) {
