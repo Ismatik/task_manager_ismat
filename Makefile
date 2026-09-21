@@ -141,6 +141,100 @@ cover: ## Measure internal/domain and internal/service against COVER_MIN (not a 
 	fi; \
 	echo "Coverage threshold met: every measured package is at or above $(COVER_MIN)%."
 
+# ---------------------------------------------------------------------------
+# THE FRONTEND TEST SUITE — a measurement, NOT a sixth gate.
+#
+# Same precedent as `cover` above: `make check` is the five gate commands and
+# stays exactly five. This is run alongside them and is an acceptance criterion
+# on every frontend ticket from S2-10 onwards, which is a different thing from
+# being a gate.
+#
+# vitest is interactive by default (it watches), so the non-interactive `--run`
+# is baked in here — a target that never exits is a target no CI and no
+# reviewer can use.
+
+.PHONY: front-test
+front-test: $(NODE_MODULES) ## Run the vitest suite in frontend/ (not a gate)
+	cd $(FRONTEND_DIR) && npm run test -- --run
+
+# ---------------------------------------------------------------------------
+# GUARD — the mechanical rules check. Also NOT a gate.
+#
+# Stage 1 failed review three times on one defect: a rule written down twice and
+# edited once. Stage 2's version of that defect is a rule re-derived in
+# TypeScript, and the one defence that does not depend on a reviewer's attention
+# is a grep that runs every time. That is all this is.
+#
+# Five checks. Checks 1, 2 and 5 are EXACT — they look for a literal that has no
+# legitimate reason to exist in frontend/src, so a hit is a defect and there is
+# nothing to argue about. Checks 3 and 4 are NECESSARILY HEURISTIC: "is this a
+# computation or a field read" and "is this string user-visible" are not
+# questions a regular expression can answer, and both are stated as heuristics
+# on purpose. They are tuned to be tight enough to be actionable (every hit
+# names a file and a line) and loose enough not to cry wolf, because a guard
+# that produces false positives gets disabled, which is worse than no guard.
+#
+# Every check searches TRACKED AND UNTRACKED files (`git grep --untracked`).
+# A guard that only sees `git add`-ed files is a guard a new component evades by
+# simply not being staged yet, which is exactly when it is being written.
+#
+# Where a genuine exception is needed it goes in GUARD_ALLOW_RE below — a named,
+# commented entry in one place — and never in an inline suppression comment
+# scattered through the source.
+
+# The identifier family that checks 3a and 3b look for: a name CONTAINING one of
+# the derivation words. The first branch is the bare word; the second requires a
+# lower-case first letter, which is what spares a React component called
+# ProgressBar from being read as a computation.
+GUARD_DERIVED_ID = ((overdue|derive|streak|progress|percent)|[a-z][A-Za-z0-9_$$]*(overdue|derive|streak|progress|percent|Overdue|Derive|Streak|Progress|Percent))[A-Za-z0-9_$$]*
+
+# What makes a right-hand side a COMPUTATION rather than a read. Deliberately
+# not "anything with an operator": `?.` and `??` are excluded (the generated
+# Wails client sends null where it declares undefined, so `?? null` is the
+# prescribed way to read a nullable field), `<`/`>` are only counted when
+# surrounded by spaces so that JSX and TS generics do not trip it, and `/` and
+# `*` likewise so that a path, a comment or a regex does not.
+GUARD_COMPUTE_RE = ([[:space:]][<>]=?[[:space:]]|&&|\|\||[^?.]\?[^?.]|[[:space:]][-+/*][[:space:]]|\.filter\(|\.reduce\(|\.every\(|\.some\(|Math\.|new Date|Date\.)
+
+# THE ALLOW-LIST. One ERE, alternation-separated, matched against the
+# `file:line:text` output of any check; a matching hit is dropped. Every entry
+# must carry a comment naming what it is and why.
+#
+# Empty at S2-10: nothing in frontend/src needs an exception yet, and an
+# allow-list that starts out populated is an allow-list nobody reads.
+GUARD_ALLOW_RE =
+
+.PHONY: guard
+guard: ## The mechanical rules greps over frontend/src (not a gate)
+	@allow='$(GUARD_ALLOW_RE)'; \
+	keep() { if [ -z "$$allow" ]; then cat; else grep -vE "$$allow" || true; fi; }; \
+	status=0; \
+	fail() { status=1; echo; echo "  guard FAIL — $$1"; echo "$$2" | sed 's/^/      /'; }; \
+	out=$$(git grep -n --untracked -E '#[0-9a-fA-F]{3,8}' -- frontend/src | keep); \
+	[ -z "$$out" ] || { fail "check 1, hex literal. Colours resolve only through the Tailwind token names (bg, surface, elevated, line, ink, muted, accent, accent-2, on-accent, danger, warning, success) — design/ owns the values." "$$out"; }; \
+	out=$$(git grep -n --untracked -E "['\"\`](backlog|week|today|doing|done)['\"\`]" -- frontend/src ':!frontend/src/locales' | keep); \
+	[ -z "$$out" ] || { fail "check 2, status string literal. Which strings are Kanban columns is domain.Status's answer; a quoted copy in TypeScript is a second spelling of it. Compare against a value Go returned, or key off the ColumnView the board handed you." "$$out"; }; \
+	out=$$(git grep -n --untracked -E '(const|let|var)[[:space:]]+$(GUARD_DERIVED_ID)[[:space:]]*(:[^=]*)?=' -- frontend/src | grep -E '$(GUARD_COMPUTE_RE)' | keep); \
+	[ -z "$$out" ] || { fail "check 3a (heuristic), a derived value COMPUTED rather than read. overdue, status, progress, percent and streak are fields Go already filled in on the DTO — see internal/service/dto.go. If the value you need is not on the DTO, the fix is a Go change, not a TypeScript one." "$$out"; }; \
+	out=$$(git grep -n --untracked -E '(function[[:space:]]+$(GUARD_DERIVED_ID)[[:space:]]*\(|(const|let|var)[[:space:]]+$(GUARD_DERIVED_ID)[[:space:]]*(:[^=]*)?=[[:space:]]*(async[[:space:]]+)?(\([^()]*\)[[:space:]]*(:[^=]*)?=>|[A-Za-z0-9_$$]+[[:space:]]*=>|function))' -- frontend/src | keep); \
+	[ -z "$$out" ] || { fail "check 3b (heuristic), a function named for a derivation. A function called deriveX/computeProgress/isOverdue/streakOf is a rule with a second implementation. Go owns the rule." "$$out"; }; \
+	out=$$(git grep -n --untracked -E "[[:space:]](title|aria-label|aria-description|placeholder|alt)=[\"']" -- frontend/src | keep); \
+	[ -z "$$out" ] || { fail "check 4a, a user-visible attribute holding a string literal. Every user-visible string is a key in frontend/src/locales/en.json AND ru.json: write title={t('...')}." "$$out"; }; \
+	out=$$(git grep -n --untracked -E '[^=<>]>[^<>{}]*[[:alpha:]][^<>{}]*<' -- 'frontend/src/*.tsx' 'frontend/src/**/*.tsx' | grep -vE '^[^:]*:[0-9]+:[[:space:]]*(//|\*|/\*)' | keep); \
+	[ -z "$$out" ] || { fail "check 4b (heuristic), a bare JSX text node. Put the text in en.json and ru.json and render {t('...')}." "$$out"; }; \
+	out=$$(git grep -n --untracked -E "^[[:space:]]*[[:upper:]][[:alpha:]']*([[:space:]]+[[:alpha:]']+)+[.!?]?$$" -- 'frontend/src/*.tsx' 'frontend/src/**/*.tsx' | grep -vE '^[^:]*:[0-9]+:[[:space:]]*(//|\*|/\*)' | keep); \
+	[ -z "$$out" ] || { fail "check 4c (heuristic), a line of bare prose in a .tsx file — a JSX text node on its own line. Same fix as 4b." "$$out"; }; \
+	out=$$(git grep -n --untracked -E '(^|[^A-Za-z0-9_])P[0-2]([^A-Za-z0-9_]|$$)' -- frontend/src ':!frontend/src/locales' ':!frontend/src/lib/priority.ts' | keep); \
+	[ -z "$$out" ] || { fail "check 5, a P0/P1/P2 chip label outside its one module. The priority->chip mapping (ARCHITECTURE.md section 6: 1->P0, 2->P1, 3->P2, 4->no chip) lives in frontend/src/lib/priority.ts and nowhere else." "$$out"; }; \
+	echo; \
+	if [ $$status -ne 0 ]; then \
+		echo "make guard FAILED: see the FAIL block(s) above."; \
+		echo "Checks 3 and 4 are heuristics. If a hit is genuinely a false positive, add a"; \
+		echo "commented entry to GUARD_ALLOW_RE in the Makefile — never an inline suppression."; \
+		exit 1; \
+	fi; \
+	echo "make guard: all five mechanical rules checks passed over frontend/src."
+
 .PHONY: dev
 dev: ## Run the app in live-development mode (needs GTK/WebKit)
 	$(require_wails)

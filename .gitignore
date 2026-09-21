@@ -12,6 +12,13 @@
 # coverage profiles written by `make cover`
 coverage*.out
 
+# vitest artefacts. `make front-test` writes none today — it runs plain
+# `vitest --run` — but `--coverage` and the HTML reporter both drop a directory
+# here the moment somebody passes a flag, and an untracked directory is a dirty
+# tree on the next `git status --porcelain`.
+/frontend/coverage/
+/frontend/html/
+
 # local data
 *.db
 *.db-shm
