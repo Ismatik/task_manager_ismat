@@ -358,3 +358,106 @@ func TestPrioritiesRunFromOneToFour(t *testing.T) {
 		}
 	}
 }
+
+// The appearance and language enumerations (D6, S2-05). Each of the three is
+// the ONE definition of its allowed set: the store seeds from it and the
+// settings service validates against it, so a value that is not here does not
+// exist anywhere in the app.
+func TestAppearanceEnums(t *testing.T) {
+	t.Run("palette", func(t *testing.T) {
+		if got, want := domain.Palettes(), []domain.Palette{domain.PaletteAurora, domain.PaletteStudio}; len(got) != len(want) {
+			t.Fatalf("Palettes() = %v, want %v", got, want)
+		}
+		for _, p := range domain.Palettes() {
+			if !p.Valid() {
+				t.Errorf("Palettes() offers %q, which is not Valid()", p)
+			}
+			if p.String() != string(p) {
+				t.Errorf("Palette(%q).String() = %q", p, p.String())
+			}
+		}
+		for _, bad := range []domain.Palette{"", "Aurora", "neon", "AURORA"} {
+			if bad.Valid() {
+				t.Errorf("Palette(%q).Valid() = true", bad)
+			}
+		}
+		if !domain.DefaultPalette.Valid() {
+			t.Errorf("the default palette %q is not Valid()", domain.DefaultPalette)
+		}
+		if domain.DefaultPalette != domain.PaletteAurora {
+			t.Errorf("the default palette is %q, want aurora (D6)", domain.DefaultPalette)
+		}
+	})
+
+	t.Run("theme", func(t *testing.T) {
+		if got, want := domain.Themes(), []domain.Theme{domain.ThemeDark, domain.ThemeLight}; len(got) != len(want) {
+			t.Fatalf("Themes() = %v, want %v", got, want)
+		}
+		for _, th := range domain.Themes() {
+			if !th.Valid() {
+				t.Errorf("Themes() offers %q, which is not Valid()", th)
+			}
+			if th.String() != string(th) {
+				t.Errorf("Theme(%q).String() = %q", th, th.String())
+			}
+		}
+		for _, bad := range []domain.Theme{"", "sepia", "Dark"} {
+			if bad.Valid() {
+				t.Errorf("Theme(%q).Valid() = true", bad)
+			}
+		}
+		if !domain.DefaultTheme.Valid() {
+			t.Errorf("the default theme %q is not Valid()", domain.DefaultTheme)
+		}
+		if domain.DefaultTheme != domain.ThemeDark {
+			t.Errorf("the default theme is %q, want dark (D6)", domain.DefaultTheme)
+		}
+	})
+
+	t.Run("language", func(t *testing.T) {
+		if got, want := domain.Languages(), []domain.Language{domain.LanguageEN, domain.LanguageRU}; len(got) != len(want) {
+			t.Fatalf("Languages() = %v, want %v", got, want)
+		}
+		for _, l := range domain.Languages() {
+			if !l.Valid() {
+				t.Errorf("Languages() offers %q, which is not Valid()", l)
+			}
+			if l.String() != string(l) {
+				t.Errorf("Language(%q).String() = %q", l, l.String())
+			}
+		}
+		for _, bad := range []domain.Language{"", "de", "EN", "en-GB"} {
+			if bad.Valid() {
+				t.Errorf("Language(%q).Valid() = true", bad)
+			}
+		}
+		if !domain.DefaultLanguage.Valid() {
+			t.Errorf("the default language %q is not Valid()", domain.DefaultLanguage)
+		}
+		if domain.DefaultLanguage != domain.LanguageEN {
+			t.Errorf("the default language is %q, want en (D6)", domain.DefaultLanguage)
+		}
+	})
+
+	t.Run("the default accent is the empty override", func(t *testing.T) {
+		if domain.DefaultAccent != "" {
+			t.Errorf("DefaultAccent = %q, want \"\" — empty means 'use the palette's own accent' (D6)",
+				domain.DefaultAccent)
+		}
+	})
+}
+
+// IsHexColour is the one colour syntax in Go: a tag's colour and the user's
+// accent override are the same shape, validated by the same function.
+func TestIsHexColour(t *testing.T) {
+	for _, good := range []string{"#38bdf8", "#FFFFFF", "#000000", "#c96f3b"} {
+		if !domain.IsHexColour(good) {
+			t.Errorf("IsHexColour(%q) = false", good)
+		}
+	}
+	for _, bad := range []string{"", "#fff", "38bdf8", "#38bdf", "#38bdf8f", "#gggggg", "rebeccapurple"} {
+		if domain.IsHexColour(bad) {
+			t.Errorf("IsHexColour(%q) = true", bad)
+		}
+	}
+}

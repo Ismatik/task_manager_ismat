@@ -248,3 +248,110 @@ func (p Priority) String() string { return strconv.Itoa(int(p)) }
 
 // Valid reports whether p is within 1..4.
 func (p Priority) Valid() bool { return p >= Priority1 && p <= Priority4 }
+
+// ---------------------------------------------------------------------------
+// Appearance and language (D6).
+//
+// These three are the settings the user picks and the app persists — the
+// `palette`, `theme` and `language` rows of the settings table. They live here,
+// with every other enumerated value in this project, for the reason S2-05 makes
+// an acceptance criterion: each allowed set must be defined EXACTLY ONCE in Go.
+// The store seeds its defaults from these constants and the settings service
+// validates against them, so "which palettes exist" cannot come to mean two
+// different things in two packages — and the frontend builds its pickers from
+// what the service reports rather than from a literal array of its own, which
+// would be a third.
+
+// Palette selects the design palette. design/tokens.css defines exactly these
+// two, as [data-palette='...'] blocks.
+type Palette string
+
+// The two palettes. Aurora is the default (D6).
+const (
+	PaletteAurora Palette = "aurora"
+	PaletteStudio Palette = "studio"
+)
+
+// DefaultPalette is the palette a fresh installation starts with (D6).
+const DefaultPalette = PaletteAurora
+
+// Palettes returns every valid Palette, in declaration order.
+func Palettes() []Palette { return []Palette{PaletteAurora, PaletteStudio} }
+
+// String returns the persisted representation of the palette.
+func (p Palette) String() string { return string(p) }
+
+// Valid reports whether p is one of the two known palettes.
+func (p Palette) Valid() bool {
+	switch p {
+	case PaletteAurora, PaletteStudio:
+		return true
+	default:
+		return false
+	}
+}
+
+// Theme selects light or dark. It drives the `dark` class on <html>, and — so
+// that the first frame is not the wrong colour — the GTK window background
+// (D12).
+type Theme string
+
+// The two themes. Dark is the default (D6).
+const (
+	ThemeDark  Theme = "dark"
+	ThemeLight Theme = "light"
+)
+
+// DefaultTheme is the theme a fresh installation starts with (D6).
+const DefaultTheme = ThemeDark
+
+// Themes returns every valid Theme, in declaration order.
+func Themes() []Theme { return []Theme{ThemeDark, ThemeLight} }
+
+// String returns the persisted representation of the theme.
+func (t Theme) String() string { return string(t) }
+
+// Valid reports whether t is dark or light.
+func (t Theme) Valid() bool {
+	switch t {
+	case ThemeDark, ThemeLight:
+		return true
+	default:
+		return false
+	}
+}
+
+// Language selects the UI language. Both locale files are complete and shipped;
+// there is no runtime download and no third language (PLAN.md §1).
+type Language string
+
+// The two languages. English is the default (D6).
+const (
+	LanguageEN Language = "en"
+	LanguageRU Language = "ru"
+)
+
+// DefaultLanguage is the language a fresh installation starts with (D6).
+const DefaultLanguage = LanguageEN
+
+// Languages returns every valid Language, in declaration order.
+func Languages() []Language { return []Language{LanguageEN, LanguageRU} }
+
+// String returns the persisted representation of the language.
+func (l Language) String() string { return string(l) }
+
+// Valid reports whether l is en or ru.
+func (l Language) Valid() bool {
+	switch l {
+	case LanguageEN, LanguageRU:
+		return true
+	default:
+		return false
+	}
+}
+
+// DefaultAccent is the seeded accent override: empty, meaning "use the
+// palette's own --accent" (D6). It is a value the user may set to a colour and
+// clear again, not one of an enumerated set, which is why it has a default and
+// no type of its own.
+const DefaultAccent = ""

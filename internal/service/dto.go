@@ -133,6 +133,28 @@ type TimerView struct {
 	ElapsedSeconds int        `json:"elapsedSeconds"`
 }
 
+// SettingsView is the four persisted preferences as one typed value (D6).
+//
+// It is deliberately not a map[string]string: a map gives TypeScript no
+// contract at all — no field names, no exhaustiveness, nothing a rename would
+// break at compile time. The three enumerated values carry their domain types,
+// which is where their allowed sets are defined exactly once.
+type SettingsView struct {
+	// Palette is the design palette: it ends up on <html data-palette="...">.
+	Palette domain.Palette `json:"palette"`
+
+	// Theme is dark or light: it drives the `dark` class on <html>, and the
+	// GTK window background at startup (D12).
+	Theme domain.Theme `json:"theme"`
+
+	// Accent is the user's accent override, or "" meaning "use the palette's
+	// own --accent" (D6).
+	Accent string `json:"accent"`
+
+	// Language is the UI language. Both locale files ship with the binary.
+	Language domain.Language `json:"language"`
+}
+
 // HabitView is one entry of the habits strip, with every derived value already
 // computed by Go (D5).
 //

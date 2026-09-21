@@ -5,16 +5,19 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"nexus/internal/domain"
 )
 
 // The setting keys Nexus reads at startup (D6, design/README.md).
 const (
-	// KeyPalette selects the design palette: "aurora" or "studio". It ends up
-	// on <html data-palette="...">.
+	// KeyPalette selects the design palette — one of domain.Palettes(), which
+	// is where the allowed values are defined. It ends up on
+	// <html data-palette="...">.
 	KeyPalette = "palette"
 
-	// KeyTheme selects the theme: "dark" or "light". It drives the "dark"
-	// class on <html>.
+	// KeyTheme selects the theme — one of domain.Themes(). It drives the
+	// "dark" class on <html>.
 	KeyTheme = "theme"
 
 	// KeyAccent is the user's accent colour override. Empty means "use the
@@ -22,17 +25,21 @@ const (
 	// nullable: absence is spelled "", not NULL.
 	KeyAccent = "accent"
 
-	// KeyLanguage selects the UI language: "en" or "ru".
+	// KeyLanguage selects the UI language — one of domain.Languages().
 	KeyLanguage = "language"
 )
 
-// defaultSettings are the values seeded on first run. Defaults: aurora + dark
-// (D6).
+// defaultSettings are the values seeded on first run (D6).
+//
+// The values come from internal/domain rather than being spelled out here: the
+// settings service validates against the same constants, and a palette name
+// written in two packages is one edit away from a default its own validator
+// rejects. This file names no palette, theme or language literally.
 var defaultSettings = []struct{ key, value string }{
-	{KeyPalette, "aurora"},
-	{KeyTheme, "dark"},
-	{KeyAccent, ""},
-	{KeyLanguage, "en"},
+	{KeyPalette, domain.DefaultPalette.String()},
+	{KeyTheme, domain.DefaultTheme.String()},
+	{KeyAccent, domain.DefaultAccent},
+	{KeyLanguage, domain.DefaultLanguage.String()},
 }
 
 // ErrEmptyKey is returned when a setting key is the empty string. SQLite would

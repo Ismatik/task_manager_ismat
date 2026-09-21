@@ -517,14 +517,21 @@ func (t Tag) Validate() error {
 	if strings.TrimSpace(t.Name) == "" {
 		return invalid(entity, "name", "must not be empty")
 	}
-	if t.Color != "" && !isHexColour(t.Color) {
+	if t.Color != "" && !IsHexColour(t.Color) {
 		return invalid(entity, "color", "%q is not empty or a #RRGGBB colour", t.Color)
 	}
 	return nil
 }
 
-// isHexColour reports whether s is exactly '#' followed by six hex digits.
-func isHexColour(s string) bool {
+// IsHexColour reports whether s is exactly '#' followed by six hex digits.
+//
+// It is the ONE place a colour syntax is known in Go, and it is exported for
+// that reason rather than for convenience: a tag's colour and the user's accent
+// override (D6, S2-05) are the same syntax, and a second validator for the
+// second caller would be a second answer to "what is a colour here?" — the
+// defect class this project has paid for three times. It validates SHAPE only;
+// no palette's values are known anywhere in Go.
+func IsHexColour(s string) bool {
 	if len(s) != 7 || s[0] != '#' {
 		return false
 	}

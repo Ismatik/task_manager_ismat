@@ -235,6 +235,7 @@ func TestEveryWireFieldIsTagged(t *testing.T) {
 		reflect.TypeOf(service.TimerView{}),
 		reflect.TypeOf(service.ColumnView{}),
 		reflect.TypeOf(service.HabitView{}),
+		reflect.TypeOf(service.SettingsView{}),
 		reflect.TypeOf(domain.Node{}),
 		reflect.TypeOf(domain.Tag{}),
 		reflect.TypeOf(domain.TimeEntry{}),
