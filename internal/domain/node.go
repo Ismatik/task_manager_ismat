@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -155,6 +156,36 @@ func (d Date) DaysUntil(o Date) int {
 	return int(o.Time().Sub(d.Time()) / (24 * time.Hour))
 }
 
+// MarshalJSON renders d as the JSON string "YYYY-MM-DD" — the same
+// representation the database column holds, and the same one String gives.
+//
+// Without this a Date crosses the wire as {"Year":2026,"Month":9,"Day":21},
+// which is three numbers a frontend can do arithmetic on. Date exists precisely
+// so that a calendar date cannot acquire a zone or an hour (see the type's
+// documentation); handing TypeScript the components back invites it to build a
+// JavaScript Date out of them, in the browser's zone, and to re-derive "overdue"
+// — a rule that lives in Go exactly once (IsOverdue). A string it can only
+// display is the point.
+//
+// A nil *Date needs nothing here: encoding/json writes null for a nil pointer.
+func (d Date) MarshalJSON() ([]byte, error) { return json.Marshal(d.String()) }
+
+// UnmarshalJSON reads the "YYYY-MM-DD" string MarshalJSON writes, and rejects
+// anything else — including a well-formed but impossible date such as
+// 2026-02-30, because ParseDate does.
+func (d *Date) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return fmt.Errorf("domain: a date must be a %q string: %w", dateLayout, ErrInvalid)
+	}
+	parsed, err := ParseDate(s)
+	if err != nil {
+		return err
+	}
+	*d = parsed
+	return nil
+}
+
 // Node is one row of the single `nodes` tree: task, project, habit, note and bug
 // are all Nodes, told apart by Type. The fields mirror the columns created by
 // migration 0002, with Go types chosen to make the illegal states awkward —
@@ -163,24 +194,33 @@ func (d Date) DaysUntil(o Date) int {
 //
 // Status is meaningful on leaves only. A parent's status is derived from its
 // children every time it is needed and is never written (D2); see DeriveStatus.
+//
+// # The JSON names are the wire contract (S2-02)
+//
+// Every field carries an explicit lowerCamelCase tag, so the name the frontend
+// binds to is chosen here and reviewed as one diff hunk rather than inherited
+// from whatever the Go identifier happens to be. A rename in Go is then a
+// deliberate act: dropping the `Md` from DescriptionMD would otherwise silently
+// break every TypeScript call site. Nullable columns are pointers and marshal as
+// null; Date marshals as "YYYY-MM-DD" and time.Time as RFC 3339.
 type Node struct {
-	ID            string
-	ParentID      *string // nil at the root of the tree
-	Type          NodeType
-	Title         string
-	DescriptionMD string
-	Status        Status
-	Due           *Date // a date, not an instant
-	DueSource     DueSource
-	Priority      Priority
-	EstimateMin   *int    // minutes
-	Recurrence    *string // RRULE; required for habits
-	Activity      *Activity
-	SortOrder     int
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	CompletedAt   *time.Time // set when the node becomes done
-	ArchivedAt    *time.Time // archived rows are hidden, never deleted
+	ID            string     `json:"id"`
+	ParentID      *string    `json:"parentId"` // nil at the root of the tree
+	Type          NodeType   `json:"type"`
+	Title         string     `json:"title"`
+	DescriptionMD string     `json:"descriptionMd"`
+	Status        Status     `json:"status"`
+	Due           *Date      `json:"due"` // a date, not an instant
+	DueSource     DueSource  `json:"dueSource"`
+	Priority      Priority   `json:"priority"`
+	EstimateMin   *int       `json:"estimateMin"` // minutes
+	Recurrence    *string    `json:"recurrence"`  // RRULE; required for habits
+	Activity      *Activity  `json:"activity"`
+	SortOrder     int        `json:"sortOrder"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	UpdatedAt     time.Time  `json:"updatedAt"`
+	CompletedAt   *time.Time `json:"completedAt"` // set when the node becomes done
+	ArchivedAt    *time.Time `json:"archivedAt"`  // archived rows are hidden, never deleted
 }
 
 // Validate reports the first field of n that holds a value the schema or the
@@ -462,9 +502,9 @@ func activityPtr(a Activity) *Activity { return &a }
 // Tag is a colour-coded label. A node carries any number of them through the
 // node_tags join table.
 type Tag struct {
-	ID    string
-	Name  string
-	Color string // '' means "use the palette's default chip colour"
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"` // '' means "use the palette's default chip colour"
 }
 
 // Validate reports the first field of t that holds a forbidden value.

@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -700,4 +701,138 @@ func TestNodeCheckStatusNamesTheStatusField(t *testing.T) {
 	child.ID = "c1"
 
 	assertValidationError(t, parent.CheckStatus([]domain.Node{child}), "node", "status")
+}
+
+// A Date crosses the wire as "YYYY-MM-DD" and comes back the same date (S2-02).
+//
+// The shape matters as much as the round trip: {"Year":2026,"Month":9,"Day":21}
+// is three numbers a frontend can do date arithmetic on, and date arithmetic is
+// a rule that lives in Go. A string it can only display is the point.
+func TestDateJSON(t *testing.T) {
+	t.Run("marshals as the YYYY-MM-DD string", func(t *testing.T) {
+		tests := []struct {
+			name string
+			date domain.Date
+			want string
+		}{
+			{"a plain date", domain.NewDate(2026, time.September, 21), `"2026-09-21"`},
+			{"single digits are padded", domain.NewDate(2026, time.January, 2), `"2026-01-02"`},
+			{"a leap day", domain.NewDate(2024, time.February, 29), `"2024-02-29"`},
+		}
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				got, err := json.Marshal(tc.date)
+				if err != nil {
+					t.Fatalf("Marshal: %v", err)
+				}
+				if string(got) != tc.want {
+					t.Errorf("Marshal(%s) = %s, want %s", tc.date, got, tc.want)
+				}
+			})
+		}
+	})
+
+	t.Run("round-trips through marshal and unmarshal", func(t *testing.T) {
+		want := domain.NewDate(2026, time.October, 2)
+
+		data, err := json.Marshal(want)
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		var got domain.Date
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Fatalf("Unmarshal(%s): %v", data, err)
+		}
+		if got != want {
+			t.Errorf("round trip gave %s, want %s", got, want)
+		}
+	})
+
+	t.Run("a nil *Date is null, and null round-trips back to nil", func(t *testing.T) {
+		type holder struct {
+			Due *domain.Date `json:"due"`
+		}
+
+		data, err := json.Marshal(holder{})
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		if string(data) != `{"due":null}` {
+			t.Errorf("Marshal(nil *Date) = %s, want {\"due\":null}", data)
+		}
+
+		var got holder
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Fatalf("Unmarshal(%s): %v", data, err)
+		}
+		if got.Due != nil {
+			t.Errorf("null unmarshalled to %v, want nil", got.Due)
+		}
+	})
+
+	t.Run("a populated *Date round-trips", func(t *testing.T) {
+		type holder struct {
+			Due *domain.Date `json:"due"`
+		}
+		due := domain.NewDate(2026, time.March, 8)
+
+		data, err := json.Marshal(holder{Due: &due})
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		if string(data) != `{"due":"2026-03-08"}` {
+			t.Errorf("Marshal(&date) = %s, want {\"due\":\"2026-03-08\"}", data)
+		}
+
+		var got holder
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Fatalf("Unmarshal(%s): %v", data, err)
+		}
+		if got.Due == nil || *got.Due != due {
+			t.Errorf("round trip gave %v, want %s", got.Due, due)
+		}
+	})
+
+	t.Run("anything that is not a YYYY-MM-DD string is refused", func(t *testing.T) {
+		tests := []struct {
+			name string
+			data string
+		}{
+			{"a number", `20260921`},
+			{"an object, the shape this replaces", `{"Year":2026,"Month":9,"Day":21}`},
+			{"the wrong layout", `"21/09/2026"`},
+			{"a date that does not exist", `"2026-02-30"`},
+			{"an empty string", `""`},
+		}
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				var got domain.Date
+				err := json.Unmarshal([]byte(tc.data), &got)
+				if err == nil {
+					t.Fatalf("Unmarshal(%s) = %s, want an error", tc.data, got)
+				}
+				if !errors.Is(err, domain.ErrInvalid) {
+					t.Errorf("Unmarshal(%s) err = %v, want it to wrap ErrInvalid", tc.data, err)
+				}
+			})
+		}
+	})
+}
+
+// time.Time crosses the wire as RFC 3339. That is encoding/json's own
+// behaviour and nothing here implements it — this pins it, so that a future
+// custom marshaller on a timestamp has to face a failing test rather than
+// quietly changing what the frontend parses.
+func TestTimestampsMarshalAsRFC3339(t *testing.T) {
+	at := time.Date(2026, time.September, 21, 9, 15, 0, 0, time.UTC)
+
+	entry := domain.TimeEntry{ID: "e1", NodeID: "n1", StartedAt: at}
+	got, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	want := `{"id":"e1","nodeId":"n1","startedAt":"2026-09-21T09:15:00Z","endedAt":null}`
+	if string(got) != want {
+		t.Errorf("Marshal(TimeEntry) =\n\t%s\nwant\n\t%s", got, want)
+	}
 }

@@ -9,11 +9,15 @@ import (
 // is still running; at most one such entry exists across the whole database, an
 // invariant the 0002 migration enforces with a partial unique index and the
 // timer service enforces again above it.
+// The JSON names are the wire contract (S2-02): explicit lowerCamelCase tags,
+// chosen here rather than inherited from the Go identifiers. The timestamps are
+// RFC 3339 and a nil EndedAt is null, which is how the frontend tells a running
+// entry from a finished one without asking a second question.
 type TimeEntry struct {
-	ID        string
-	NodeID    string
-	StartedAt time.Time
-	EndedAt   *time.Time // nil means the timer is still running
+	ID        string     `json:"id"`
+	NodeID    string     `json:"nodeId"`
+	StartedAt time.Time  `json:"startedAt"`
+	EndedAt   *time.Time `json:"endedAt"` // nil means the timer is still running
 }
 
 // IsOpen reports whether the entry is still running.
