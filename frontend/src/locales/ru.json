@@ -10,6 +10,37 @@
       "cardCount_other": "{{count}} карточки"
     }
   },
+  "card": {
+    "due": {
+      "label": "Срок {{date}}",
+      "overdue": "Просрочено — срок был {{date}}"
+    },
+    "estimate": {
+      "label": "Оценка {{value}}",
+      "value": "{{minutes}} мин"
+    },
+    "priority": {
+      "label": "Приоритет {{chip}}"
+    },
+    "progress": {
+      "empty": "Пустой проект",
+      "ratio": "{{done}} из {{total}}"
+    },
+    "tags": {
+      "label": "Метки"
+    },
+    "timer": {
+      "running": "Таймер запущен"
+    },
+    "type": {
+      "bug": "Ошибка",
+      "habit": "Привычка",
+      "note": "Заметка",
+      "project": "Проект",
+      "task": "Задача",
+      "unknown": "Элемент"
+    }
+  },
   "toast": {
     "error": {
       "title": "Что-то пошло не так",

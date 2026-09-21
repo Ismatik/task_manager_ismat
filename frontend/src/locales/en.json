@@ -8,6 +8,37 @@
       "cardCount_other": "{{count}} cards"
     }
   },
+  "card": {
+    "due": {
+      "label": "Due {{date}}",
+      "overdue": "Overdue — was due {{date}}"
+    },
+    "estimate": {
+      "label": "Estimate {{value}}",
+      "value": "{{minutes}} min"
+    },
+    "priority": {
+      "label": "Priority {{chip}}"
+    },
+    "progress": {
+      "empty": "Empty project",
+      "ratio": "{{done}} of {{total}}"
+    },
+    "tags": {
+      "label": "Tags"
+    },
+    "timer": {
+      "running": "Timer running"
+    },
+    "type": {
+      "bug": "Bug",
+      "habit": "Habit",
+      "note": "Note",
+      "project": "Project",
+      "task": "Task",
+      "unknown": "Item"
+    }
+  },
   "toast": {
     "error": {
       "title": "Something went wrong",
