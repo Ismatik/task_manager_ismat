@@ -693,10 +693,11 @@ func TestPlanArchiveCoversTheWholeSubtree(t *testing.T) {
 	at := fixedNow
 	now := func() time.Time { return at }
 
-	changes, err := domain.PlanArchive(nodes, "a", now)
+	plan, err := domain.PlanArchive(nodes, "a", now)
 	if err != nil {
 		t.Fatalf("PlanArchive() = %v", err)
 	}
+	changes := plan.Archived
 
 	want := []string{"a", "a1", "a1x", "a1xy", "a2"}
 	got := make([]string, len(changes))
@@ -714,10 +715,11 @@ func TestPlanArchiveCoversTheWholeSubtree(t *testing.T) {
 	}
 
 	t.Run("a leaf archives only itself", func(t *testing.T) {
-		changes, err := domain.PlanArchive(nodes, "b1", now)
+		plan, err := domain.PlanArchive(nodes, "b1", now)
 		if err != nil {
 			t.Fatalf("PlanArchive() = %v", err)
 		}
+		changes := plan.Archived
 		if len(changes) != 1 || changes[0].NodeID != "b1" {
 			t.Errorf("PlanArchive(leaf) = %+v, want exactly b1", changes)
 		}
@@ -741,10 +743,11 @@ func TestPlanArchiveKeepsAnExistingArchivedAt(t *testing.T) {
 		}
 	}
 
-	changes, err := domain.PlanArchive(nodes, "a", func() time.Time { return fixedNow })
+	plan, err := domain.PlanArchive(nodes, "a", func() time.Time { return fixedNow })
 	if err != nil {
 		t.Fatalf("PlanArchive() = %v", err)
 	}
+	changes := plan.Archived
 	for _, c := range changes {
 		if c.NodeID == "a1x" {
 			t.Fatalf("the plan re-stamps the already-archived a1x with %v", c.ArchivedAt)
@@ -757,10 +760,11 @@ func TestPlanArchiveKeepsAnExistingArchivedAt(t *testing.T) {
 
 // Each change carries its own timestamp, so applying one cannot alter another.
 func TestPlanArchiveDoesNotShareOneTimestampPointer(t *testing.T) {
-	changes, err := domain.PlanArchive(deepTree(), "a", func() time.Time { return fixedNow })
+	plan, err := domain.PlanArchive(deepTree(), "a", func() time.Time { return fixedNow })
 	if err != nil {
 		t.Fatalf("PlanArchive() = %v", err)
 	}
+	changes := plan.Archived
 	if len(changes) < 2 {
 		t.Fatalf("expected several changes, got %d", len(changes))
 	}
@@ -791,10 +795,11 @@ func TestPlanRestoreClearsTheWholeSubtreeIncludingSeparatelyArchivedChildren(t *
 		}
 	}
 
-	changes, err := domain.PlanRestore(nodes, "a")
+	plan, err := domain.PlanRestore(nodes, "a")
 	if err != nil {
 		t.Fatalf("PlanRestore() = %v", err)
 	}
+	changes := plan.Archived
 
 	want := []string{"a", "a1", "a1x", "a1xy", "a2"}
 	got := make([]string, len(changes))
@@ -812,12 +817,15 @@ func TestPlanRestoreClearsTheWholeSubtreeIncludingSeparatelyArchivedChildren(t *
 func TestPlanRestoreSkipsNodesThatAreNotArchived(t *testing.T) {
 	nodes := deepTree() // nothing is archived
 
-	changes, err := domain.PlanRestore(nodes, "a")
+	plan, err := domain.PlanRestore(nodes, "a")
 	if err != nil {
 		t.Fatalf("PlanRestore() = %v", err)
 	}
-	if len(changes) != 0 {
-		t.Errorf("PlanRestore() = %+v, want no changes", changes)
+	if len(plan.Archived) != 0 {
+		t.Errorf("PlanRestore() = %+v, want no changes", plan.Archived)
+	}
+	if len(plan.Statuses) != 0 {
+		t.Errorf("PlanRestore() rewrites %+v; restore adds no symmetric rule to D14's", plan.Statuses)
 	}
 
 	t.Run("an unknown id", func(t *testing.T) {
@@ -831,10 +839,11 @@ func TestPlanRestoreSkipsNodesThatAreNotArchived(t *testing.T) {
 func TestArchiveThenRestoreIsARoundTrip(t *testing.T) {
 	nodes := deepTree()
 
-	archived, err := domain.PlanArchive(nodes, "a", func() time.Time { return fixedNow })
+	archivePlan, err := domain.PlanArchive(nodes, "a", func() time.Time { return fixedNow })
 	if err != nil {
 		t.Fatalf("PlanArchive() = %v", err)
 	}
+	archived := archivePlan.Archived
 	applied := make([]domain.Node, len(nodes))
 	copy(applied, nodes)
 	for _, c := range archived {
@@ -845,10 +854,11 @@ func TestArchiveThenRestoreIsARoundTrip(t *testing.T) {
 		}
 	}
 
-	restored, err := domain.PlanRestore(applied, "a")
+	restorePlan, err := domain.PlanRestore(applied, "a")
 	if err != nil {
 		t.Fatalf("PlanRestore() = %v", err)
 	}
+	restored := restorePlan.Archived
 	if len(restored) != len(archived) {
 		t.Errorf("restore covers %d nodes, archive covered %d", len(restored), len(archived))
 	}
@@ -887,10 +897,260 @@ func TestTreePlansAreDeterministic(t *testing.T) {
 		if err != nil {
 			t.Fatalf("PlanArchive() = %v", err)
 		}
-		for i := range a1 {
-			if a1[i].NodeID != a2[i].NodeID {
-				t.Fatalf("PlanArchive is not deterministic at %d: %q vs %q", i, a1[i].NodeID, a2[i].NodeID)
+		for i := range a1.Archived {
+			if a1.Archived[i].NodeID != a2.Archived[i].NodeID {
+				t.Fatalf("PlanArchive is not deterministic at %d: %q vs %q",
+					i, a1.Archived[i].NodeID, a2.Archived[i].NodeID)
 			}
 		}
+		if len(a1.Statuses) != len(a2.Statuses) {
+			t.Fatalf("PlanArchive's status rewrites are not deterministic: %+v vs %+v",
+				a1.Statuses, a2.Statuses)
+		}
+		for i := range a1.Statuses {
+			if a1.Statuses[i] != a2.Statuses[i] {
+				t.Fatalf("PlanArchive's status rewrite is not deterministic at %d: %+v vs %+v",
+					i, a1.Statuses[i], a2.Statuses[i])
+			}
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// D14 — archiving re-inspects a node that becomes a leaf (S2-06, closing K2).
+
+// rewriteIDs lists the nodes a plan rewrites, for a failure message.
+func rewriteIDs(changes []domain.StatusChange) []string {
+	out := make([]string, len(changes))
+	for i, c := range changes {
+		out[i] = c.NodeID
+	}
+	return out
+}
+
+// THE K2 scenario, in the domain: P is stored done by an old cascade, derives
+// backlog from {C1:done, C2:backlog}, and archiving both children must leave it
+// showing backlog rather than silently becoming a done unit in its parent's bar.
+func TestPlanArchiveRewritesTheStatusOfANodeItTurnsIntoALeaf(t *testing.T) {
+	at := fixedNow
+	now := func() time.Time { return at }
+
+	t.Run("K2: a stale done is rewritten to the backlog it was displaying", func(t *testing.T) {
+		nodes := []domain.Node{
+			project("root", "", domain.StatusBacklog),
+			project("p", "root", domain.StatusDone),
+			task("c1", "p", domain.StatusDone),
+			task("c2", "p", domain.StatusBacklog),
+		}
+		// The stale completion an old drag to Done left behind.
+		lastMonth := fixedNow.AddDate(0, -1, 0)
+		nodes[1].CompletedAt = &lastMonth
+
+		// Before the archive the board shows P in Backlog.
+		if got, err := domain.DeriveStatus(nodes, "p"); err != nil || got != domain.StatusBacklog {
+			t.Fatalf("DeriveStatus(p) = %q, %v; want backlog", got, err)
+		}
+
+		plan, err := domain.PlanArchive(nodes, "c1", now)
+		if err != nil {
+			t.Fatalf("PlanArchive(c1) = %v", err)
+		}
+		if len(plan.Statuses) != 0 {
+			t.Errorf("archiving c1 rewrote %v; p still has c2, which has a column", rewriteIDs(plan.Statuses))
+		}
+
+		// Archive c1, then c2: the second one is what turns p into a leaf.
+		archived := applyArchive(t, nodes, plan)
+		plan, err = domain.PlanArchive(archived, "c2", now)
+		if err != nil {
+			t.Fatalf("PlanArchive(c2) = %v", err)
+		}
+		if len(plan.Statuses) != 1 || plan.Statuses[0].NodeID != "p" {
+			t.Fatalf("the plan rewrites %v, want exactly p", rewriteIDs(plan.Statuses))
+		}
+		if got := plan.Statuses[0].Status; got != domain.StatusBacklog {
+			t.Errorf("p is rewritten to %q, want the backlog it was displaying", got)
+		}
+		if got := plan.Statuses[0].CompletedAt; got != nil {
+			t.Errorf("p's completed_at is rewritten to %v, want NULL — it is not done", got)
+		}
+	})
+
+	t.Run("honest completion survives: all children done keeps done and its completed_at", func(t *testing.T) {
+		finished := fixedNow.AddDate(0, 0, -3)
+		nodes := []domain.Node{
+			project("root", "", domain.StatusBacklog),
+			project("p", "root", domain.StatusDone),
+			task("c1", "p", domain.StatusDone),
+			task("c2", "p", domain.StatusDone),
+		}
+		nodes[1].CompletedAt = &finished
+
+		plan, err := domain.PlanArchive(nodes, "c1", now)
+		if err != nil {
+			t.Fatalf("PlanArchive(c1) = %v", err)
+		}
+		archived := applyArchive(t, nodes, plan)
+
+		plan, err = domain.PlanArchive(archived, "c2", now)
+		if err != nil {
+			t.Fatalf("PlanArchive(c2) = %v", err)
+		}
+		if len(plan.Statuses) != 1 || plan.Statuses[0].NodeID != "p" {
+			t.Fatalf("the plan rewrites %v, want exactly p", rewriteIDs(plan.Statuses))
+		}
+		if got := plan.Statuses[0].Status; got != domain.StatusDone {
+			t.Errorf("p is rewritten to %q, want done", got)
+		}
+		if got := plan.Statuses[0].CompletedAt; got == nil || !got.Equal(finished) {
+			t.Errorf("p's completed_at = %v, want the %v it already had", got, finished)
+		}
+	})
+
+	t.Run("a node that keeps a column-bearing child is not touched", func(t *testing.T) {
+		nodes := []domain.Node{
+			project("p", "", domain.StatusDone),
+			task("c1", "p", domain.StatusDone),
+			task("c2", "p", domain.StatusBacklog),
+			task("c3", "p", domain.StatusToday),
+		}
+		plan, err := domain.PlanArchive(nodes, "c1", now)
+		if err != nil {
+			t.Fatalf("PlanArchive = %v", err)
+		}
+		if len(plan.Statuses) != 0 {
+			t.Errorf("the plan rewrites %v, want nothing", rewriteIDs(plan.Statuses))
+		}
+	})
+
+	t.Run("archiving a note or a habit child rewrites nothing: the parent was already a leaf", func(t *testing.T) {
+		for _, child := range []domain.Node{note("n", "p"), habit("h", "p")} {
+			t.Run(string(child.Type), func(t *testing.T) {
+				nodes := []domain.Node{
+					project("p", "", domain.StatusDone),
+					child,
+				}
+				plan, err := domain.PlanArchive(nodes, child.ID, now)
+				if err != nil {
+					t.Fatalf("PlanArchive = %v", err)
+				}
+				if len(plan.Statuses) != 0 {
+					t.Errorf("the plan rewrites %v; p was already a leaf by D10 and nothing changed",
+						rewriteIDs(plan.Statuses))
+				}
+			})
+		}
+	})
+
+	t.Run("the rule is not about projects: a task parent is rewritten too", func(t *testing.T) {
+		nodes := []domain.Node{
+			task("parent", "", domain.StatusDone),
+			task("sub", "parent", domain.StatusToday),
+		}
+		plan, err := domain.PlanArchive(nodes, "sub", now)
+		if err != nil {
+			t.Fatalf("PlanArchive = %v", err)
+		}
+		if len(plan.Statuses) != 1 || plan.Statuses[0].NodeID != "parent" {
+			t.Fatalf("the plan rewrites %v, want the task parent", rewriteIDs(plan.Statuses))
+		}
+		if got := plan.Statuses[0].Status; got != domain.StatusToday {
+			t.Errorf("the parent is rewritten to %q, want the today it was displaying", got)
+		}
+	})
+
+	t.Run("archiving a leaf rewrites nothing about the leaf itself", func(t *testing.T) {
+		nodes := []domain.Node{task("only", "", domain.StatusToday)}
+		plan, err := domain.PlanArchive(nodes, "only", now)
+		if err != nil {
+			t.Fatalf("PlanArchive = %v", err)
+		}
+		if len(plan.Statuses) != 0 {
+			t.Errorf("the plan rewrites %v, want nothing — the archived node is not re-inspected",
+				rewriteIDs(plan.Statuses))
+		}
+	})
+
+	t.Run("archiving a whole subtree rewrites the parent it empties", func(t *testing.T) {
+		nodes := []domain.Node{
+			project("p", "", domain.StatusDone),
+			project("mid", "p", domain.StatusBacklog),
+			task("deep", "mid", domain.StatusWeek),
+		}
+		plan, err := domain.PlanArchive(nodes, "mid", now)
+		if err != nil {
+			t.Fatalf("PlanArchive = %v", err)
+		}
+		if len(plan.Statuses) != 1 || plan.Statuses[0].NodeID != "p" {
+			t.Fatalf("the plan rewrites %v, want exactly p", rewriteIDs(plan.Statuses))
+		}
+		if got := plan.Statuses[0].Status; got != domain.StatusWeek {
+			t.Errorf("p is rewritten to %q, want the week it derived through mid", got)
+		}
+	})
+}
+
+// applyArchive returns nodes with the plan's archived_at values applied.
+func applyArchive(t *testing.T, nodes []domain.Node, plan domain.ArchivePlan) []domain.Node {
+	t.Helper()
+
+	out := make([]domain.Node, len(nodes))
+	copy(out, nodes)
+	for _, c := range plan.Archived {
+		for i := range out {
+			if out[i].ID == c.NodeID {
+				out[i].ArchivedAt = c.ArchivedAt
+			}
+		}
+	}
+	for _, c := range plan.Statuses {
+		for i := range out {
+			if out[i].ID == c.NodeID {
+				out[i].Status = c.Status
+				out[i].CompletedAt = c.CompletedAt
+			}
+		}
+	}
+	return out
+}
+
+// A leaf carrying a status nobody recognises makes the rewrite refuse rather
+// than write a value derived from nonsense. Corrupt data is an error, not a
+// guess — the same answer DeriveStatus already gives.
+func TestPlanArchiveRefusesToRewriteFromACorruptStatus(t *testing.T) {
+	nodes := []domain.Node{
+		project("p", "", domain.StatusDone),
+		task("c", "p", domain.Status("sideways")),
+	}
+
+	_, err := domain.PlanArchive(nodes, "c", func() time.Time { return fixedNow })
+	if !errors.Is(err, domain.ErrInvalid) {
+		t.Errorf("PlanArchive = %v, want a validation error naming the unknown status", err)
+	}
+}
+
+// Only ONE node can ever be turned into a leaf by one archive: the archived
+// subtree is connected, so the only node outside it that loses a child is the
+// root's parent. The plan's determinism rests on that, so it is asserted rather
+// than assumed.
+func TestPlanArchiveRewritesAtMostOneNode(t *testing.T) {
+	nodes := []domain.Node{
+		project("root", "", domain.StatusBacklog),
+		project("p1", "root", domain.StatusBacklog),
+		task("c1", "p1", domain.StatusToday),
+		project("p2", "root", domain.StatusBacklog),
+		task("c2", "p2", domain.StatusWeek),
+	}
+
+	for _, id := range []string{"c1", "c2", "p1", "p2", "root"} {
+		t.Run("archiving "+id, func(t *testing.T) {
+			plan, err := domain.PlanArchive(nodes, id, func() time.Time { return fixedNow })
+			if err != nil {
+				t.Fatalf("PlanArchive(%q) = %v", id, err)
+			}
+			if len(plan.Statuses) > 1 {
+				t.Errorf("archiving %q rewrites %v, want at most one node", id, rewriteIDs(plan.Statuses))
+			}
+		})
 	}
 }

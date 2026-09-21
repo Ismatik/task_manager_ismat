@@ -363,27 +363,127 @@ type ArchiveChange struct {
 	ArchivedAt *time.Time
 }
 
-// PlanArchive archives id and its whole subtree at the injected now.
+// ArchivePlan is everything an archive or a restore writes.
+//
+// Archived is the archived_at column, one row per node. Statuses is D14's
+// rewrite — see PlanArchive — and is empty for a restore and for most archives.
+// They are one plan because they are one transaction: half an archive is a
+// state nobody designed.
+type ArchivePlan struct {
+	Archived []ArchiveChange
+	Statuses []StatusChange
+}
+
+// PlanArchive archives id and its whole subtree at the injected now, and
+// rewrites the stored status of any node this archive turns into a leaf (D14).
 //
 // A node that is already archived is left out of the plan, keeping its original
 // archived_at. Archiving is a fact about when something was put away, and
 // re-stamping a child that was archived last month because its parent was
 // archived today would quietly rewrite that history for no gain.
-func PlanArchive(nodes []Node, id string, now func() time.Time) ([]ArchiveChange, error) {
+//
+// # Why archiving writes a status at all (D14, closing K2)
+//
+// Since D11 a LEAF's stored status decides whether it counts as done in its
+// parent's progress, while a parent's stored status is dead weight — derivation
+// ignores it. Archiving can turn a parent into a leaf, and at that moment the
+// dead weight comes alive: P{C1:done, C2:backlog} derives backlog and renders in
+// the Backlog column while an old cascade left `done` sitting in its status
+// column; archive both children and P silently becomes a DONE unit in its
+// parent's bar, on a status nobody set. The state is self-consistent — the
+// column and the bar agree — which is exactly why nothing would ever flag it.
+//
+// D14's principle is continuity: what the board showed before the archive is
+// what it shows after. So such a node is rewritten to the status it DERIVED
+// immediately before the archive, with completed_at set or cleared to match by
+// the same statusChange the cascade uses — a project whose children were all
+// done stays done, and keeps the completion time it already had.
+//
+// It applies to any node type; a project is merely where D11 gave it teeth.
+//
+// Restore needs no symmetric rule: once a node has column-bearing children
+// again, derivation takes over and the stored status stops being consulted. See
+// PlanRestore.
+func PlanArchive(nodes []Node, id string, now func() time.Time) (ArchivePlan, error) {
 	subtree, err := Subtree(nodes, id)
 	if err != nil {
-		return nil, err
+		return ArchivePlan{}, err
 	}
 
 	at := now()
-	out := make([]ArchiveChange, 0, len(subtree))
+	plan := ArchivePlan{Archived: make([]ArchiveChange, 0, len(subtree))}
+
+	// hidden is the whole subtree, already-archived rows included: what the
+	// archive removes from view is the subtree, not merely the rows it writes.
+	hidden := make(map[string]bool, len(subtree))
 	for _, n := range subtree {
+		hidden[n.ID] = true
 		if n.ArchivedAt != nil {
 			continue
 		}
 		stamp := at
-		out = append(out, ArchiveChange{NodeID: n.ID, ArchivedAt: &stamp})
+		plan.Archived = append(plan.Archived, ArchiveChange{NodeID: n.ID, ArchivedAt: &stamp})
 	}
+
+	if plan.Statuses, err = planLeafRewrites(nodes, hidden, at); err != nil {
+		return ArchivePlan{}, err
+	}
+	return plan, nil
+}
+
+// planLeafRewrites is D14's rule: every node this archive turns into a leaf,
+// rewritten to the status it was already displaying.
+//
+// # No new predicate
+//
+// "Has no remaining child with a column" is Node.IsLeaf, which is
+// NodeType.HasColumn's rule (D10), asked twice — of the set as it WAS and of the
+// set as it WILL BE — and the difference between the two answers is the whole
+// condition. The value written is the derived status of the set as it was. Both
+// already existed; a third way to ask either question is the defect this project
+// has paid for three times.
+//
+// The bound is checkable: a node is rewritten only if IT flipped. A node that
+// keeps a column-bearing child never flips, and a node that was ALREADY a leaf —
+// one whose only children are notes or habits (D10), or one with no children at
+// all — never flips either, so neither is touched.
+//
+// Archived rows are in neither set: they are not on the board, so they are not
+// what derivation or the leaf test are about.
+func planLeafRewrites(nodes []Node, hidden map[string]bool, at time.Time) ([]StatusChange, error) {
+	before := make([]Node, 0, len(nodes))
+	after := make([]Node, 0, len(nodes))
+	for _, n := range nodes {
+		if n.ArchivedAt != nil {
+			continue
+		}
+		before = append(before, n)
+		if !hidden[n.ID] {
+			after = append(after, n)
+		}
+	}
+
+	beforeKids := groupByParent(before)
+	afterKids := groupByParent(after)
+	index := NewIndex(before)
+
+	var out []StatusChange
+	for _, n := range after {
+		if n.IsLeaf(beforeKids[n.ID]) || !n.IsLeaf(afterKids[n.ID]) {
+			continue
+		}
+		derived, err := index.Status(n.ID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, statusChange(n, derived, at))
+	}
+
+	// The result holds at most one change, so it is deterministic whatever
+	// order the caller loaded the rows in — and no sort is needed to make it
+	// so. An archived subtree is connected: every node in it except its root
+	// has its parent in it too, so exactly ONE node outside the subtree loses a
+	// child, and that node is the root's parent. Nothing else can flip.
 	return out, nil
 }
 
@@ -401,18 +501,27 @@ func PlanArchive(nodes []Node, id string, now func() time.Time) ([]ArchiveChange
 //
 // Nodes that are not archived are left out of the plan; there is nothing to
 // write.
-func PlanRestore(nodes []Node, id string) ([]ArchiveChange, error) {
+//
+// # No status rewrite, deliberately (D14)
+//
+// PlanArchive rewrites the stored status of a node it turns into a leaf.
+// Restoring is NOT the mirror of that and must not become one: a node that gets
+// column-bearing children back is a parent again, and a parent's stored status
+// is never read — DeriveStatus takes over the moment the children are visible.
+// Writing one here would put a value nobody reads back into circulation, which
+// is how K2 started. Statuses is therefore always empty.
+func PlanRestore(nodes []Node, id string) (ArchivePlan, error) {
 	subtree, err := Subtree(nodes, id)
 	if err != nil {
-		return nil, err
+		return ArchivePlan{}, err
 	}
 
-	out := make([]ArchiveChange, 0, len(subtree))
+	plan := ArchivePlan{Archived: make([]ArchiveChange, 0, len(subtree))}
 	for _, n := range subtree {
 		if n.ArchivedAt == nil {
 			continue
 		}
-		out = append(out, ArchiveChange{NodeID: n.ID, ArchivedAt: nil})
+		plan.Archived = append(plan.Archived, ArchiveChange{NodeID: n.ID, ArchivedAt: nil})
 	}
-	return out, nil
+	return plan, nil
 }

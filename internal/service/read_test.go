@@ -205,10 +205,21 @@ func TestBoardPlacesAProjectWithADoneTaskAndAHabitInDone(t *testing.T) {
 			t.Error("IsLeaf = false: the project's only remaining child is a habit, which has " +
 				"no column")
 		}
-		// A leaf reports its own stored status, and nothing has ever written a
-		// column onto this project, so it falls back to backlog.
-		if v.Status != domain.StatusBacklog {
-			t.Errorf("the project derives %q, want its own stored backlog", v.Status)
+		// A leaf reports its own stored status — and since D14 (S2-06) the
+		// archive rewrote that stored status to whatever the project was
+		// showing immediately before it, which here is done. Continuity.
+		//
+		// This assertion read "backlog" until then, and that was K2 seen from
+		// the other side: the board showed a finished project in Done, and
+		// archiving its finished child dropped it into Backlog although nothing
+		// about the work had changed.
+		if v.Status != domain.StatusDone {
+			t.Errorf("the project derives %q, want the done it was displaying before the archive (D14)",
+				v.Status)
+		}
+		if got := f.get(p.ID).Status; got != domain.StatusDone {
+			t.Errorf("the project's STORED status is %q; the archive must have rewritten it to done (D14)",
+				got)
 		}
 	})
 }

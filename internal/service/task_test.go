@@ -1901,3 +1901,211 @@ func TestMovingToDoingTwiceKeepsTheSameEntry(t *testing.T) {
 		t.Errorf("%d open entries, want 1", got)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// D14 / K2 — archiving re-inspects a node that becomes a leaf (S2-06).
+
+// THE K2 scenario, end to end through the service and a real database.
+//
+// P is stored done — a state an earlier drag of P to Done really does produce —
+// while deriving backlog from {C1:done, C2:backlog}, so the board shows it in
+// Backlog. Archive both children and P becomes a leaf, at which point D11 says
+// its STORED status decides whether it counts as done in its parent's bar. Left
+// alone it would silently become a done unit on a status nobody set, minutes
+// after the board showed it as Backlog — self-consistent, and therefore never
+// flagged.
+func TestArchivingTheLastChildRewritesTheStaleStoredStatus(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	root := f.create(draft("root", domain.NodeTypeProject, nil))
+	p := f.create(draft("p", domain.NodeTypeProject, &root.ID))
+	c1 := f.create(draft("c1", domain.NodeTypeTask, &p.ID))
+	c2 := f.create(draft("c2", domain.NodeTypeTask, &p.ID))
+
+	if _, err := f.tasks.MoveToColumn(ctx, c1.ID, domain.StatusDone); err != nil {
+		t.Fatalf("MoveToColumn(c1, done): %v", err)
+	}
+	// The stale done: an earlier drag of P itself to Done, back when it was a
+	// leaf. It is written the way the bug writes it — straight onto the row.
+	stale := f.get(p.ID)
+	stale.Status = domain.StatusDone
+	completed := testNow.AddDate(0, -1, 0)
+	stale.CompletedAt = &completed
+	if err := f.nodes.Update(ctx, stale); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	// What the board shows before the archive, which is what must survive it.
+	v := find(boardOf(ctx, t, f), p.ID)
+	if v == nil || v.Status != domain.StatusBacklog {
+		t.Fatalf("before the archive p renders %+v, want backlog", v)
+	}
+
+	if _, err := f.tasks.ArchiveNode(ctx, c1.ID); err != nil {
+		t.Fatalf("ArchiveNode(c1): %v", err)
+	}
+	t.Run("archiving one of two children rewrites nothing", func(t *testing.T) {
+		if got := f.get(p.ID).Status; got != domain.StatusDone {
+			t.Errorf("p's stored status is %q, want the stale done still there — c2 has a column", got)
+		}
+	})
+
+	if _, err := f.tasks.ArchiveNode(ctx, c2.ID); err != nil {
+		t.Fatalf("ArchiveNode(c2): %v", err)
+	}
+
+	t.Run("p's stored status is now the backlog it was displaying", func(t *testing.T) {
+		got := f.get(p.ID)
+		if got.Status != domain.StatusBacklog {
+			t.Errorf("p's stored status = %q, want backlog (D14)", got.Status)
+		}
+		if got.CompletedAt != nil {
+			t.Errorf("p's completed_at = %v, want NULL: it is not done", got.CompletedAt)
+		}
+	})
+
+	t.Run("the board shows the same thing after the archive as before", func(t *testing.T) {
+		v := find(boardOf(ctx, t, f), p.ID)
+		if v == nil {
+			t.Fatal("p left the board")
+		}
+		if v.Status != domain.StatusBacklog {
+			t.Errorf("p renders in %q, want the backlog it rendered in before the archive", v.Status)
+		}
+	})
+
+	t.Run("p counts as one unfinished work leaf in root's progress (D11)", func(t *testing.T) {
+		got, err := f.tasks.Progress(ctx, root.ID)
+		if err != nil {
+			t.Fatalf("Progress: %v", err)
+		}
+		want := service.ProgressView{Done: 0, Total: 1, Percent: 0, Defined: true}
+		if got != want {
+			t.Errorf("root's progress = %+v, want %+v — p is one UNFINISHED unit", got, want)
+		}
+	})
+}
+
+// The honest-completion case, which rejected alternative (a) — "reset to
+// backlog" — would have broken: archiving the finished children of a finished
+// project must not un-finish it.
+func TestArchivingFinishedChildrenKeepsTheProjectDone(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	root := f.create(draft("root", domain.NodeTypeProject, nil))
+	p := f.create(draft("p", domain.NodeTypeProject, &root.ID))
+	c1 := f.create(draft("c1", domain.NodeTypeTask, &p.ID))
+	c2 := f.create(draft("c2", domain.NodeTypeTask, &p.ID))
+
+	for _, id := range []string{c1.ID, c2.ID} {
+		if _, err := f.tasks.MoveToColumn(ctx, id, domain.StatusDone); err != nil {
+			t.Fatalf("MoveToColumn(%q, done): %v", id, err)
+		}
+	}
+	// P genuinely finished, with the completion time that drag recorded.
+	finished := f.get(p.ID)
+	finished.Status = domain.StatusDone
+	completedAt := testNow
+	finished.CompletedAt = &completedAt
+	if err := f.nodes.Update(ctx, finished); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	f.now = testNow.AddDate(0, 0, 7)
+	for _, id := range []string{c1.ID, c2.ID} {
+		if _, err := f.tasks.ArchiveNode(ctx, id); err != nil {
+			t.Fatalf("ArchiveNode(%q): %v", id, err)
+		}
+	}
+
+	got := f.get(p.ID)
+	if got.Status != domain.StatusDone {
+		t.Errorf("p's stored status = %q, want done — its children really were finished", got.Status)
+	}
+	if got.CompletedAt == nil || !got.CompletedAt.Equal(completedAt) {
+		t.Errorf("p's completed_at = %v, want the original %v, not the day of the archive",
+			got.CompletedAt, completedAt)
+	}
+
+	progress, err := f.tasks.Progress(ctx, root.ID)
+	if err != nil {
+		t.Fatalf("Progress: %v", err)
+	}
+	if want := (service.ProgressView{Done: 1, Total: 1, Percent: 100, Defined: true}); progress != want {
+		t.Errorf("root's progress = %+v, want %+v — p is one DONE unit", progress, want)
+	}
+}
+
+// The rewrite happens in the archive's own transaction: a failed archive leaves
+// the stored status exactly as it was.
+func TestTheStatusRewriteRollsBackWithAFailedArchive(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	p := f.create(draft("p", domain.NodeTypeProject, nil))
+	c := f.create(draft("c", domain.NodeTypeTask, &p.ID))
+	if _, err := f.tasks.MoveToColumn(ctx, c.ID, domain.StatusToday); err != nil {
+		t.Fatalf("MoveToColumn: %v", err)
+	}
+	stale := f.get(p.ID)
+	stale.Status = domain.StatusDone
+	if err := f.nodes.Update(ctx, stale); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	before := f.all()
+
+	// The archive's own UPDATE succeeds and the status rewrite that follows it
+	// fails, which is the ordering that could leave half a plan applied.
+	f.now = testNow.Add(time.Hour)
+	brittle := f.tasksOver(failingBeginner{inner: f.begin, after: 1})
+
+	if _, err := brittle.ArchiveNode(ctx, c.ID); !errors.Is(err, errBoom) {
+		t.Fatalf("ArchiveNode = %v, want the injected errBoom", err)
+	}
+	if after := f.all(); !reflect.DeepEqual(before, after) {
+		t.Errorf("a failed archive changed the database:\n got %+v\nwant %+v", after, before)
+	}
+}
+
+// Restore adds no symmetric rule: bringing a child back hands the parent to
+// derivation again, and nothing writes a stored status on the way.
+func TestRestoreWritesNoStatus(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	p := f.create(draft("p", domain.NodeTypeProject, nil))
+	c := f.create(draft("c", domain.NodeTypeTask, &p.ID))
+	if _, err := f.tasks.MoveToColumn(ctx, c.ID, domain.StatusToday); err != nil {
+		t.Fatalf("MoveToColumn: %v", err)
+	}
+
+	if _, err := f.tasks.ArchiveNode(ctx, c.ID); err != nil {
+		t.Fatalf("ArchiveNode: %v", err)
+	}
+	// The archive left p showing what it showed: today.
+	if got := f.get(p.ID).Status; got != domain.StatusToday {
+		t.Fatalf("p's stored status after the archive = %q, want today (D14)", got)
+	}
+
+	f.now = testNow.Add(time.Hour)
+	stored := f.get(p.ID)
+	if _, err := f.tasks.RestoreNode(ctx, c.ID); err != nil {
+		t.Fatalf("RestoreNode: %v", err)
+	}
+
+	after := f.get(p.ID)
+	if after.Status != stored.Status || !after.UpdatedAt.Equal(stored.UpdatedAt) {
+		t.Errorf("restoring rewrote p: %+v, was %+v — restore adds no rule (D14)", after, stored)
+	}
+
+	// Derivation has taken over again, which is why no rule is needed.
+	v := find(boardOf(ctx, t, f), p.ID)
+	if v == nil || v.Status != domain.StatusToday {
+		t.Errorf("p renders %+v, want today derived from the restored child", v)
+	}
+	if v.IsLeaf {
+		t.Error("p reports IsLeaf = true although its child is back")
+	}
+}

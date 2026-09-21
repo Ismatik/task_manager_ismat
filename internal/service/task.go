@@ -540,8 +540,14 @@ func (s *TaskService) SetDue(ctx context.Context, nodeID string, due *domain.Dat
 // A descendant that was already archived keeps its original archived_at:
 // archiving records when something was put away, and re-stamping it because a
 // parent was archived today would rewrite that history for no gain.
+//
+// It can also write a status onto a node it did NOT archive — the one this
+// archive turned into a leaf (D14, K2). That is domain.PlanArchive's decision,
+// applied here in the archive's own transaction: the whole point is that the
+// board shows the same thing after the archive as before, and two transactions
+// would leave a window in which it did not.
 func (s *TaskService) ArchiveNode(ctx context.Context, nodeID string) (int, error) {
-	return s.setArchived(ctx, nodeID, func(set []domain.Node) ([]domain.ArchiveChange, error) {
+	return s.setArchived(ctx, nodeID, func(set []domain.Node) (domain.ArchivePlan, error) {
 		return domain.PlanArchive(set, nodeID, s.clock)
 	})
 }
@@ -550,15 +556,17 @@ func (s *TaskService) ArchiveNode(ctx context.Context, nodeID string) (int, erro
 // rows it restored. Restoring is unconditional over the subtree: a child that
 // was archived separately comes back too, because a subtree whose top is visible
 // and whose bottom is not has nothing on screen to explain the gap.
+// RestoreNode adds no symmetric rule to D14's: see domain.PlanRestore.
 func (s *TaskService) RestoreNode(ctx context.Context, nodeID string) (int, error) {
-	return s.setArchived(ctx, nodeID, func(set []domain.Node) ([]domain.ArchiveChange, error) {
+	return s.setArchived(ctx, nodeID, func(set []domain.Node) (domain.ArchivePlan, error) {
 		return domain.PlanRestore(set, nodeID)
 	})
 }
 
 // setArchived applies whichever of the two archive plans it is given, in one
-// transaction. Both write the same column, so they differ only in the plan.
-func (s *TaskService) setArchived(ctx context.Context, nodeID string, plan func([]domain.Node) ([]domain.ArchiveChange, error)) (int, error) {
+// transaction. Both write the same column, so they differ only in the plan —
+// and in D14's status rewrite, which only an archive ever produces.
+func (s *TaskService) setArchived(ctx context.Context, nodeID string, plan func([]domain.Node) (domain.ArchivePlan, error)) (int, error) {
 	count := 0
 
 	err := s.inTx(ctx, func(exec store.Executor) error {
@@ -569,27 +577,30 @@ func (s *TaskService) setArchived(ctx context.Context, nodeID string, plan func(
 			return err
 		}
 
-		changes, err := plan(set)
+		archive, err := plan(set)
 		if err != nil {
 			return fmt.Errorf("service: archiving node %q: %w", nodeID, err)
 		}
-		if len(changes) == 0 {
-			return nil
+
+		changes := archive.Archived
+		if len(changes) > 0 {
+			// One plan writes one value: PlanArchive stamps every row with the
+			// same instant and PlanRestore clears every row, so the batch is
+			// one statement rather than one per node.
+			ids := make([]string, len(changes))
+			for i, c := range changes {
+				ids[i] = c.NodeID
+			}
+			if err := nodes.SetArchivedAt(ctx, ids, copyTime(changes[0].ArchivedAt), s.clock()); err != nil {
+				return err
+			}
+			count = len(ids)
 		}
 
-		// One plan writes one value: PlanArchive stamps every row with the same
-		// instant and PlanRestore clears every row, so the batch is one
-		// statement rather than one per node.
-		ids := make([]string, len(changes))
-		for i, c := range changes {
-			ids[i] = c.NodeID
-		}
-		if err := nodes.SetArchivedAt(ctx, ids, copyTime(changes[0].ArchivedAt), s.clock()); err != nil {
-			return err
-		}
-
-		count = len(ids)
-		return nil
+		// D14: the node this archive turned into a leaf keeps displaying what
+		// it displayed before. In the SAME transaction, so a failed archive
+		// leaves the stored status untouched.
+		return nodes.UpdateStatuses(ctx, archive.Statuses, s.clock())
 	})
 	if err != nil {
 		return 0, err
