@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import App from './App';
 import { createAppStore } from './store';
 import { board, columnView, createFakeClient, node, nodeView } from './test/fakeClient';
-import { renderIn } from './test/render';
+import { renderIn, tabUntil } from './test/render';
 
 // Nexus — the shell, asserted THROUGH the shell.
 //
@@ -130,8 +130,12 @@ describe('the app shell', () => {
     await screen.findByRole('alert');
 
     const user = userEvent.setup();
-    await user.tab();
-    expect(screen.getByRole('button')).toHaveFocus();
+    // Named rather than "the only button": S2-21 filled region 1 with the
+    // appearance controls, so the page has buttons before this one, and Tab
+    // walks through them on the way here.
+    const dismiss = screen.getByRole('button', { name: 'Dismiss' });
+    await tabUntil(user, () => document.activeElement === dismiss);
+    expect(dismiss).toHaveFocus();
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
@@ -154,10 +158,15 @@ describe('the app shell', () => {
   // ------------------------------------------------------- the empty regions
 
   it('renders nothing at all for the regions it does not fill', async () => {
-    // Regions 1 (header), 2 (habits strip) and 4 (overlay layer) are empty
-    // slots in the source, and region 5 (toasts) renders nothing while nothing
-    // has failed. Not a blank bar, not a placeholder, not a reserved box — ONE
-    // child under the shell, the board, and nothing else.
+    // Region 2 (habits strip) renders nothing while there are no habits,
+    // region 4 (overlay layer) nothing while nothing is open, and region 5
+    // (toasts) nothing while nothing has failed. Not a blank bar, not a
+    // placeholder, not a reserved box — TWO children under the shell, the
+    // header S2-21 filled and the board, and nothing else.
+    //
+    // Region 1 stopped being empty at S2-21, which is the last mounting ticket:
+    // after it there is no empty region left, and that is the point of the
+    // composition rule rather than a regression in this assertion.
     const fake = createFakeClient({ board: board(COLUMNS) });
     const store = createAppStore(fake.client, { view: testWindow() });
 
@@ -166,9 +175,7 @@ describe('the app shell', () => {
 
     const shell = container.firstElementChild!;
 
-    expect(shell.children).toHaveLength(1);
-    expect(shell.children[0].tagName).toBe('MAIN');
-    expect(screen.queryByRole('banner')).toBeNull();
+    expect([...shell.children].map((child) => child.tagName)).toEqual(['HEADER', 'MAIN']);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
   });

@@ -6,7 +6,7 @@ import App from './App';
 import type { Client, ColumnView, NodeView } from './lib/client';
 import { createAppStore, type AppStore } from './store';
 import { columnView, createFakeClient, node, nodeView } from './test/fakeClient';
-import { renderIn } from './test/render';
+import { renderIn, tabUntil } from './test/render';
 
 // Nexus — the ACCEPT criterion's rehearsal.
 //
@@ -109,7 +109,10 @@ async function enterTheBoard(store: AppStore, language = 'en') {
 
   await renderIn(language, <App store={store} />);
   await screen.findAllByRole('article');
-  await user.tab();
+  // Tab until a card has focus rather than once: S2-21 filled region 1 with
+  // the appearance controls, which come before the board in the shell's DOM
+  // order, and how many stops they add is not this file's business.
+  await tabUntil(user, () => focusedCardId() !== null);
 
   return user;
 }
@@ -208,7 +211,7 @@ describe('navigating the board with the keyboard', () => {
     expect(focusedCardId()).toBe('a');
 
     await user.tab();
-    expect(screen.getByRole('button')).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Dismiss' })).toHaveFocus();
 
     await user.tab({ shift: true });
     expect(focusedCardId()).toBe('a');
@@ -313,7 +316,7 @@ describe('the global shortcuts', () => {
     const user = await enterTheBoard(store);
 
     await user.tab();
-    expect(screen.getByRole('button')).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Dismiss' })).toHaveFocus();
 
     await user.keyboard('{Control>}n{/Control}');
     expect(store.getState().openOverlay).toBe('quickAdd');

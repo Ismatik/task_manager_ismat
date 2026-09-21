@@ -104,6 +104,16 @@
     "submit": "Add it"
   },
   "settings": {
+    "label": "Appearance and language",
+    "group": {
+      "palette": "Palette",
+      "theme": "Theme",
+      "language": "Language"
+    },
+    "palette": {
+      "aurora": "Aurora",
+      "studio": "Studio"
+    },
     "theme": {
       "dark": "Dark",
       "light": "Light"
@@ -111,6 +121,13 @@
     "language": {
       "en": "English",
       "ru": "Russian"
+    },
+    "accent": {
+      "group": "Accent",
+      "default": "The palette’s own",
+      "preset": "Second accent",
+      "custom": "A colour of your own",
+      "apply": "Apply"
     }
   },
   "toast": {

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AppearanceControls } from './components/AppearanceControls';
 import { CommandPalette } from './components/CommandPalette';
 import { HabitStrip } from './components/HabitStrip';
 import { QuickAdd } from './components/QuickAdd';
@@ -27,7 +28,7 @@ import { Kanban } from './views/Kanban';
 //
 // # The regions, in DOM order, and why the order IS the markup
 //
-//   1  header        S2-21 — appearance and language controls
+//   1  header        S2-21 — components/AppearanceControls.tsx
 //   2  habits strip  S2-18 — components/HabitStrip.tsx
 //   3  board         S2-15 — views/Kanban.tsx
 //   4  overlay layer S2-19 — components/QuickAdd.tsx;
@@ -139,7 +140,12 @@ function Shell() {
 
   return (
     <div className="flex min-h-screen min-w-0 flex-col gap-2 bg-bg p-2 text-ink">
-      {/* Region 1 — header. S2-21 mounts the appearance and language controls. */}
+      {/* Region 1 — header. The LAST region to be filled; after S2-21 every
+          component Stage 2 built is reachable from main.tsx. It is region 1, so
+          it is also the first thing Tab reaches — which is what "reachable with
+          Tab, not only through the palette" means, and it falls out of this
+          file's DOM order rather than out of a tabIndex ladder. */}
+      <AppearanceControls />
 
       {/* Region 2 — habits strip. Renders nothing while there are no habits. */}
       <HabitStrip />

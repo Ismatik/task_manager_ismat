@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { type UserEvent } from '@testing-library/user-event';
 
 import App from './App';
 import type { Client, ColumnView, HabitView } from './lib/client';
 import { createAppStore, type AppStore } from './store';
 import { board, columnView, createFakeClient, habitView, node, nodeView } from './test/fakeClient';
-import { BOTH_LANGUAGES, renderIn } from './test/render';
+import { BOTH_LANGUAGES, renderIn, tabUntil } from './test/render';
 
 // Nexus — the habits strip, asserted THROUGH the shell.
 //
@@ -82,6 +82,18 @@ async function enterTheApp(store: AppStore, language = 'en') {
   return user;
 }
 
+/**
+ * Tabs forward until a habit chip has focus.
+ *
+ * Not a single Tab: S2-21 filled region 1 with the appearance controls, which
+ * come before the strip in the shell's DOM order. How many stops they add is
+ * not this file's business, and the strip being ONE stop — the claim below — is
+ * asserted separately, on its tabindex.
+ */
+async function tabToTheStrip(user: UserEvent) {
+  await tabUntil(user, () => focusedHabitId() !== null);
+}
+
 /** The id of the chip that currently has focus, or null. */
 function focusedHabitId(): string | null {
   const active = document.activeElement;
@@ -151,7 +163,7 @@ describe('the habits strip', () => {
     const go = stripGo([habit('h-1', 'Read')]);
     const user = await enterTheApp(storeOver(go.client));
 
-    await user.tab();
+    await tabToTheStrip(user);
     expect(focusedHabitId()).toBe('h-1');
 
     await user.tab();
@@ -168,7 +180,7 @@ describe('the habits strip', () => {
 
     const tabStops = () => document.querySelectorAll('[data-habit-id][tabindex="0"]');
 
-    await user.tab();
+    await tabToTheStrip(user);
     expect(focusedHabitId()).toBe('h-1');
     expect(tabStops()).toHaveLength(1);
 
@@ -195,7 +207,7 @@ describe('the habits strip', () => {
     const go = stripGo([habit('h-1', 'Read')]);
     const user = await enterTheApp(storeOver(go.client));
 
-    await user.tab();
+    await tabToTheStrip(user);
     await user.keyboard(' ');
 
     await waitFor(() =>
@@ -216,7 +228,7 @@ describe('the habits strip', () => {
     go.refuse.check = true;
     const user = await enterTheApp(storeOver(go.client));
 
-    await user.tab();
+    await tabToTheStrip(user);
     await user.keyboard(' ');
 
     const alert = await screen.findByRole('alert');
@@ -233,7 +245,7 @@ describe('the habits strip', () => {
     const go = stripGo([habit('h-1', 'Read')]);
     const user = await enterTheApp(storeOver(go.client));
 
-    await user.tab();
+    await tabToTheStrip(user);
     await user.tab();
     expect(document.activeElement).toHaveAttribute('data-node-id');
 
@@ -252,8 +264,13 @@ describe('the habits strip', () => {
     await screen.findByRole('region', { name: COLUMNS[0] });
 
     // An empty region is an empty slot, not a bar of nothing across the top.
+    // Two children under the shell: region 1's header, which S2-21 filled, and
+    // region 3's board. The strip is not one of them.
     expect(screen.queryByRole('group')).toBeNull();
-    expect(container.firstElementChild!.children).toHaveLength(1);
+    expect([...container.firstElementChild!.children].map((child) => child.tagName)).toEqual([
+      'HEADER',
+      'MAIN',
+    ]);
   });
 
   it('shows the board and a toast when the strip cannot be read', async () => {

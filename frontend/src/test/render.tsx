@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import { render, type RenderResult } from '@testing-library/react';
+import type { UserEvent } from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 
 import { createI18n } from '../lib/i18n';
@@ -26,4 +27,32 @@ export async function renderIn(language: string, ui: ReactElement): Promise<Rend
   const i18n = await createI18n(language);
 
   return render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>);
+}
+
+/**
+ * Presses Tab until `arrived()` is true.
+ *
+ * S2-21 filled region 1 of the shell with the appearance and language controls,
+ * which are therefore the first thing the DOM order — and so Tab — reaches.
+ * Every test that wants the strip or the board has to walk past them first, and
+ * HOW MANY stops the header has is not a number any of those tests should know:
+ * it changes when a control is added, and a hard-coded count would turn that
+ * into a dozen unrelated failures.
+ *
+ * `limit` is a guard against walking for ever, not a count. Throwing rather
+ * than returning quietly matters: a silent give-up would leave the caller
+ * asserting against whatever happened to have focus.
+ */
+export async function tabUntil(
+  user: UserEvent,
+  arrived: () => boolean,
+  limit = 24,
+): Promise<void> {
+  for (let step = 0; step < limit; step += 1) {
+    if (arrived()) {
+      return;
+    }
+    await user.tab();
+  }
+  throw new Error(`nexus: Tab did not reach the element under test in ${limit} presses`);
 }

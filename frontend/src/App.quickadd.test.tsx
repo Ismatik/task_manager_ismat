@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import App from './App';
 import type { Client, ColumnView, NewNode, Node, NodeView } from './lib/client';
 import { createAppStore, type AppStore } from './store';
 import { columnView, createFakeClient, node, nodeView } from './test/fakeClient';
-import { BOTH_LANGUAGES, renderIn } from './test/render';
+import { BOTH_LANGUAGES, renderIn, tabUntil } from './test/render';
 
 // Nexus — quick add, asserted THROUGH the shell.
 //
@@ -84,6 +84,17 @@ async function enterTheApp(store: AppStore, language = 'en') {
 
 const OPEN = '{Control>}n{/Control}';
 
+/**
+ * The quick add's own title field.
+ *
+ * Scoped to the overlay rather than `screen.getByRole('textbox')`: S2-21 filled
+ * region 1 with the appearance controls, whose accent field is a textbox too,
+ * so "the only textbox on the page" stopped being a way to say "this one".
+ */
+function titleField(): HTMLElement {
+  return within(screen.getByRole('dialog')).getByRole('textbox');
+}
+
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -103,7 +114,7 @@ describe('quick add', () => {
 
     const overlay = await screen.findByRole('dialog');
     expect(overlay).toHaveAttribute('aria-modal', 'true');
-    expect(screen.getByRole('textbox')).toHaveFocus();
+    expect(titleField()).toHaveFocus();
   });
 
   it('creates a node with the typed title, calling CreateNode exactly once', async () => {
@@ -151,14 +162,15 @@ describe('quick add', () => {
     const user = await enterTheApp(storeOver(go.client));
 
     // Park focus on a real element the board owns, so "where it came from" is
-    // something other than the body.
-    await user.tab();
+    // something other than the body. Tab UNTIL, because region 1's appearance
+    // controls (S2-21) come before the board in the shell's DOM order.
+    await tabUntil(user, () => document.activeElement?.hasAttribute('data-node-id') === true);
     const opener = document.activeElement;
     expect((opener as HTMLElement).dataset.nodeId).toBe('n-1');
 
     await user.keyboard(OPEN);
     await screen.findByRole('dialog');
-    expect(screen.getByRole('textbox')).toHaveFocus();
+    expect(titleField()).toHaveFocus();
 
     await user.keyboard('{Escape}');
 
@@ -256,7 +268,7 @@ describe('quick add', () => {
 
     // Still open, still holding the title — a refusal must not cost the typing.
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByRole('textbox')).toHaveValue('Run every morning');
+    expect(titleField()).toHaveValue('Run every morning');
     expect(go.drafts[0].type).toBe('habit');
   });
 
@@ -290,7 +302,7 @@ describe('quick add', () => {
     // raw key and none is English sitting in a Russian panel.
     expect(overlay.textContent).not.toContain('quickAdd.');
     expect(overlay.textContent).not.toContain('card.type.');
-    expect(screen.getByRole('textbox').getAttribute('aria-label')).not.toContain('quickAdd.');
+    expect(titleField().getAttribute('aria-label')).not.toContain('quickAdd.');
 
     // Nothing is held to one line or clipped: the type row wraps and the
     // buttons break on word boundaries, which is what survives a 30% wider

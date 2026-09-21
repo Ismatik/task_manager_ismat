@@ -7,7 +7,7 @@ import type { Client, ColumnView, HabitView, NodeView } from './lib/client';
 import { KEYS } from './lib/keyboard';
 import { createAppStore, type AppStore } from './store';
 import { columnView, createFakeClient, habitView, node, nodeView } from './test/fakeClient';
-import { renderIn } from './test/render';
+import { renderIn, tabUntil } from './test/render';
 
 // Nexus — drag and drop, asserted through the shell (S2-17).
 //
@@ -405,7 +405,9 @@ describe('the keyboard model S2-16 fixed', () => {
     const store = await showTheBoard(go);
     const user = userEvent.setup();
 
-    await user.tab();
+    // Tab UNTIL, not once: S2-21 filled region 1 with the appearance controls,
+    // which come before the board in the shell's DOM order.
+    await tabUntil(user, () => document.activeElement === cardNamed('a1'));
     expect(document.activeElement).toBe(cardNamed('a1'));
 
     // One assertion per key, and in that order. The first version of this test
@@ -450,9 +452,9 @@ describe('the keyboard model S2-16 fixed', () => {
     await showTheBoard(go);
     const user = userEvent.setup();
 
-    await screen.findByRole('checkbox', { name: /Read/ });
-    await user.tab();
-    expect(screen.getByRole('checkbox', { name: /Read/ })).toHaveFocus();
+    const chip = await screen.findByRole('checkbox', { name: /Read/ });
+    await tabUntil(user, () => document.activeElement === chip);
+    expect(chip).toHaveFocus();
 
     await user.keyboard(' ');
 

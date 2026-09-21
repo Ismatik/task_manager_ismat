@@ -14,7 +14,7 @@ import {
   settingsView,
   timerView,
 } from './test/fakeClient';
-import { BOTH_LANGUAGES, renderIn } from './test/render';
+import { BOTH_LANGUAGES, renderIn, tabUntil } from './test/render';
 
 // Nexus — the command palette, asserted THROUGH the shell.
 //
@@ -156,7 +156,10 @@ async function enterTheBoard(store: AppStore, language = 'en') {
   await store.getState().loadSettings();
   await renderIn(language, <App store={store} />);
   await screen.findAllByRole('article');
-  await user.tab();
+  // Tab until a card has focus: region 1's appearance controls (S2-21) come
+  // first in the shell's DOM order, and how many stops they add is not this
+  // file's business.
+  await tabUntil(user, () => document.activeElement?.hasAttribute('data-node-id') === true);
 
   return user;
 }
@@ -438,7 +441,11 @@ describe('running an action', () => {
     await waitFor(() => expect(store.getState().openOverlay).toBe('quickAdd'));
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
     expect(screen.queryByRole('combobox')).toBeNull();
-    await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus());
+    // Scoped to the overlay: S2-21's accent field is a textbox too, so "the
+    // only textbox on the page" stopped meaning "the quick add's title".
+    await waitFor(() =>
+      expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveFocus(),
+    );
   });
 
   it('starts and stops the timer through the store', async () => {
