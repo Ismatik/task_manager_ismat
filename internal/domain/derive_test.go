@@ -1105,3 +1105,118 @@ func TestDerivationIsIndependentOfLoadOrder(t *testing.T) {
 		t.Errorf("ComputeProgress depends on load order: %+v vs %+v", pF, pR)
 	}
 }
+
+// The Index is the C2 fix: the two maps every derivation needs, built once and
+// asked n questions, instead of rebuilt once per question. These tests pin the
+// two properties that make it safe to use — it is the SAME derivation, and it
+// really is built once — so that the board can rely on both.
+func TestIndex(t *testing.T) {
+	// A small forest with every shape the derivations care about: a project
+	// with mixed children, a no-column child, a nested project and a root leaf.
+	nodes := []domain.Node{
+		project("p", "", domain.StatusDone),
+		task("a", "p", domain.StatusDone),
+		task("b", "p", domain.StatusWeek),
+		note("n", "p"),
+		project("sub", "p", domain.StatusBacklog),
+		habit("h", ""),
+		task("root", "", domain.StatusToday),
+	}
+	// Counter to the load order, so a bucket that was not sorted would show.
+	for i := range nodes {
+		nodes[i].SortOrder = len(nodes) - i
+	}
+
+	t.Run("Status matches DeriveStatus for every node", func(t *testing.T) {
+		ix := domain.NewIndex(nodes)
+		for _, n := range nodes {
+			want, err := domain.DeriveStatus(nodes, n.ID)
+			if err != nil {
+				t.Fatalf("DeriveStatus(%q) = %v", n.ID, err)
+			}
+			got, err := ix.Status(n.ID)
+			if err != nil {
+				t.Fatalf("Index.Status(%q) = %v", n.ID, err)
+			}
+			if got != want {
+				t.Errorf("Index.Status(%q) = %q, DeriveStatus = %q", n.ID, got, want)
+			}
+		}
+	})
+
+	t.Run("Progress matches ComputeProgress for every node", func(t *testing.T) {
+		ix := domain.NewIndex(nodes)
+		for _, n := range nodes {
+			want, err := domain.ComputeProgress(nodes, n.ID)
+			if err != nil {
+				t.Fatalf("ComputeProgress(%q) = %v", n.ID, err)
+			}
+			got, err := ix.Progress(n.ID)
+			if err != nil {
+				t.Fatalf("Index.Progress(%q) = %v", n.ID, err)
+			}
+			if got != want {
+				t.Errorf("Index.Progress(%q) = %+v, ComputeProgress = %+v", n.ID, got, want)
+			}
+		}
+	})
+
+	t.Run("an unknown id is ErrNodeNotFound through the index too", func(t *testing.T) {
+		ix := domain.NewIndex(nodes)
+		if _, err := ix.Status("ghost"); !errors.Is(err, domain.ErrNodeNotFound) {
+			t.Errorf("Index.Status(ghost) err = %v, want ErrNodeNotFound", err)
+		}
+		if _, err := ix.Progress("ghost"); !errors.Is(err, domain.ErrNodeNotFound) {
+			t.Errorf("Index.Progress(ghost) err = %v, want ErrNodeNotFound", err)
+		}
+	})
+
+	t.Run("Children matches Children(nodes, parent), in sort_order", func(t *testing.T) {
+		ix := domain.NewIndex(nodes)
+		for _, parent := range []string{"", "p", "h", "sub", "ghost"} {
+			want := domain.Children(nodes, parent)
+			got := ix.Children(parent)
+			if len(got) != len(want) {
+				t.Fatalf("Index.Children(%q) has %d children, Children has %d", parent, len(got), len(want))
+			}
+			for i := range want {
+				if got[i].ID != want[i].ID {
+					t.Errorf("Index.Children(%q)[%d] = %q, want %q", parent, i, got[i].ID, want[i].ID)
+				}
+			}
+		}
+	})
+
+	// C2, the property the whole ticket is about: asking the index n questions
+	// builds ONE index, while the whole-slice entry points build one each. The
+	// service-side counterpart — one index per Board() call — is in
+	// internal/service/read_test.go and uses the same counter.
+	t.Run("asking the index n questions builds one index", func(t *testing.T) {
+		before := domain.IndexBuilds()
+		ix := domain.NewIndex(nodes)
+		for _, n := range nodes {
+			if _, err := ix.Status(n.ID); err != nil {
+				t.Fatalf("Index.Status(%q) = %v", n.ID, err)
+			}
+			if _, err := ix.Progress(n.ID); err != nil {
+				t.Fatalf("Index.Progress(%q) = %v", n.ID, err)
+			}
+		}
+		if built := domain.IndexBuilds() - before; built != 1 {
+			t.Errorf("deriving %d nodes through one index built %d indexes, want 1", len(nodes), built)
+		}
+	})
+
+	t.Run("the whole-slice entry points build one index per call", func(t *testing.T) {
+		before := domain.IndexBuilds()
+		if _, err := domain.DeriveStatus(nodes, "p"); err != nil {
+			t.Fatalf("DeriveStatus = %v", err)
+		}
+		if _, err := domain.ComputeProgress(nodes, "p"); err != nil {
+			t.Fatalf("ComputeProgress = %v", err)
+		}
+		if built := domain.IndexBuilds() - before; built != 2 {
+			t.Errorf("two whole-slice calls built %d indexes, want 2", built)
+		}
+	})
+}

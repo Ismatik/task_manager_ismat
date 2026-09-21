@@ -10,16 +10,19 @@ import (
 	"nexus/internal/store"
 )
 
-// snapshot is one consistent reading of the tree: the node set every derivation
-// is computed over, the tag index, the running timer and today's date.
+// snapshot is one consistent reading of the tree: the derivation index over the
+// node set, the tag index, the running timer and today's date.
 //
 // It exists so that a board, a tree or a page of search results costs a fixed
 // number of queries instead of a query per card. Nothing in here decides
 // anything — the indexes are retrieval shape; every rule applied to them comes
 // from nexus/internal/domain.
 type snapshot struct {
-	all     []domain.Node
-	kids    map[string][]domain.Node
+	// index is the ONE domain.Index the whole read is derived through (C2).
+	// Every view asks it; nothing on this path hands a raw []domain.Node to a
+	// derivation, because doing that rebuilds the index per card and made
+	// Board() O(n²·log n).
+	index   *domain.Index
 	tags    map[string][]domain.Tag
 	running *domain.TimeEntry
 	today   domain.Date
@@ -33,6 +36,11 @@ type snapshot struct {
 // The cost is fixed: one query for the nodes, one listing the tags, one per tag
 // for its members, and one for the open entry. It is O(number of tags) and never
 // O(number of nodes), which is the property the no-N+1 test pins.
+//
+// It is also where the ONE derivation index is built (C2). A snapshot is a
+// reading, and the index is part of the reading: building it here is what makes
+// "once per Board()" a structural fact rather than a discipline every future
+// call site has to remember.
 func loadSnapshot(ctx context.Context, exec store.Executor, set []domain.Node, clock Clock) (*snapshot, error) {
 	tagIndex, err := loadTagIndex(ctx, store.NewTagRepo(exec))
 	if err != nil {
@@ -44,14 +52,8 @@ func loadSnapshot(ctx context.Context, exec store.Executor, set []domain.Node, c
 		return nil, err
 	}
 
-	kids := make(map[string][]domain.Node, len(set))
-	for _, n := range set {
-		kids[parentKey(n.ParentID)] = append(kids[parentKey(n.ParentID)], n)
-	}
-
 	return &snapshot{
-		all:     set,
-		kids:    kids,
+		index:   domain.NewIndex(set),
 		tags:    tagIndex,
 		running: running,
 		today:   domain.Today(clock),
@@ -103,12 +105,12 @@ func loadRunning(ctx context.Context, entries *store.TimeEntryRepo) (*domain.Tim
 // view assembles one NodeView: every derived value, computed here so that
 // nothing downstream has to.
 func (snap *snapshot) view(n domain.Node) (NodeView, error) {
-	status, err := domain.DeriveStatus(snap.all, n.ID)
+	status, err := snap.index.Status(n.ID)
 	if err != nil {
 		return NodeView{}, fmt.Errorf("service: reading node %q: %w", n.ID, err)
 	}
 
-	progress, err := domain.ComputeProgress(snap.all, n.ID)
+	progress, err := snap.index.Progress(n.ID)
 	if err != nil {
 		return NodeView{}, fmt.Errorf("service: reading node %q: %w", n.ID, err)
 	}
@@ -124,7 +126,7 @@ func (snap *snapshot) view(n domain.Node) (NodeView, error) {
 		Status:   status,
 		Progress: progressView(progress),
 		Overdue:  domain.IsOverdue(rendered, snap.today),
-		IsLeaf:   n.IsLeaf(snap.kids[n.ID]),
+		IsLeaf:   n.IsLeaf(snap.index.Children(n.ID)),
 		Tags:     snap.tags[n.ID],
 	}
 	if snap.running != nil && snap.running.NodeID == n.ID {
@@ -141,7 +143,7 @@ func (snap *snapshot) view(n domain.Node) (NodeView, error) {
 // subtreeViews builds the views of parentID's children, each carrying its own
 // children, in sort_order.
 func (snap *snapshot) subtreeViews(parentID string) ([]NodeView, error) {
-	children := snap.kids[parentID]
+	children := snap.index.Children(parentID)
 	out := make([]NodeView, 0, len(children))
 
 	for _, c := range children {

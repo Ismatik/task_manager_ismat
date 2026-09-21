@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"sync/atomic"
 )
 
 // ErrNodeNotFound is returned when an operation names a node that is not in the
@@ -66,6 +67,101 @@ func groupByParent(nodes []Node) map[string][]Node {
 	return kids
 }
 
+// Index is the loaded node set, keyed once: id -> node, and parent id ->
+// children in (sort_order, id) order.
+//
+// # Why it exists (C2)
+//
+// Every derivation in this file needs both maps, and both are O(n) to build. As
+// long as the only entry points were DeriveStatus(nodes, id) and
+// ComputeProgress(nodes, id), a caller that wanted the derived status of EVERY
+// node — which is exactly what assembling a Kanban board is — rebuilt them once
+// per card: O(n²·log n) for the board, invisible at the 200 nodes a personal
+// board holds and not invisible at 10 000.
+//
+// So the maps are lifted into a value the caller can hold. The board builds one
+// Index and asks it n questions; nothing else changes.
+//
+// # It is an INDEX, not a second derivation path
+//
+// The recursions are still deriveStatus and walkProgress, exactly as they were,
+// each written once. Index.Status and Index.Progress are the same two calls with
+// the maps already built, and DeriveStatus and ComputeProgress are those methods
+// over a freshly built Index. A second traversal "for the indexed path" is the
+// defect class that cost Stage 1 three review rounds; there is not one here.
+//
+// An Index is a snapshot. It holds the nodes it was built from by value, so a
+// write to the database afterwards does not reach it — build a new one after a
+// write, which is what every service read already does.
+type Index struct {
+	byID map[string]Node
+	kids map[string][]Node
+}
+
+// indexBuilds counts how many Index values this process has constructed.
+//
+// It is instrumentation, and it lives HERE rather than at the call site because
+// the property it protects can only be observed where every construction passes.
+// C2's regression is a view that goes back to calling DeriveStatus(all, id) once
+// per card: a counter wrapped around the service's own call to NewIndex would
+// still read exactly 1 while the board built five hundred indexes underneath it,
+// which is the one number the test must not be able to miss. DeriveStatus and
+// ComputeProgress construct an Index too, so counting constructions here counts
+// those as well.
+//
+// It is monotonic and affects no result; nothing in this package reads it. Tests
+// take a difference across the call they are measuring rather than an absolute
+// value, so an earlier test's constructions cannot be mistaken for this one's.
+var indexBuilds atomic.Int64
+
+// IndexBuilds reports how many Index values this process has constructed since
+// it started. It exists for the complexity test described on indexBuilds: take
+// the value before and after a Board() call and the difference is the number of
+// indexes that board built. Production code has no reason to call it.
+func IndexBuilds() int64 { return indexBuilds.Load() }
+
+// NewIndex keys nodes by id and groups them by parent, once.
+func NewIndex(nodes []Node) *Index {
+	indexBuilds.Add(1)
+	return &Index{byID: indexByID(nodes), kids: groupByParent(nodes)}
+}
+
+// Children returns the direct children of parentID in (sort_order, id) order —
+// the same order Children(nodes, parentID) gives, from the index that is already
+// built. Pass "" for the roots of the loaded set.
+//
+// The returned slice is the index's own: read it, do not sort or append to it.
+func (ix *Index) Children(parentID string) []Node { return ix.kids[parentID] }
+
+// Status is DeriveStatus over an index that is already built. See DeriveStatus
+// for the rule; this is the same derivation, not a second one.
+func (ix *Index) Status(id string) (Status, error) {
+	return deriveStatus(ix.byID, ix.kids, id, newVisiting())
+}
+
+// Progress is ComputeProgress over an index that is already built. See
+// ComputeProgress for the rule; this is the same walk, not a second one.
+func (ix *Index) Progress(id string) (Progress, error) {
+	var p Progress
+	// measured = true: the walk starts AT the node being asked about, which is
+	// the one position where a leaf project counts for nothing (D11, below).
+	if err := walkProgress(ix.byID, ix.kids, id, newVisiting(), &p, true); err != nil {
+		return Progress{}, err
+	}
+	return p, nil
+}
+
+// newVisiting returns the cycle guard the two recursions carry down.
+//
+// It is deliberately NOT pre-sized to the node set. Both walks delete their
+// entry on the way back up, so the map never holds more than the current path —
+// its depth, not the set's size. Sizing it len(nodes) was harmless while the
+// maps around it were rebuilt per call anyway; once the index is built once and
+// asked n questions (C2) it is the last O(n) allocation on a per-question path,
+// and it made the indexed board four times slower per card at 1 000 nodes than
+// at 100.
+func newVisiting() map[string]bool { return map[string]bool{} }
+
 // DeriveStatus returns the status the node with the given id renders in (D2).
 //
 // # The rule
@@ -108,10 +204,12 @@ func groupByParent(nodes []Node) map[string][]Node {
 //
 // The returned value is a render value. It is never written back to the status
 // column, which is what makes it impossible for it to drift from the children.
+//
+// It builds an Index and asks it one question. A caller deriving the status of
+// more than one node out of the same set — the board — should build the Index
+// once and call Index.Status, or it pays for the indexing per card (C2).
 func DeriveStatus(nodes []Node, id string) (Status, error) {
-	byID := indexByID(nodes)
-	kids := groupByParent(nodes)
-	return deriveStatus(byID, kids, id, make(map[string]bool, len(nodes)))
+	return NewIndex(nodes).Status(id)
 }
 
 func deriveStatus(byID map[string]Node, kids map[string][]Node, id string, visiting map[string]bool) (Status, error) {
@@ -268,17 +366,12 @@ func (p Progress) Percent() int {
 //
 // A leaf's own stored status decides whether it is done; nothing is derived
 // here, because a leaf is where the stored status is the truth.
+//
+// It builds an Index and asks it one question, exactly as DeriveStatus does, and
+// the same note applies: a caller measuring more than one node out of the same
+// set builds the Index once and calls Index.Progress (C2).
 func ComputeProgress(nodes []Node, id string) (Progress, error) {
-	byID := indexByID(nodes)
-	kids := groupByParent(nodes)
-
-	var p Progress
-	// measured = true: the walk starts AT the node being asked about, which is
-	// the one position where a leaf project counts for nothing (D11, above).
-	if err := walkProgress(byID, kids, id, make(map[string]bool, len(nodes)), &p, true); err != nil {
-		return Progress{}, err
-	}
-	return p, nil
+	return NewIndex(nodes).Progress(id)
 }
 
 // countsAsWork reports whether a leaf of type t is one of the units the progress

@@ -926,3 +926,80 @@ func TestTagIndexCostsQueriesPerTagNotPerNode(t *testing.T) {
 		t.Errorf("one tag cost %d queries, want %d", got, want)
 	}
 }
+
+// C2, the acceptance criterion of S2-01: assembling the board builds ONE
+// derivation index, whatever the board holds.
+//
+// # Why the counter is in the domain and not around this call
+//
+// The regression this guards against is a view that goes back to
+// domain.DeriveStatus(set, id) once per card — the O(n²·log n) shape Board() had
+// until S2-01. A counter wrapped around the service's own call to
+// domain.NewIndex would still read exactly 1 while five hundred indexes were
+// built underneath it by the whole-slice entry points, so the count is taken
+// from domain.IndexBuilds, which counts EVERY construction in the process. Put
+// the per-node call back and this test reports 501.
+//
+// The card count is asserted as well: a board that derived nothing would also
+// build one index, and "1" would then be a number about nothing.
+func TestBoardBuildsTheDerivationIndexOnce(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	// 500 cards in 100 subtrees, so that the derivation really recurses rather
+	// than reading 500 stored statuses off 500 roots.
+	const (
+		projects       = 100
+		tasksPerParent = 4
+		cards          = projects * (1 + tasksPerParent)
+	)
+	for p := range projects {
+		parent := bareNode(fmt.Sprintf("p%03d", p), nil, domain.NodeTypeProject)
+		if err := f.nodes.Create(ctx, parent); err != nil {
+			t.Fatalf("Create(%q): %v", parent.ID, err)
+		}
+		for c := range tasksPerParent {
+			child := bareNode(fmt.Sprintf("p%03d-t%d", p, c), &parent.ID, domain.NodeTypeTask)
+			if err := f.nodes.Create(ctx, child); err != nil {
+				t.Fatalf("Create(%q): %v", child.ID, err)
+			}
+		}
+	}
+
+	before := domain.IndexBuilds()
+	board, err := f.tasks.Board(ctx)
+	if err != nil {
+		t.Fatalf("Board: %v", err)
+	}
+	built := domain.IndexBuilds() - before
+
+	total := 0
+	for _, c := range board {
+		total += len(c.Nodes)
+	}
+	if total != cards {
+		t.Fatalf("the board holds %d cards, want %d — the index count below would be about nothing",
+			total, cards)
+	}
+	if built != 1 {
+		t.Errorf("a %d-card board built %d derivation indexes, want 1 (C2: the index is built once "+
+			"per Board() call, not once per card)", cards, built)
+	}
+}
+
+// bareNode is a valid row written straight through the repository, for the
+// tests that need hundreds of them: CreateNode re-reads the whole set per call,
+// which is fine for a handful and quadratic for five hundred.
+func bareNode(id string, parent *string, typ domain.NodeType) domain.Node {
+	return domain.Node{
+		ID:        id,
+		ParentID:  parent,
+		Type:      typ,
+		Title:     id,
+		Status:    domain.StatusBacklog,
+		DueSource: domain.DueSourceAuto,
+		Priority:  domain.Priority4,
+		CreatedAt: testNow,
+		UpdatedAt: testNow,
+	}
+}
