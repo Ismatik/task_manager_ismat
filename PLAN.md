@@ -1,11 +1,10 @@
 # Nexus — Plan
 
 My restatement of the brief, written before any code. It stays the source of truth for
-the data model and the decisions; only the stage status below moves. **Stage 0 and
-Stage 1 are both CLOSED (PASS); Stage 2 is IMPLEMENTED, NOT CLOSED** — all twenty-two
-tickets are committed, **review round 1 returned FAIL on two blocking issues that are now
-fixed** (`ae6befd`, `4b1af9c`, and the ruling they were missing is **D17**), the Reviewer
-has not returned PASS, and a stage closes only on a PASS. See §5 and `TASKS.md`.
+the data model and the decisions; only the stage status below moves. **Stages 0, 1 and 2
+are all CLOSED (PASS).** Stage 2 closed on the **second** review, at `8818db4`; round 1
+returned FAIL on two blocking issues, both fixed (`ae6befd`, `4b1af9c`, and the ruling
+they were missing is **D17**). Stage 3 is not started. See §5 and `TASKS.md`.
 
 ---
 
@@ -188,7 +187,7 @@ and stop for your "next".
 |---|---|---|
 | 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) — **CLOSED, PASS** | `make check` green, empty window opens, second launch focuses the first |
 | 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **CLOSED, PASS** (PASS on the **fourth** review, at `a1f09b7`; it failed the first three — the history is kept below) | **≥90% coverage** on `internal/domain` + `internal/service` — **MET: 100.0% / 92.9%** |
-| 2 | **Kanban + Habits strip** (launch screen) — **IMPLEMENTED, NOT CLOSED — S2-01 … S2-22 all committed, plus the gap-closing `7af4d1d` and round 1's two fixes `ae6befd` / `4b1af9c`; awaiting the re-review** — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — demonstrated twice, by the automated flow test of S2-22 and by the hand script in `TASKS.md` — **and moving a card to Doing must itself open a `time_entry`** (§4 coupling, **D13**; ticket S2-03) |
+| 2 | **Kanban + Habits strip** (launch screen) — **CLOSED, PASS** (PASS on the **second** review, at `8818db4`; round 1 returned FAIL on two blocking issues, fixed by `ae6befd` and `4b1af9c` — the history is kept below). S2-01 … S2-22 all committed, plus the gap-closing `7af4d1d` — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — **MET**: `frontend/src/App.accept.test.tsx` drives the assembled `<App />` with an exact asserted call sequence (one `CreateNode`, then `MoveToColumn` with each of the four statuses Go supplied, in order), and **`make guard` check 6 fails if a mouse event ever enters that file** — **and moving a card to Doing itself opens a `time_entry`** (§4 coupling, **D13**; ticket S2-03), asserted from the UI. The **ten-step hand run on the real binary is still owed** and is carried into Stage 3 |
 | 3 | **Detail + Tree + Search/Archive** — slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | Every field round-trips through Go; reparent in tree shows on Kanban instantly |
 | 4 | **Quick-add + Focus mode** — frameless standalone window, Go-side NL parser (date, `!priority`, `#tag`, `>Project` fuzzy, `~estimate`, `@type`), live preview chips, Enter creates & closes, Esc closes; Focus mode (one card, large timer, Esc exits); sleep/lock timer handling | `deploy KA Avto fri 15:00 !high #work >KA Avto ~2h` parses correctly in tests **and** in the UI |
 | 5 | **Platform integration** — tray via `energye/systray`, badge = overdue + due today, menu (Open / Quick add / Start-Stop timer / Quit); `.desktop` + `install.sh` → autostart, GNOME `gsettings` shortcut Super+Space → `nexus --quick`, warn if AppIndicator missing | Reboot → app opens; Super+Space → quick-add |
@@ -355,29 +354,57 @@ Go returns and re-implements none of these rules: not "can this card go to Doing
 streak, not an overdue flag. A rule re-derived in a component is a second spelling, and
 a second spelling is the defect that cost this project three review rounds.
 
-### Stage 2 — IMPLEMENTED, NOT CLOSED
+### Stage 2 — CLOSED, PASS
+
+The Reviewer returned **PASS** on the **second** review, verified at commit `8818db4`.
 
 **Twenty-two tickets, S2-01 … S2-22, in `TASKS.md`. All twenty-two are committed**, one
 conventional commit each, plus one gap-closing commit — `7af4d1d`, which added
 `SetPriority` and wired the palette's priority rows (see *"The one plan correction"*
-below). The stage is **implemented and awaiting review**; it closes only on a Reviewer
-**PASS**, which has not happened. Nothing below may be read as "closed".
+below) — and round 1's two fixes, `ae6befd` and `4b1af9c`. All 84 commits on `main` are
+authored solely by `Ismat <mukhamejanov.ismat@gmail.com>`, with no AI author and no
+co-author trailer on any of them.
 
-Measured on the tree as committed:
+Re-measured by the Reviewer at `8818db4`:
 
 | | |
 |---|---|
-| `make check` | green — all five gates |
+| `make check` | green — **all five gates**, including `wails build -tags webkit2_41` |
 | `make cover` | `internal/domain` **100.0%**, `internal/service` **93.8%** (bar ≥90%) |
-| `make front-test` | **22 files, 251 tests** |
-| `make guard` | all **six** checks pass, with `GUARD_ALLOW_RE` **empty** |
+| `make front-test` | **22 files, 247 tests, 0 failures** |
+| `make guard` | **six of six** checks pass, with `GUARD_ALLOW_RE` **empty** |
 
-**Five** things the Reviewer cannot verify on this machine are listed under
-*"Owed to a hand pass"* below. They are owed, not done.
+(The 247 supersedes the 251 this document carried before round 1: `ae6befd` deleted the
+orphaned tests of the dead TypeScript time-derivations along with the code.)
 
-**Review round 1 returned FAIL on two blocking issues; both are fixed and the stage is
-back with the Reviewer.** See *"Review round 1"* below. It is still **not closed** — a
-stage closes only on PASS, and none has been returned.
+The Reviewer further confirmed, independently: **zero hex literals** in `frontend/src`;
+`design/` byte-identical to its Stage 1 state; no cgo and no `mattn` in the dependency
+graph; the Stage 0 and Stage 1 migrations untouched; `TestDomainIsPure` and
+`TestDomainReadsNoClock` passing **unmodified**; and that **no test was weakened by the
+`CheckHabitToday`/`UncheckHabitToday` binding rename** — two of the changed tests are
+strictly stronger than what they replaced.
+
+**Both round-1 blockers were verified closed the hard way**: the Reviewer reverted each
+fix individually and watched the specific test go red, then restored it. That is the
+negative-control habit this project adopted in Stage 1, applied to a review rather than
+to a commit.
+
+**The ACCEPT criterion is MET**, on its mechanical half. The bar is *create → move
+through every column → complete, keyboard only, no mouse*, and
+`frontend/src/App.accept.test.tsx` demonstrates exactly that: it drives the **assembled
+`<App />`** — the real composition root, with the store, the overlays, the strip and the
+toast layer mounted — imports no component beneath it, and asserts the **exact sequence
+of client calls**: one `CreateNode`, then `MoveToColumn` with each of the four statuses
+Go supplied, in order. It presses keys and only keys, and **`make guard` check 6 fails if
+a `click`, a `pointer` or a `fireEvent.mouse*` ever enters that file** — and fails too if
+the file is deleted or emptied, so the cheapest way past it is closed. The Doing→timer
+coupling (**C1**, **D13**) is asserted from the UI in the same flow: the running-timer
+indicator appears on Doing and is gone on Done.
+
+**What is still owed is the hand half**, and the PASS did not include it: the **ten-step
+hand run on `./build/bin/nexus`** and four other checks that need a display. They are
+listed under *"Owed to a hand pass"* below and are **carried into Stage 3**. Nothing in
+this document may describe them as done.
 
 The shape of the stage, and why it is in that order:
 
@@ -444,6 +471,13 @@ spellings is acceptable; an undisclosed one, or one that adds behaviour, is not.
 | **S2-21** (`642e677`) | six existing test files plus a new shared `frontend/src/test/render.tsx` | **RATIFIED.** Mounting the header put focusable elements ahead of the board, so six tests asserting *"the first `Tab` lands on the board"* were mechanically wrong. The fix introduces `tabUntil(user, arrived)` — **one spelling instead of six hard-coded tab-stop counts** — so it **removed** duplication rather than adding it. **No assertion was weakened**; every one still makes the same claim about the same element |
 | **S2-22** (`58552bf`) | the `Makefile`, to add `make guard` check 6 | **RATIFIED.** The ticket's own criterion is *"`make guard` fails if a mouse event is introduced into the accept test"* — the rule was **required** to live in `make guard`, so the ticket's Scope list was simply incomplete. Not a widening in substance, a Scope-list omission. **The five gates are still five**; `guard` is not one of them |
 
+#### The two-round review history — kept in full
+
+**Stage 2 failed its first review and passed its second.** Both rounds are kept below,
+because what round 1 caught is the most useful content in this section: neither blocker
+was a missing feature, and both were the *same* defect class that cost Stage 1 three
+rounds — a rule with a second spelling.
+
 **Review round 1 — FAIL on two blocking issues, both now fixed.** Neither was a missing
 feature; both were a rule with a second spelling, which is the same family that cost
 Stage 1 three rounds.
@@ -479,6 +513,26 @@ component** — which is exactly how a second implementation of a rule waits for
 caller, and exactly the shape that failed Stage 1 three times. It was removed before it
 could be wired up. **No ticker was added**; drawing the running clock is Stage 3's, and
 that ticket can add precisely what it renders.
+
+**Review round 2 — PASS**, at `8818db4`. The Reviewer re-checked both round-1 blockers
+and, for each, **reverted the fix and watched the specific test fail before restoring
+it** — `ae6befd`'s habit-day fix against the store test that drives the toggle at
+`23:59:30` and again at `00:00:30`, and `4b1af9c`'s `-iE` against the planted
+`view.status === 'Done'` line. A revert that leaves the suite green proves nothing; both
+reverts went red. The Reviewer also planted a regression named outside
+`overdue|derive|streak|progress|percent` and reproduced the round-1 `wireDate` blind spot
+against a green `make guard`, confirming that **reading the diff is what caught it and
+that the guard is a heuristic** (**D17**). All five gates green including
+`wails build -tags webkit2_41`; coverage **100.0% / 93.8%**; `make front-test`
+**22 files, 247 tests, 0 failures**; `make guard` six of six with `GUARD_ALLOW_RE`
+empty; zero hex literals; `design/` byte-identical; no cgo; migrations untouched;
+`internal/domain` purity tests unmodified and passing; all 84 commits authored solely by
+`Ismat <mukhamejanov.ismat@gmail.com>` with no AI trailer; and **no test weakened by the
+binding rename** — two are strictly stronger. **Stage 2 is CLOSED.**
+
+The commits of the review cycle, in order: `ae6befd`, `4b1af9c` (round 1's fixes) ·
+`8818db4` (the documentation of D17 and the round-1 corrections; the commit the PASS was
+verified at). `7af4d1d` predates round 1 and closed the `set priority` planning gap.
 
 **Owed to a hand pass — not verified, and no document may imply otherwise.** There is no
 display on this machine and `xvfb-run`, `scrot`, `import` and `grim` are all absent, so
@@ -526,10 +580,51 @@ nothing to look at. See K5 in §7.
   carries a reason tied to a **later stage** ("you are looking at it", "coming in stage
   N") rather than a permanent limitation. No row silently does nothing.
 
-#### Carried into Stage 3 — one item, and it is not a defect
+#### Carried into Stage 3 — obligations, not suggestions
 
-**Enum membership is spelled a second time, in the locale files, with nothing checking
-it.** `commands.ts` and `AppearanceControls.tsx` take `Object.keys` of
+**Stage 2 closed owing the following. None of it may be dropped silently, and the
+matching list in `TASKS.md`, "Carried into Stage 3", is where each one becomes a ticket
+or an explicit refusal.**
+
+**⚠️ Read this one first. A green `make guard` is NOT a proof, and no status line in this
+repository may offer one as evidence that the frontend computes nothing.** `make guard`
+checks **3a and 3b are name-based heuristics** over
+`overdue|derive|streak|progress|percent`. A derivation named anything else is invisible
+to them **by construction** — and this is not hypothetical: **`wireDate` was named after
+none of those words and sat behind a green guard for an entire stage**, computing the
+habit check day in TypeScript, until a human read the diff. The Reviewer reproduced it at
+round 2 with a planted regression that walked straight past a clean guard. A green guard
+is evidence that **five names are absent**. **Reading the diff is still the check** — see
+**D17**.
+
+**1. Five things owed to a hand pass, none of them verifiable without a display.** They
+are enumerated under *"Owed to a hand pass"* above and repeated here so they cannot be
+lost between stages: the **ten-step keyboard run on `./build/bin/nexus`** — including the
+**three D8 due-badge assertions at steps 3, 4 and 7, which have no mechanical backing
+whatsoever**; **no background flash on the first frame in either theme** (**D12**,
+**K1**); **Russian not clipping at a real 1024×768**; the **`:focus-visible` ring
+actually painted in both palettes**; and **S2-07's *"a window opens and the first
+`Board()` returns five columns"***. Stage 2's PASS did **not** cover any of them.
+
+**2. K1/D12, K2 and K3, carried through from Stage 1's handoff and unaffected by this
+stage.** Stage 2 implemented the decisions (S2-08, S2-06, S2-14), but K1's no-flash
+behaviour is item 1's second bullet and is still unwatched; K2 and K3 keep their entries
+in §7 as the record of why the code looks the way it does.
+
+**3. D16 / K5 — the Aurora drift gate is implemented and audited both ways, and
+*nothing draws a drift*.** `data-drift` is `on` without reduced motion and `off` with it,
+on every palette, and **no code reads it**. Nobody has watched a drift pause because
+there is none to watch. **No document in this repository may be edited into implying the
+visual exists**, and it is **not to be invented**: it returns when a drift specification
+does.
+
+**4. C6 — enum membership is spelled a second time, and it is not a defect.** Details
+below; the Reviewer ruled it an acceptable judgement call for Stage 2, and Stage 3 picks
+between the two recorded fixes.
+
+##### C6 — enum membership is spelled twice, and nothing checks it
+
+`commands.ts` and `AppearanceControls.tsx` take `Object.keys` of
 `settings.palette`, `settings.theme`, `settings.language`, `palette.priority` and
 `card.type` from `en.json` as the **authoritative sets**. Go owns all five —
 `domain.Palettes()`, `domain.Themes()`, `domain.Priorities()` and the node types — and
@@ -547,14 +642,17 @@ the frontend enumerates what Go enumerates, or **add a parity test** that fails 
 set and its locale table disagree. **Nothing is scheduled now** and no Stage 2 ticket is
 reopened for it.
 
-**Three things Stage 2 is explicitly forbidden from doing.** They are the shape of
-Stage 1's four review rounds, turned into rules up front:
+**Three things Stage 2 was explicitly forbidden from doing — and did not.** They are the
+shape of Stage 1's four review rounds, turned into rules up front, and they bind every
+later stage exactly as they bound this one:
 
 1. **No rule may gain a second spelling — in TypeScript any more than in Go.** The
    frontend renders what Go returns. `make guard` (S2-10) greps for the specific
    violations: a status string literal in a component, a recomputed overdue flag, a
-   recomputed percentage, a re-derived column eligibility.
-2. **No hex literal in `frontend/src`, ever**, and `design/` stays read-only.
+   recomputed percentage, a re-derived column eligibility. **It is a grep, not a
+   proof** — see the warning at the head of *"Carried into Stage 3"* and **D17**.
+2. **No hex literal in `frontend/src`, ever**, and `design/` stays read-only. Confirmed
+   at round 2: zero hits, and `design/` byte-identical.
 3. **No hard-coded user-visible string**, from the very first component.
 
 **Final review**: fresh clone → `make check` → `wails build -tags webkit2_41` → `install.sh` →
@@ -1298,26 +1396,32 @@ who is expected to read it.
 **Status: decisions locked — D1–D17, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
 CLOSED (PASS) — all twenty-two tickets, S1-01 … S1-22, ACCEPT met at 100.0% / 92.9%,
 PASS returned on the fourth review at `a1f09b7` after three FAILs whose history is kept
-in §5. **Stage 2 is IMPLEMENTED, NOT CLOSED**: twenty-two tickets, S2-01 … S2-22, in
-`TASKS.md`, **all twenty-two committed**, plus the gap-closing `7af4d1d`. `make check`
-green, `make cover` 100.0% / 93.8%, `make front-test` 22 files / 251 tests, `make guard`
-clean over all six checks with an empty `GUARD_ALLOW_RE`. **Review round 1 returned FAIL
-on two blocking issues — a habit check day computed in TypeScript, and a `make guard`
-check that claimed to be exact and was case-sensitive — and both are fixed (`ae6befd`,
-`4b1af9c`). The Reviewer has not returned PASS; a stage closes only on PASS.** All five
-carried obligations are absorbed into
+in §5. **Stage 2 is CLOSED (PASS)** — twenty-two tickets, S2-01 … S2-22, in `TASKS.md`,
+all committed plus the gap-closing `7af4d1d`, **PASS returned on the second review at
+`8818db4`** after one FAIL whose history is kept in §5. **ACCEPT met**: the no-mouse
+create → move across all five columns → complete flow is demonstrated by
+`frontend/src/App.accept.test.tsx` driving the assembled `<App />` with an exact asserted
+call sequence, and `make guard` check 6 fails if a mouse event ever enters that file.
+`make check` green over all five gates, `make cover` 100.0% / 93.8%, `make front-test`
+22 files / 247 tests / 0 failures, `make guard` six of six with an empty
+`GUARD_ALLOW_RE`; both round-1 blockers verified closed by reverting each fix and
+watching the specific test fail. All five Stage 2 obligations were absorbed into
 tickets — C1 → S2-03, C2 → S2-01, C3 → S2-08, C4 → S2-06, C5 → S2-14 — and every known
-issue now has a decision: **K1 → D12** (user), **K2 → D14**, **K3 → D15** and
-**K5 → D16** (PM rulings, overturnable), **K4** RESOLVED in `9664506`. Nothing is open.
+issue has a decision: **K1 → D12** (user), **K2 → D14**, **K3 → D15** and
+**K5 → D16** (PM rulings, overturnable), **K4** RESOLVED in `9664506`.
 **Two planning defects were found mid-stage, both by the Dev refusing to widen scope
 silently, and both corrected in `TASKS.md`:** nothing owned `App.tsx` or `main.tsx`, so
 nothing mounted anything; and the out-of-scope line contradicted the brief on *set
 priority*, resolved in the brief's favour. Three disclosed widenings (S2-13, S2-21,
-S2-22) are **ratified**; **D17** records the one rule the stage had never written down;
-and **five** checks are recorded as **owed to a hand pass, not verified**. One item is
-**carried into Stage 3** — the five enum sets spelled in the locale files with nothing
-tying them to Go — as an acceptable judgement call, not a defect, and it is not
-scheduled. A green `make guard` is **not** proof that the frontend computes nothing;
-checks 3a/3b are name-based heuristics and **D17** says so. See §5,
-"Stage 2 — IMPLEMENTED, NOT CLOSED", and `TASKS.md`,
-"Composition — who mounts what".**
+S2-22) are **ratified**, and **D17** records the one rule the stage had never written
+down. **Carried into Stage 3, and not scheduled**: the **five checks owed to a hand
+pass** (the ten-step run on the real binary including the three unbacked D8 due-badge
+assertions, no background flash in either theme, Russian not clipping at 1024×768, the
+painted `:focus-visible` ring, and S2-07's window-opens/five-columns), **C6** (the five
+enum sets spelled a second time in the locale files — a judgement call, not a defect),
+**K1/D12, K2 and K3** from Stage 1's handoff, and **D16/K5** — the drift gate is built
+and **nothing draws a drift**, which no document may imply otherwise.
+**A green `make guard` is NOT proof that the frontend computes nothing**: checks 3a/3b
+are name-based heuristics, `wireDate` sat behind a green guard for an entire stage, and
+**D17** says so — reading the diff is still the check. Stage 3 is **not started**.
+See §5, "Stage 2 — CLOSED, PASS" and "Carried into Stage 3", and `TASKS.md`.**

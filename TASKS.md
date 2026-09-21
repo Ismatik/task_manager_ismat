@@ -11,17 +11,22 @@
   the most useful thing in this file. See
   [Stage 1 — DONE criteria](#stage-1--done-criteria) and
   [Carried into Stage 2](#carried-into-stage-2).
-- **[Stage 2 — Kanban + Habits strip](#stage-2--kanban--habits-strip): IMPLEMENTED,
-  NOT CLOSED.** Twenty-two tickets, **S2-01 … S2-22, all committed**, plus the
-  gap-closing `7af4d1d`. `make check` green (all five gates), `make cover` **100.0% /
-  93.8%**, `make front-test` **22 files / 251 tests**, `make guard` clean over all **six**
-  checks with `GUARD_ALLOW_RE` **empty**. **Review round 1 returned FAIL on two blocking
-  issues; both are fixed** (`ae6befd`, `4b1af9c`) — see
-  [Review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed). **The
-  Reviewer has not returned PASS — a stage closes only on PASS**, and **five** checks are
-  recorded as [owed to a hand pass](#owed-to-a-hand-pass--not-verified), not as verified.
-  All five
-  items under [Carried into Stage 2](#carried-into-stage-2) are absorbed into named
+- **[Stage 2 — Kanban + Habits strip](#stage-2--kanban--habits-strip): DONE. Reviewer
+  returned PASS on the second review, at `8818db4`.** Twenty-two tickets, **S2-01 …
+  S2-22, all committed**, plus the gap-closing `7af4d1d` and round 1's two fixes
+  `ae6befd` / `4b1af9c`. `make check` green (**all five gates**), `make cover` **100.0% /
+  93.8%**, `make front-test` **22 files / 247 tests / 0 failures**, `make guard` **six of
+  six** with `GUARD_ALLOW_RE` **empty**; **all twenty-two DONE criteria met**, and the
+  **ACCEPT criterion met** by `frontend/src/App.accept.test.tsx` driving the assembled
+  `<App />`. **Review round 1 returned FAIL on two blocking issues; both were fixed and
+  then verified closed by reverting each fix and watching the specific test fail** — that
+  history is kept in full below and is the most useful thing in this section. See
+  [Review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed),
+  [Review round 2](#review-round-2--pass-at-8818db4) and
+  [Stage 2 — DONE criteria](#stage-2--done-criteria--all-met-pass). **Five checks remain
+  [owed to a hand pass](#owed-to-a-hand-pass--not-verified)** — the PASS did not cover
+  them and they are [carried into Stage 3](#carried-into-stage-3).
+  All five items under [Carried into Stage 2](#carried-into-stage-2) are absorbed into named
   tickets — **C1 → S2-03, C2 → S2-01, C3 → S2-08, C4 → S2-06, C5 → S2-14** — and the
   fifth, *one rule one spelling*, is enforced by `make guard` (**S2-10**) and re-checked
   on every frontend ticket. Two planning defects were **corrected in place** mid-stage,
@@ -29,8 +34,11 @@
   `main.tsx` (see [Composition — who mounts what](#composition--who-mounts-what)), and
   the out-of-scope line contradicted the brief on *set priority* (see
   [The plan correction](#the-plan-correction--set-priority-from-the-palette-is-stage-2)).
-  One item is [carried into Stage 3](#carried-into-stage-3), as an acceptable judgement
-  call rather than a defect, and is **not** scheduled.
+- **Stage 3 — Detail + Tree + Search/Archive: NOT STARTED.** Nothing is planned and no
+  ticket exists. What it inherits is listed under
+  [Carried into Stage 3](#carried-into-stage-3) — the five hand-pass checks, **C6**,
+  **K1/D12 · K2 · K3**, **D16/K5**, and the standing warning that **a green `make guard`
+  is not a proof**.
 
 Decisions referenced as **D1–D17 / E1–E3** and known issues **K1–K5** live in
 [`PLAN.md` §7](./PLAN.md). Four decisions were confirmed by the user *during* Stage 1
@@ -2140,11 +2148,13 @@ It is therefore already written into the §5 Stage 2 acceptance cell in `PLAN.md
 *moving a card to Doing must itself open a `time_entry`*. Stage 2 must have a test that
 fails if the wiring is removed.
 
-- [ ] Moving a node to `doing` opens exactly one `time_entry` for it, in the same
+- [x] Moving a node to `doing` opens exactly one `time_entry` for it, in the same
       transaction semantics as the move.
-- [ ] The single-active-timer invariant still holds: moving a second card to `doing`
+- [x] The single-active-timer invariant still holds: moving a second card to `doing`
       closes the first card's entry rather than opening a concurrent one.
-- [ ] A move refused by `domain.DoingRefusal` (a `project`) opens **no** entry.
+- [x] A move refused by `domain.DoingRefusal` (a `project`) opens **no** entry.
+
+**MET by S2-03 (D13), verified at Stage 2's PASS — DONE criterion 6.**
 
 ### C2 — `Board()` is O(n²·log n); fix it before the board is on screen
 
@@ -2155,10 +2165,12 @@ board is O(n²·log n). At the ~200 nodes a real personal board holds this is in
 at 10k it is not. Fix it **before** the Kanban renders, not after — once the UI is live
 the regression is a user-visible stutter and the fix competes with feature work.
 
-- [ ] The index is built once per `Board()` call, not once per node.
-- [ ] `internal/domain` stays pure and keeps its single spelling of each rule — the fix
+- [x] The index is built once per `Board()` call, not once per node.
+- [x] `internal/domain` stays pure and keeps its single spelling of each rule — the fix
       is an indexing change, not a second derivation path.
-- [ ] A benchmark or a sized test documents the complexity change.
+- [x] A benchmark or a sized test documents the complexity change.
+
+**MET by S2-01, verified at Stage 2's PASS — DONE criterion 7.**
 
 ### C3 — K1: `BackgroundColour` never reaches GTK under `LC_NUMERIC=ru_RU.UTF-8`
 
@@ -2169,8 +2181,12 @@ the background is **silently** never applied. Three options are recorded in `PLA
 frontend paint it, or patch and pin a fork — and **none is chosen**. Choose it **with
 the palette work**, where the window background first has to match a token.
 
-- [ ] One of the three options is chosen, recorded as a decision, and implemented.
+- [x] One of the three options is chosen, recorded as a decision, and implemented.
 - [ ] The dark theme shows no flash of a wrong background on this machine.
+
+**Half met.** **D12** chose it and **S2-08** implemented it — DONE criterion 8. The
+second box is **still open**: it needs a display, it was not covered by Stage 2's PASS,
+and it is [carried into Stage 3](#carried-into-stage-3) as owed item 2.
 
 ### C4 — K2: a leaf project's stale *stored* status has teeth
 
@@ -2180,8 +2196,10 @@ cascade wrote `done`** leaves that project counted as a **done** unit on a statu
 set deliberately. The state is self-consistent — column and bar agree — so it is not a
 contradiction, which is exactly why it will not announce itself.
 
-- [ ] Stage 2 rules on whether a project's stored status is re-inspected when its last
+- [x] Stage 2 rules on whether a project's stored status is re-inspected when its last
       child is archived, and the ruling is recorded as a decision in `PLAN.md` §7.
+
+**MET — the ruling is D14, implemented in S2-06 with its named test; DONE criterion 9.**
 
 ### C5 — K3: an empty project stored `done` renders in Done with no bar
 
@@ -2189,8 +2207,10 @@ Its own progress is undefined (**D11**, part 1) so no bar is drawn, while its st
 puts the card in the Done column. **It is the one place a finished card shows nothing.**
 This is a card-chrome decision.
 
-- [ ] The card-chrome work decides what a done-but-unmeasurable card renders, and the
+- [x] The card-chrome work decides what a done-but-unmeasurable card renders, and the
       decision is recorded.
+
+**MET — the ruling is D15, implemented in S2-14 with its named test; DONE criterion 9.**
 
 ### Engineering note — one rule, one spelling. In TypeScript too.
 
@@ -2223,36 +2243,45 @@ as a plain field on the DTO. A rule re-derived in a React component is a second
 spelling, and a second spelling is the defect class that cost this project three review
 rounds.
 
-- [ ] No Stage 2 ticket adds a second implementation of any row in the table above.
-- [ ] No `frontend/src` file computes a status, progress, streak, overdue flag or column
+- [x] No Stage 2 ticket adds a second implementation of any row in the table above.
+- [x] No `frontend/src` file computes a status, progress, streak, overdue flag or column
       eligibility.
+
+**MET — DONE criterion 10.** Round 1 found one violation, `wireDate`, and it was fixed
+in `ae6befd` and ruled on as **D17**. It was found **by reading the diff**, not by
+`make guard`, whose checks 3a/3b are name-based heuristics: **a green guard is not a
+proof** — see [Carried into Stage 3](#carried-into-stage-3).
 
 ---
 
 ## Stage 2 — Kanban + Habits strip
 
-**Status: IMPLEMENTED, NOT CLOSED — S2-01 … S2-22 all committed, plus the gap-closing
-`7af4d1d`. Review round 1 returned FAIL on two blocking issues; both are fixed
-(`ae6befd`, `4b1af9c`) and the re-review runs next.**
+**Status: DONE — CLOSED on a Reviewer PASS, returned on the SECOND review and verified
+at `8818db4`.** S2-01 … S2-22 all committed, plus the gap-closing `7af4d1d` and round
+1's two fixes `ae6befd` and `4b1af9c`.
 Twenty-two tickets, **S2-01 … S2-22**, one conventional commit each. This is the
 **launch screen**: the first stage whose output a user can look at.
 
-**It is not closed, and this document must not be read as saying it is.** Per
-`PLAN.md` §5 a stage closes only on a Reviewer **PASS**; round 1 returned **FAIL**, and
-no PASS has been returned since the fixes landed. The
-[DONE criteria](#stage-2--done-criteria) below are therefore still **unticked**: they are
-the Reviewer's to verify, not the PM's to assert. What the PM *can* state is what was
-measured on the tree as committed:
+Per `PLAN.md` §5 a stage closes only on a Reviewer **PASS**. Round 1 returned **FAIL** on
+two blocking issues; both were fixed, and round 2 returned **PASS** — see
+[Review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed) and
+[Review round 2](#review-round-2--pass-at-8818db4). **All twenty-two
+[DONE criteria](#stage-2--done-criteria--all-met-pass) are met and ticked**, by the Reviewer's
+verification and not by PM assertion. Re-measured at `8818db4`:
 
 | | |
 |---|---|
-| `make check` | green — all five gates, unchanged in number and definition |
+| `make check` | green — **all five gates**, unchanged in number and definition, including `wails build -tags webkit2_41` |
 | `make cover` | `internal/domain` **100.0%**, `internal/service` **93.8%** (bar ≥90%) |
-| `make front-test` | **22 files, 251 tests** |
-| `make guard` | all **six** checks pass, `GUARD_ALLOW_RE` **empty** |
+| `make front-test` | **22 files, 247 tests, 0 failures** |
+| `make guard` | **six of six** checks pass, `GUARD_ALLOW_RE` **empty** |
 
-**Five** things nobody on this machine can check are listed under
-[Owed to a hand pass](#owed-to-a-hand-pass--not-verified). They are **owed**, not done.
+(247, not the 251 this document carried before round 1: `ae6befd` deleted the orphaned
+tests of the dead TypeScript time-derivations along with the code.)
+
+**Five things nobody on this machine can check are still owed**, and the PASS did not
+cover them: see [Owed to a hand pass](#owed-to-a-hand-pass--not-verified). They are
+**owed, not done**, and they are [carried into Stage 3](#carried-into-stage-3).
 
 **Corrected in place after S2-13.** The Dev reported, in `97873d9`'s body rather than by
 silently widening scope, that **no remaining ticket had `frontend/src/App.tsx` or
@@ -2264,6 +2293,14 @@ came with it — `frontend/src/lib/format.ts` is now in S2-11's Scope where its
 Requirements had already named it, and S2-13's six-line `main.tsx` widening is
 [ratified](#s2-13--feat-the-go-client-the-zustand-store-and-the-error-toast). **No
 committed ticket's meaning changed**; S2-01 … S2-13 stand as reviewed.
+
+### The two-round review history — kept in full
+
+**Stage 2 failed its first review and passed its second.** Both rounds are kept below.
+Round 1 is not deleted now that the stage is closed, because **what it caught is the most
+useful content in this section**: neither blocker was a missing feature, and both were the
+*same* defect class that cost Stage 1 three rounds — a rule with a second spelling. Round
+1 fixed in `ae6befd` and `4b1af9c`; round 2 returned **PASS**, verified at `8818db4`.
 
 ### Review round 1 — FAIL on two blocking issues, both fixed
 
@@ -2323,6 +2360,48 @@ which is exactly how a second implementation of a rule waits for its first calle
 exactly the shape that failed Stage 1 three times. Removed before it could be wired up.
 **No ticker was added**: drawing the running clock is Stage 3's, and that ticket adds
 precisely what it renders.
+
+### Review round 2 — PASS, at `8818db4`
+
+**This is the PASS that closes Stage 2.** Per `PLAN.md` §5 a stage cannot close without
+one.
+
+**Both round-1 blockers were verified closed the hard way.** The Reviewer did not take
+the fixes on trust: for each, they **reverted it and watched the specific test go red**,
+then restored it.
+
+- `ae6befd` reverted → the store test that drives the habit toggle at `23:59:30` and
+  again at `00:00:30` fails, because the two calls stop being identical.
+- `4b1af9c` reverted (`-iE` back to `-E`) → the planted
+  `view.status === 'Done' || view.status === 'Doing'` line walks past `make guard` again.
+
+A revert that leaves the suite green proves the fix is untested. Both reverts went red.
+
+**The Reviewer also reproduced the guard's blind spot deliberately**, planting a
+regression named outside `overdue|derive|streak|progress|percent` and walking it past a
+clean `make guard` — the same shape as `wireDate`. That is the evidence behind **D17**
+and behind the warning at the head of [Carried into Stage 3](#carried-into-stage-3):
+**reading the diff is what caught it, not the guard.**
+
+Re-measured and independently confirmed at `8818db4`:
+
+- `make check` **green, all five gates**, including `wails build -tags webkit2_41`.
+- `make cover`: `internal/domain` **100.0%**, `internal/service` **93.8%** (bar ≥90%).
+- `make front-test`: **22 files, 247 tests, 0 failures**.
+- `make guard`: **six of six**, `GUARD_ALLOW_RE` **empty**.
+- **Zero hex literals** in `frontend/src`; `design/` **byte-identical** to its Stage 1
+  state; **no cgo** and no `mattn` in the dependency graph; Stage 0's and Stage 1's
+  migrations **untouched**; `TestDomainIsPure` and `TestDomainReadsNoClock` **unmodified
+  and passing**.
+- All **84 commits** on `main` authored solely by `Ismat
+  <mukhamejanov.ismat@gmail.com>`, **no AI author and no co-author trailer** on any.
+- **No test was weakened by the `CheckHabitToday` / `UncheckHabitToday` binding rename**;
+  the Reviewer read each changed test and found **two of them strictly stronger** than
+  what they replaced.
+
+**What the PASS did not cover**, and says so: the **five checks owed to a hand pass**.
+See [Owed to a hand pass](#owed-to-a-hand-pass--not-verified). They are carried into
+Stage 3 unchanged.
 
 ### The plan correction — "set priority" from the palette is Stage 2
 
@@ -4159,7 +4238,9 @@ be discovered at review.
 ### Owed to a hand pass — NOT VERIFIED
 
 **Five checks are outstanding, and no document in this repository may describe them as
-done.** They are not outstanding through negligence: **there is no display on this
+done.** **Stage 2's PASS did not cover any of them**, and closing the stage does not
+close them: they are [carried into Stage 3](#carried-into-stage-3) exactly as they stand
+here. They are not outstanding through negligence: **there is no display on this
 machine**, and `xvfb-run`, `scrot`, `import` and `grim` are **all absent**, so the
 Reviewer cannot run them either. They are owed to a human at a real keyboard in front of
 a real window. Items 1–4 are the precise contents of the right-hand column above; item 5
@@ -4204,28 +4285,32 @@ the visual exists (**D16**, **K5**, DONE criterion 21).
 
 ---
 
-## Stage 2 — DONE criteria
+## Stage 2 — DONE criteria — ALL MET, PASS
 
-Stage 2 closes only when **all** of these hold, verified by the Reviewer. Per
-`PLAN.md` §5 a stage cannot close without a **PASS**.
+Stage 2 closed only once **all** of these held. They do, **verified by the Reviewer at
+`8818db4` on the second review**. Per `PLAN.md` §5 a stage cannot close without a
+**PASS**; criterion 22 is that PASS.
 
-**The boxes below are deliberately still unticked.** Every ticket is implemented and
-committed, but these are the **Reviewer's** to verify, not the PM's to assert — ticking
-them here would be exactly the "marked done, not verified" failure the last line of this
-section forbids. What the PM has recorded is the **measurement** (`make check` green,
-`make cover` 100.0% / 93.8%, `make front-test` 22 files / 251 tests, `make guard` clean
-over six checks with an empty `GUARD_ALLOW_RE`) and, separately, the **five** things
-**nobody on this machine can check** — see
-[Owed to a hand pass](#owed-to-a-hand-pass--not-verified), which carries the hand half of
-criterion 5, the last clause of criterion 8 and the last clause of criterion 13.
+**The boxes are ticked on the Reviewer's verification, not on the PM's assertion.**
+Re-measured at `8818db4`: `make check` green over all five gates, `make cover`
+**100.0% / 93.8%**, `make front-test` **22 files / 247 tests / 0 failures**, `make guard`
+**six of six** with an empty `GUARD_ALLOW_RE`.
 
-**Review round 1 returned FAIL**, on two blocking issues now fixed (`ae6befd`,
-`4b1af9c`); see
-[Review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed). A first-round
-FAIL is a normal outcome here — Stage 1 closed on its fourth review. **Criterion 22 is
-still open.**
+**What is ticked is what was verified, and nothing else.** The **five** things **nobody
+on this machine can check** are *not* covered by this PASS — see
+[Owed to a hand pass](#owed-to-a-hand-pass--not-verified), which carries the **hand half
+of criterion 5**, the **last clause of criterion 8** and the **last clause of criterion
+13**. Each of those three criteria is ticked on its mechanical half only, and says so
+inline. They are [carried into Stage 3](#carried-into-stage-3).
 
-1. [ ] All twenty-two tickets are committed, one conventional commit each, in order,
+**Review round 1 returned FAIL**, on two blocking issues fixed in `ae6befd` and
+`4b1af9c` and then verified closed by **reverting each fix and watching the specific test
+fail**; see
+[Review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed) and
+[Review round 2](#review-round-2--pass-at-8818db4). A first-round FAIL is a normal
+outcome here — Stage 1 closed on its fourth review.
+
+1. [x] All twenty-two tickets are committed, one conventional commit each, in order,
    `S2-01` … `S2-22`, authored solely by `Ismat <mukhamejanov.ismat@gmail.com>` with **no
    AI author and no co-author trailer**. **One further commit, `7af4d1d`, closes the
    `set priority` gap under S2-20** and is part of the stage — see
@@ -4233,23 +4318,37 @@ still open.**
    **Two more, `ae6befd` and `4b1af9c`, fix review round 1's blocking issues** and are
    likewise part of the stage — see
    [Review round 1](#review-round-1--fail-on-two-blocking-issues-both-fixed).
-2. [ ] `make check` is green — **all five gates, unchanged in number and definition**.
-3. [ ] `make cover` is green: `internal/domain` ≥ 90.0% **and** `internal/service` ≥ 90.0%,
-   measured per package after `go clean -testcache`.
-4. [ ] `make front-test` is green and `make guard` exits 0.
-5. [ ] **The ACCEPT criterion is met, both halves** — the automated flow test passes, and
-   the ten-step hand script has been executed on the real binary and reported step by
-   step.
-6. [ ] **C1 is wired and cannot be unwired silently**: moving a card to Doing opens
+   **All 84 commits on `main` confirmed authored solely by `Ismat`, no AI trailer.**
+2. [x] `make check` is green — **all five gates, unchanged in number and definition**.
+   Confirmed at `8818db4`, including `wails build -tags webkit2_41`.
+3. [x] `make cover` is green: `internal/domain` ≥ 90.0% **and** `internal/service` ≥ 90.0%,
+   measured per package after `go clean -testcache`. **Actual: `internal/domain`
+   100.0%, `internal/service` 93.8%.**
+4. [x] `make front-test` is green and `make guard` exits 0. **Actual: 22 files, 247 tests,
+   0 failures; `make guard` six of six with `GUARD_ALLOW_RE` empty.**
+5. [x] **The ACCEPT criterion is MET** — `frontend/src/App.accept.test.tsx` drives the
+   **assembled `<App />`**, imports no component beneath it, presses keys and only keys,
+   and asserts the **exact sequence of client calls**: one `CreateNode`, then
+   `MoveToColumn` with each of the four statuses Go supplied, in order —
+   create → move across all five columns → complete, no mouse. **`make guard` check 6
+   fails if a `click`, a `pointer` or a `fireEvent.mouse*` ever enters that file**, and
+   fails too if the file is deleted or emptied, so the proof cannot rot quietly.
+   **The hand half is NOT covered by this PASS**: the ten-step script on
+   `./build/bin/nexus` is still [owed](#owed-to-a-hand-pass--not-verified), the three
+   **D8 due-badge assertions** included, and is
+   [carried into Stage 3](#carried-into-stage-3).
+6. [x] **C1 is wired and cannot be unwired silently**: moving a card to Doing opens
    exactly one `time_entry`; a cascade opens none; moving out of Doing closes it; a
    project opens none. The negative control is recorded in S2-03's commit body.
-7. [ ] **C2 is fixed**: the derivation index is built once per `Board()`, with a committed
+7. [x] **C2 is fixed**: the derivation index is built once per `Board()`, with a committed
    benchmark and before/after numbers in the commit body.
-8. [ ] **C3/K1 is fixed (D12)**: `LC_NUMERIC=C` is forced, the background is seeded from
-   settings, `main.go` contains **no hex literal**, and the no-flash behaviour is
-   confirmed by hand in **both** themes.
-9. [ ] **C4/K2 is fixed (D14)** and **C5/K3 is fixed (D15)**, each with the named test.
-10. [ ] **No rule has a second spelling.** The Stage 1 inventory — `HasColumn`, `HasDue`,
+8. [x] **C3/K1 is fixed (D12)**: `LC_NUMERIC=C` is forced, the background is seeded from
+   settings, `main.go` contains **no hex literal**. **The last clause is NOT covered by
+   this PASS**: the no-flash behaviour in **both themes** is GTK-side and pre-paint,
+   jsdom cannot see it, and it is still [owed](#owed-to-a-hand-pass--not-verified) and
+   [carried into Stage 3](#carried-into-stage-3).
+9. [x] **C4/K2 is fixed (D14)** and **C5/K3 is fixed (D15)**, each with the named test.
+10. [x] **No rule has a second spelling.** The Stage 1 inventory — `HasColumn`, `HasDue`,
     `DoingRefusal`/`CanBeDoing`, `countsAsWork`, habit-requires-recurrence,
     `DefaultActivity` — is still one definition each, and **no `frontend/src` file
     computes a status, a column eligibility, progress, a streak, an overdue flag or a due
@@ -4258,39 +4357,55 @@ still open.**
     are name-based heuristics and a derivation named outside
     `overdue|derive|streak|progress|percent` is invisible to them, which is how the
     round-1 `wireDate` defect survived a green guard for a whole stage.
-11. [ ] `git grep -nE '#[0-9a-fA-F]{3,8}' frontend/src` returns nothing.
-12. [ ] `design/` is byte-identical to its Stage 1 state:
-    `git diff <stage-1-tag-or-sha> -- design/` is empty.
-13. [ ] Both locale files are **complete and key-identical**; every user-visible string is
-    a key; the Russian UI does not clip at 1024×768.
-14. [ ] Every `App` method returns `(T, error)` (reflection test), every rejection reaches
+    **The Reviewer read the diff and, at round 2, reproduced the blind spot with a
+    planted regression that walked past a clean `make guard`.** The guard is not the
+    evidence; the reading is.
+11. [x] `git grep -nE '#[0-9a-fA-F]{3,8}' frontend/src` returns nothing. **Confirmed:
+    zero hits.**
+12. [x] `design/` is byte-identical to its Stage 1 state:
+    `git diff <stage-1-tag-or-sha> -- design/` is empty. **Confirmed.**
+13. [x] Both locale files are **complete and key-identical**; every user-visible string is
+    a key. **The last clause is NOT covered by this PASS**: jsdom has no layout engine, so
+    what is asserted is the **mechanisms** that prevent clipping, never the absence of
+    clipping. **Russian not clipping at a real 1024×768** is still
+    [owed](#owed-to-a-hand-pass--not-verified) and
+    [carried into Stage 3](#carried-into-stage-3).
+14. [x] Every `App` method returns `(T, error)` (reflection test), every rejection reaches
     a toast, and `frontend/src/lib/client.ts` is the only importer of `wailsjs`.
-15. [ ] **Local-only holds**: no network call, no CDN, no font fetch.
+15. [x] **Local-only holds**: no network call, no CDN, no font fetch.
     `git grep -nE 'https?://' frontend/src` returns nothing, and every added dependency is
     bundled from `node_modules`.
-16. [ ] `CGO_ENABLED=0 go build ./...` succeeds and `go list -deps ./... | grep -i mattn`
-    prints nothing.
-17. [ ] `internal/domain` is still pure — `TestDomainIsPure` and `TestDomainReadsNoClock`
-    pass **unmodified**.
-18. [ ] `git status --porcelain` is empty after
+16. [x] `CGO_ENABLED=0 go build ./...` succeeds and `go list -deps ./... | grep -i mattn`
+    prints nothing. **Confirmed.**
+17. [x] `internal/domain` is still pure — `TestDomainIsPure` and `TestDomainReadsNoClock`
+    pass **unmodified**. **Confirmed: the test files are byte-identical.**
+18. [x] `git status --porcelain` is empty after
     `make check && make cover && make front-test && make guard` — including the generated
     `frontend/wailsjs`, which is committed and not left dirty.
-19. [ ] `0001_settings.sql` and every Stage 1 migration are byte-identical to their
+19. [x] `0001_settings.sql` and every Stage 1 migration are byte-identical to their
     closed state.
-20. [ ] **Every component Stage 2 built is reachable in the running app.**
+20. [x] **Every component Stage 2 built is reachable in the running app.**
     `frontend/src/App.mount.test.tsx` reports an **empty** difference between the
     components under `frontend/src/{components,views}` and the import closure of
     `frontend/src/main.tsx`; the header, habits strip, board, overlay and toast regions of
     the shell are all filled; and the ACCEPT flow test drives `<App />`. A stage whose
     every ticket passed and whose app opens blank has not delivered a launch screen —
     this is the criterion that says so.
-21. [ ] **Nothing is claimed that was not verified, specifically on the Aurora drift**:
+21. [x] **Nothing is claimed that was not verified, specifically on the Aurora drift**:
     the report says the drift is **gated and not drawn** (**D16**, **K5**) and nobody
-    claims to have watched it pause.
-22. [ ] **The Reviewer returns PASS.**
+    claims to have watched it pause. **Confirmed — and it stays true: nothing draws a
+    drift, and no document may be edited into implying the visual exists.**
+22. [x] **The Reviewer returns PASS.** **Returned on the SECOND review, verified at
+    `8818db4`**, with both round-1 blockers checked by **reverting each fix and watching
+    the specific test fail**, and with no test weakened by the binding rename — two are
+    strictly stronger. See
+    [Review round 2](#review-round-2--pass-at-8818db4). **This is the PASS that closes
+    Stage 2.**
 
-Nothing may be marked done that was not actually verified. Stage 1 closed on its fourth
-review; a first-round FAIL here is a normal outcome, not a failure of the process.
+Nothing was marked done that was not actually verified — which is why criteria **5, 8 and
+13** are ticked on their mechanical halves only and name the half that is still owed.
+Stage 1 closed on its fourth review; a first-round FAIL here was a normal outcome, not a
+failure of the process.
 
 **Out of Stage 2 scope, and it must stay out**: the detail slide-over, the Markdown
 editor, inline subtasks, the tag/due/priority/estimate **editors** — the detail-panel
@@ -4309,14 +4424,75 @@ it returns when a spec exists, and **it is not to be invented** (**K5**).
 
 ## Carried into Stage 3
 
-**Whoever plans Stage 3 must turn each item below into a ticket with a checkable
-criterion, or state explicitly why not.** This is the same contract as
+**These are Stage 3 acceptance criteria, not suggestions.** Stage 2 closed clean, but it
+closed owing the items below. **Whoever plans Stage 3 must turn each one into a ticket
+with a checkable criterion, or state explicitly why not.** Same contract as
 [Carried into Stage 2](#carried-into-stage-2). Nothing here is scheduled yet, and
 **nothing here reopens a Stage 2 ticket.**
 
+### ⚠️ Read this first — a green `make guard` is NOT a proof
+
+**No status line, report, commit body or ticket in this repository may offer a green
+`make guard` as evidence that the frontend computes nothing.** **D17** records why:
+`make guard` checks **3a and 3b are name-based heuristics** over
+`overdue|derive|streak|progress|percent`. A derivation named anything else is invisible
+to them **by construction**.
+
+This is not hypothetical. **`wireDate` was named after none of those trigger words and
+sat behind a green guard for an entire stage**, computing the habit check day in
+TypeScript on a decision that had only ever been written in a code comment. It was caught
+by a human reading the diff, and at round 2 the **Reviewer reproduced it with a planted
+regression** that walked straight past a clean guard.
+
+A green guard is evidence that **five names are absent**. **Reading the diff is still the
+check**, and [rule 7 for the Dev agent](#rules-for-the-dev-agent) is still the rule.
+
+### The five checks owed to a hand pass — still owed, none verifiable here
+
+**Stage 2's PASS did not cover these.** There is no display on this machine and
+`xvfb-run`, `scrot`, `import` and `grim` are all absent, so neither the Dev nor the
+Reviewer could run them. They are owed to a human at a real keyboard in front of a real
+window, and they are reproduced in full under
+[Owed to a hand pass](#owed-to-a-hand-pass--not-verified).
+
+| # | Owed | Ties back to |
+|---|---|---|
+| 1 | The **ten-step keyboard run** on `./build/bin/nexus`, mouse untouched, reported step by step — **including the three D8 due-badge assertions at steps 3, 4 and 7, which have *no* mechanical backing anywhere in the suite** | DONE criterion 5, hand half |
+| 2 | **No flash of the wrong background on the first frame, in *both* themes** (**D12**, **K1**) — GTK-side and pre-paint | DONE criterion 8, last clause |
+| 3 | **Russian not clipping at a real 1024×768** — jsdom has no layout engine, so only the *mechanisms* are asserted | DONE criterion 13, last clause |
+| 4 | **The `:focus-visible` accent ring actually painted, in both palettes** — jsdom evaluates `:focus-visible` as false for programmatic focus | S2-22's a11y audit |
+| 5 | **S2-07's** *"the app opens a window and the frontend can call `Board()` and receive five columns"* | [S2-07](#s2-07--feat-open-the-store-construct-the-services-bind-them) |
+
+**`make build` proves the binary links. Nothing on this machine proves a window opens.**
+
+### Known issues carried through from Stage 1, unaffected by Stage 2
+
+Stage 2 implemented the decisions; the issues stay on the record in [`PLAN.md`
+§7](./PLAN.md) because they explain why the code looks the way it does.
+
+| | Issue | Decision | Where it stands |
+|---|---|---|---|
+| **K1** | `BackgroundColour` never reaches GTK under `LC_NUMERIC=ru_RU.UTF-8` | **D12** (user) | Implemented in **S2-08**; the **no-flash behaviour is item 2 above and is still unwatched** |
+| **K2** | A leaf project's stale *stored* status has teeth since D11 | **D14** (PM ruling, overturnable) | Implemented in **S2-06** with its named test |
+| **K3** | An empty project stored `done` renders in Done with no bar | **D15** (PM ruling, overturnable) | Implemented in **S2-14** with its named test |
+
+### D16 / K5 — the drift gate is built and NOTHING DRAWS A DRIFT
+
+`data-drift` is set correctly — `on` without reduced motion, `off` with it, on every
+palette — it was **audited both ways** in S2-22, and **no code reads it**. Nobody has
+watched a drift pause, because **there is no drift to watch**. This is not on the
+hand-pass list above: it is not owed to a human either, because there is nothing to look
+at.
+
+**No document in this repository may be edited into implying the visual exists**, and the
+drift is **not to be invented**. It returns as a ticket when a drift **specification**
+does (§3, **D6** as amended).
+
+### The rest
+
 | | Item | Source | Status |
 |---|---|---|---|
-| **C6** | Five enum sets are spelled a second time in the locale files, with nothing tying them to Go | Review round 1, non-blocking finding 4 | **Judgement call, not a defect.** Stage 3 picks one of two fixes |
+| **C6** | Five enum sets are spelled a second time in the locale files, with nothing tying them to Go | Review round 1, non-blocking finding 4 | **Judgement call, not a defect.** Stage 3 picks one of two fixes — see below |
 | — | Draw the running timer clock | `ae6befd` deleted the untested-in-anger wall-clock helpers no component rendered | Stage 3 adds **exactly what it renders**, on Go's `elapsedSeconds` |
 | — | Aurora's background drift | **D16**, **K5** | Only when a drift **specification** exists. **Not to be invented** |
 
