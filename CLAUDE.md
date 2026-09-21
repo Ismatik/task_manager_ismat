@@ -19,23 +19,35 @@ It does not restate the plan: [`PLAN.md`](./PLAN.md) is the brief and the decisi
 |---|---|
 | Stage 0 | **CLOSED** — Reviewer PASS |
 | Stage 1 | **CLOSED** — Reviewer PASS on the fourth round, at `a1f09b7` |
-| Stage 2 | **PLANNED** — twenty-two tickets, `S2-01` … `S2-22` in `TASKS.md`. **No code written yet.** |
+| Stage 2 | **IN PROGRESS** — `S2-01` … `S2-16` committed. **Next: `S2-17`.** |
 
-Coverage: `internal/domain` **100.0%**, `internal/service` **92.9%** (bar is ≥90%),
-`internal/store` 86.4% (not gated). All five `make check` gates green, including
-`wails build -tags webkit2_41`.
+Coverage: `internal/domain` **100.0%**, `internal/service` **93.8%** (bar is ≥90%),
+`internal/store` 86.4% (not gated). At `33a90c8`: all five `make check` gates green,
+`make front-test` 150 tests across 15 files, `make guard` clean, tree clean.
 
 ### Do this first
 
-**Implement `S2-01`** — one ticket at a time, one commit each. Stage 2 is planned: the
-tickets are in `TASKS.md`, and **C1–C5 are absorbed** into named ones (C1 → S2-03,
-C2 → S2-01, C3 → S2-08, C4 → S2-06, C5 → S2-14) rather than left floating.
+**Implement `S2-17`** (dnd-kit drag and drop with optimistic rollback), then `S2-18`
+… `S2-22`. One ticket at a time, one commit each.
 
-The Go engine is complete and tested but **nothing is wired to a UI yet**. `main.go`
-still does not open the store or construct a service, so Stage 2's first job is that
-wiring. `frontend/src` is still the untouched Wails scaffold (an `App.tsx` demo with a
-`Greet` box) and there is no `locales/` directory yet, even though i18n is required from
-the first component.
+Done so far: the Go half (`S2-01`–`S2-08`) — the `Board()` index fix, the JSON wire
+contract, the Doing↔timer coupling, the habit strip read, `SettingsService`, the D14
+archive rewrite, the app wiring, and `LC_NUMERIC=C` with the background seeded from
+`design/tokens.css` via `go:embed`. Then the frontend foundation (`S2-09`–`S2-13`) and
+the launch screen so far (`S2-14` card, `S2-15` app shell + five columns, `S2-16`
+keyboard model).
+
+**Two traps waiting in `S2-17`:**
+
+- **dnd-kit's `KeyboardSensor` defaults to Space-to-lift**, which collides with the
+  habit-strip Space. `S2-16` is **normative** — rebind or disable the sensor's default
+  and re-run `S2-16`'s suite **unmodified**.
+- **`App.mount.test.tsx` is an acceptance criterion on every ticket through `S2-22`.**
+  It walks the import closure from `main.tsx` and fails naming any component that is
+  built but never mounted. Prove it fires before trusting it.
+
+`GUARD_ALLOW_RE` in the Makefile is **empty and must stay empty** — every `make guard`
+hit so far has been a real bug fixed at the source, never allow-listed.
 
 If `frontend/wailsjs/*` ever shows as modified with files truncated to zero bytes, an
 interrupted `wails build` did it. `make build` regenerates them.
