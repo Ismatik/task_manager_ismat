@@ -2,7 +2,7 @@
 
 Read this first. It is the short list of things that are easy to get wrong here.
 It does not restate the plan: [`PLAN.md`](./PLAN.md) is the brief and the decisions
-(D1–D11, E1–E3), [`ARCHITECTURE.md`](./ARCHITECTURE.md) is the layout,
+(D1–D15, E1–E3), [`ARCHITECTURE.md`](./ARCHITECTURE.md) is the layout,
 [`TASKS.md`](./TASKS.md) is the ticket breakdown, and
 [`design/README.md`](./design/README.md) is the token handoff.
 
@@ -17,10 +17,9 @@ It does not restate the plan: [`PLAN.md`](./PLAN.md) is the brief and the decisi
 
 | | |
 |---|---|
-| Last commit | `e101f60`, 52 commits on `main` |
 | Stage 0 | **CLOSED** — Reviewer PASS |
 | Stage 1 | **CLOSED** — Reviewer PASS on the fourth round, at `a1f09b7` |
-| Stage 2 | Not started, not yet planned |
+| Stage 2 | **PLANNED** — twenty-two tickets, `S2-01` … `S2-22` in `TASKS.md`. **No code written yet.** |
 
 Coverage: `internal/domain` **100.0%**, `internal/service` **92.9%** (bar is ≥90%),
 `internal/store` 86.4% (not gated). All five `make check` gates green, including
@@ -28,9 +27,9 @@ Coverage: `internal/domain` **100.0%**, `internal/service` **92.9%** (bar is ≥
 
 ### Do this first
 
-**Plan Stage 2** — Kanban + Habits strip, the launch screen. Nothing else is
-outstanding: Stage 1 closed at `e101f60`, and `TASKS.md` has a `## Carried into Stage 2`
-section with criteria **C1–C5** that Stage 2's tickets must absorb rather than rediscover.
+**Implement `S2-01`** — one ticket at a time, one commit each. Stage 2 is planned: the
+tickets are in `TASKS.md`, and **C1–C5 are absorbed** into named ones (C1 → S2-03,
+C2 → S2-01, C3 → S2-08, C4 → S2-06, C5 → S2-14) rather than left floating.
 
 The Go engine is complete and tested but **nothing is wired to a UI yet**. `main.go`
 still does not open the store or construct a service, so Stage 2's first job is that
@@ -43,11 +42,12 @@ interrupted `wails build` did it. `make build` regenerates them.
 
 ### Stage 2 must not forget these
 
-- **Wire `MoveToColumn(doing)` to `TimerService.Start`.** `PLAN.md` §4 couples them,
-  but no Stage 1 ticket did the wiring and both services just sit there composable.
-  If this is not an explicit Stage 2 acceptance criterion it will silently never ship.
-- **`Board()` is O(n²·log n)** — `snapshot.view` rebuilds its index per node. Fine at
-  200 nodes, not at 10k. Fix it before the board is on screen, not after.
+- **Wire `MoveToColumn(doing)` to `TimerService.Start`** — `PLAN.md` §4 couples them and
+  no Stage 1 ticket did it. **Now S2-03**, with **D13** settling the three things §4
+  leaves open (same transaction; a cascade opens no timer; leaving `doing` closes it).
+- **`Board()` is O(n²·log n)** — `snapshot.view` rebuilds its index per node. **Now
+  S2-01**, scheduled first, because the instruction was *fix it before the board is on
+  screen*.
 - **No type rule may be spelled twice.** Three of Stage 1's four review failures were
   the same defect: a rule written down in two places and edited in one. The inventory
   is currently clean — `HasColumn`, `HasDue`, `DoingRefusal`/`CanBeDoing`,
@@ -59,15 +59,23 @@ interrupted `wails build` did it. `make build` regenerates them.
   capture will need `sudo apt install xvfb imagemagick` (none of `xvfb-run`, `scrot`,
   `import`, `grim` are installed).
 
-### Known issues carried in (recorded in `PLAN.md`, none scheduled)
+### Known issues — all now DECIDED and scheduled (rulings in `PLAN.md` §7)
 
 - **K1** — `BackgroundColour` never reaches GTK on this machine. `LC_NUMERIC=ru_RU.UTF-8`
   makes Wails' `window.c:205` emit `rgba(27, 38, 54, 0,0)` with a comma, so GTK fails to
-  parse it. Upstream bug, three options recorded, none chosen. **Decide it with the
-  palette work** — it will show up as a flash of wrong background on the dark theme.
+  parse it. **DECIDED — D12** (the user's): force `LC_NUMERIC=C` **and** seed the
+  background from the persisted palette/theme. **Ticket S2-08.** The containment rule
+  matters: `main.go` must gain **no hex literal**.
 - **K2** — since D11 a leaf project's stale *stored* status has teeth: archiving the last
   real child of a project an earlier cascade wrote `done` leaves it counted as a done unit.
+  **DECIDED — D14** (PM ruling): archiving rewrites the stored status of a node it turned
+  into a leaf, to the status that node derived immediately before. **Ticket S2-06.**
 - **K3** — an empty project stored `done` renders in the Done column with no bar at all.
+  **DECIDED — D15** (PM ruling): `progress.defined === false` renders a localised
+  "empty project" marker instead of a bar, in every column. **Ticket S2-14.**
+
+**D13, D14 and D15 are PM rulings, not the user's** — recorded so each has one spelling,
+and overturnable by the user. **D1–D12 are the user's and are authoritative.**
 
 ### Environment, already done
 

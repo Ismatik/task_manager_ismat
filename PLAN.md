@@ -1,8 +1,8 @@
 # Nexus — Plan
 
 My restatement of the brief, written before any code. It stays the source of truth for
-the data model and the decisions; only the stage status below moves. **Stage 0 is
-closed (PASS); Stage 1 is current** — see §5 and `TASKS.md`.
+the data model and the decisions; only the stage status below moves. **Stage 0 and
+Stage 1 are both CLOSED (PASS); Stage 2 is current** — see §5 and `TASKS.md`.
 
 ---
 
@@ -74,6 +74,22 @@ I read `README.md` first, as instructed.
   button. `danger` = overdue, P0–P1, bug. `warning` = P2, streak flames.
   `success` = done, habit checks, task icon.
 - **Motion** ≤200ms via `duration-fast/base/slow`.
+
+**The design export names no components — stop looking for the list.** The brief speaks
+of "component choices from the Claude Design export" and of "ReactBits components
+exactly as named in the design export". There is no such list. `design/` contains
+`README.md`, `tokens.css`, `tailwind.config.js`, `SKILL.md` and
+`pmp-timelog-format.md`, and the README specifies **tokens, fonts, semantics and
+motion only** — not one component name appears in any of them. This was checked
+during Stage 2 planning and is recorded here so that nobody re-hunts for a file that
+does not exist.
+
+The consequence, which is **D6 as amended**: Stage 2 **hand-builds its components
+against the tokens**. ReactBits is used only where it genuinely fits and can be fully
+re-skinned to the token names — never as an excuse to bring in a colour, a radius or a
+font the tokens do not define. **No component spec may be invented and attributed to
+the design export.** A component that "the design export calls for" is a component
+somebody made up.
 
 ## 4. Data model
 
@@ -169,7 +185,7 @@ and stop for your "next".
 |---|---|---|
 | 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) — **CLOSED, PASS** | `make check` green, empty window opens, second launch focuses the first |
 | 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **CLOSED, PASS** (PASS on the **fourth** review, at `a1f09b7`; it failed the first three — the history is kept below) | **≥90% coverage** on `internal/domain` + `internal/service` — **MET: 100.0% / 92.9%** |
-| 2 | **Kanban + Habits strip** (launch screen) — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — **and moving a card to Doing must itself open a `time_entry`** (§4 coupling; see `TASKS.md`, "Carried into Stage 2") |
+| 2 | **Kanban + Habits strip** (launch screen) — **CURRENT, planned as S2-01 … S2-22** — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — demonstrated twice, by the automated flow test of S2-22 and by the hand script in `TASKS.md` — **and moving a card to Doing must itself open a `time_entry`** (§4 coupling, **D13**; ticket S2-03) |
 | 3 | **Detail + Tree + Search/Archive** — slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | Every field round-trips through Go; reparent in tree shows on Kanban instantly |
 | 4 | **Quick-add + Focus mode** — frameless standalone window, Go-side NL parser (date, `!priority`, `#tag`, `>Project` fuzzy, `~estimate`, `@type`), live preview chips, Enter creates & closes, Esc closes; Focus mode (one card, large timer, Esc exits); sleep/lock timer handling | `deploy KA Avto fri 15:00 !high #work >KA Avto ~2h` parses correctly in tests **and** in the UI |
 | 5 | **Platform integration** — tray via `energye/systray`, badge = overdue + due today, menu (Open / Quick add / Start-Stop timer / Quit); `.desktop` + `install.sh` → autostart, GNOME `gsettings` shortcut Super+Space → `nexus --quick`, warn if AppIndicator missing | Reboot → app opens; Super+Space → quick-add |
@@ -336,6 +352,40 @@ Go returns and re-implements none of these rules: not "can this card go to Doing
 streak, not an overdue flag. A rule re-derived in a component is a second spelling, and
 a second spelling is the defect that cost this project three review rounds.
 
+### Stage 2 — CURRENT, planned
+
+**Twenty-two tickets, S2-01 … S2-22, in `TASKS.md`.** Nothing is implemented yet.
+
+The shape of the stage, and why it is in that order:
+
+- **S2-01 … S2-08 are Go.** They pay off the two carried couplings (**C1**, **C2**),
+  settle the three known issues (**C3**/**K1**, **C4**/**K2**, **C5**/**K3**), give the
+  DTOs a stable wire contract, add the two service reads the launch screen needs and
+  nothing in Stage 1 provided — the habit strip and the settings surface — and only then
+  wire `main.go`/`app.go`, which today open no database and bind nothing but `Greet`.
+  **The wiring is Stage 2's first real job and it is not optional**: every frontend
+  ticket is blocked on it.
+- **S2-09 … S2-13 are the frontend's foundation**: delete the scaffold demo, stand up a
+  test runner and a mechanical rules guard, i18n, the appearance runtime, then the Go
+  client and the Zustand store.
+- **S2-14 … S2-22 are the launch screen** — card, columns, keyboard model, drag and
+  drop, habits strip, quick-add, command palette, appearance controls, and finally the
+  ACCEPT flow itself.
+
+Four new decisions come out of this planning pass and are recorded in §7: **D12** (the
+locale/background fix, given by the user), and **D13**, **D14**, **D15** — PM rulings
+on the Doing↔timer coupling, on K2 and on K3, each open to the user's override.
+
+**Three things Stage 2 is explicitly forbidden from doing.** They are the shape of
+Stage 1's four review rounds, turned into rules up front:
+
+1. **No rule may gain a second spelling — in TypeScript any more than in Go.** The
+   frontend renders what Go returns. `make guard` (S2-10) greps for the specific
+   violations: a status string literal in a component, a recomputed overdue flag, a
+   recomputed percentage, a re-derived column eligibility.
+2. **No hex literal in `frontend/src`, ever**, and `design/` stays read-only.
+3. **No hard-coded user-visible string**, from the very first component.
+
 **Final review**: fresh clone → `make check` → `wails build -tags webkit2_41` → `install.sh` →
 reboot checklist, executed and reported. `QA.md` with 25 manual scenarios covering
 every rule in §4. Known gaps reported honestly — **nothing marked done that was not
@@ -358,15 +408,24 @@ I am the **orchestrator**. Three sub-agents, delegated explicitly:
 
 ## 7. Resolved decisions
 
-The open questions are **closed**. Every answer below was given by the user and is
-authoritative — it overrides anything earlier in this document that contradicts it.
-Referenced as **D1–D11** and **E1–E3** from tickets in `TASKS.md`.
+The open questions are **closed**. Referenced as **D1–D15** and **E1–E3** from tickets
+in `TASKS.md`.
 
-**D1–D7** were settled before Stage 0. **D8**, **D9**, **D10** and **D11** were
-confirmed by the user *during* Stage 1, when implementation exposed questions the
-earlier decisions did not answer; they are recorded here in the same form and carry the
+**D1–D12 were given by the user and are authoritative** — they override anything
+earlier in this document that contradicts them. **D1–D7** were settled before Stage 0.
+**D8**, **D9**, **D10** and **D11** were confirmed by the user *during* Stage 1, when
+implementation exposed questions the earlier decisions did not answer; they carry the
 same authority. D10 and D11 came out of the second review, and **D10 generalises the
-derivation rule in §4**, which has been amended accordingly.
+derivation rule in §4**, which has been amended accordingly. **D12** was confirmed by
+the user while Stage 2 was being planned and closes **K1**.
+
+**D13, D14 and D15 are PM rulings**, made during Stage 2 planning because `TASKS.md`
+**C1**, **C4** and **C5** demanded a decision and the user's brief did not contain one.
+They are written in the same form and bind the Dev exactly as the rest do — a rule with
+no single written spelling is the defect that cost Stage 1 three review rounds — but
+their provenance is different and **the user may overturn any of them**. If one is
+overturned, the ticket that implements it changes with it; nothing else in this document
+depends on them.
 
 ### D1 — `due_source` (was Q1: due-date provenance)
 Add the column `due_source TEXT NOT NULL DEFAULT 'manual'`, values in
@@ -457,6 +516,17 @@ that were checked.
   "do not invent styles" applies to **tokens, colours and typography** — not to
   component choice. A ReactBits component named in the export is in scope; its
   colours/fonts/radii must still resolve through the Tailwind token names.
+
+**Amended during Stage 2 planning — the design export names no components.** The second
+bullet assumed a component list in the export. There is none: `design/` holds
+`README.md`, `tokens.css`, `tailwind.config.js`, `SKILL.md` and
+`pmp-timelog-format.md`, and between them they specify tokens, fonts, semantics and
+motion and **not one component name**. See the note at the end of §3. The bullet
+therefore reads, from Stage 2 on: **components are hand-built against the tokens**, and
+ReactBits is used only where it genuinely fits and can be re-skinned entirely to the
+token names. The clause "as named in the design export" is inoperative because the
+antecedent does not exist — and **inventing a component spec and attributing it to the
+export is forbidden**, which is the failure mode this amendment exists to prevent.
 
 ### D7 — Smaller ambiguities, now settled (was Q7)
 - **`note` leaves are excluded from the progress denominator**, consistent with
@@ -632,7 +702,165 @@ project?" (nothing), the second is "is this project finished?" (no).
   and `IsLeaf` are untouched — **position in the walk is not a property of the type**,
   so it deliberately did not become a fourth spelling of the type rule.
 - A leaf project is counted **done by its own stored status**, not by derivation —
-  there is nothing under it to derive from. See known issue **K2**.
+  there is nothing under it to derive from. See known issue **K2**, now settled by
+  **D14**.
+
+### D12 — Force `LC_NUMERIC=C`, and seed the window background from settings (confirmed during Stage 2 planning; closes K1)
+
+**Two halves, one decision.** Before `wails.Run`, the process forces `LC_NUMERIC=C`.
+And `options.App.BackgroundColour` is **seeded from the palette/theme the user last
+chose**, read out of the `settings` table at startup, instead of a constant compiled
+into `main.go`.
+
+The bug is **K1**: Wails formats the window background in C at `window.c:205` using the
+**process** locale, so under this machine's `LC_NUMERIC=ru_RU.UTF-8` it emits
+`rgba(27, 38, 54, 0,0)` — a comma where GTK's CSS parser needs a decimal point — and GTK
+**silently drops the whole declaration**. Nothing is logged. Forcing the C locale for
+numeric formatting makes the colour actually reach the window, which is what makes the
+second half worth doing at all.
+
+- **Why seed from settings.** The window background is painted by GTK *before* the
+  WebView has loaded anything, so it is the first colour the user sees. A hardcoded
+  dark value flashes wrong for a user on the light theme, and a hardcoded light value
+  flashes wrong on dark. Reading `palette` + `theme` out of `settings` — which already
+  hold the two values and already default to `aurora` + `dark` (**D6**) — makes the
+  first frame match the last session in **both** themes.
+- **Rejected alternative (a): leave the window transparent and let the frontend paint
+  it.** The frontend is exactly where the palette lives, so this is tempting — and it is
+  the option that guarantees the flash, because "transparent" is a real colour for the
+  hundreds of milliseconds before the bundle evaluates.
+- **Rejected alternative (b): patch upstream Wails and pin the fork.** A one-line
+  upstream formatting bug is not worth a fork's maintenance cost, a vendored build step
+  and a divergence to re-apply on every Wails release.
+- **Accepted consequence, stated by the user:** the process's numeric locale is changed
+  out from under any Go code that might want the user's locale for number formatting.
+  Nothing in Nexus formats numbers through the C locale — Go's own `strconv` and
+  `fmt` are locale-independent by design — so the only thing affected is the cgo/GTK
+  layer, which is the thing being fixed.
+
+**The duplication risk, and the rule that contains it.** This makes `main.go` a
+**second place that knows a background colour**, and a second spelling of a value is the
+defect class §5 spends three review rounds on. The containment is absolute and is an
+acceptance criterion on ticket **S2-08**:
+
+> **`main.go` must not contain a hex literal or an RGB triple.** The colour is derived
+> from the `palette` and `theme` values read out of `settings`, against the token values
+> owned by `design/tokens.css`. `git grep -nE '#[0-9a-fA-F]{3,8}|RGBA\{' main.go` must
+> return nothing.
+
+Because `design/` is read-only and Go cannot import CSS, the mapping from
+(palette, theme) → `--bg` is generated or parsed from `design/tokens.css` rather than
+retyped. Retyping four hex values into Go is precisely the thing this paragraph forbids.
+
+### D13 — What the Doing↔timer coupling actually does (PM ruling, Stage 2; implements C1)
+
+`PLAN.md` §4 says *"Moving a card to Doing opens a `time_entry`"* and stops there. Three
+questions it does not answer had to be settled before **S2-03** could be written, because
+each of them is a rule and a rule with no written spelling gets invented twice.
+
+1. **A direct move of a timeable node to `doing` opens a timer, in the same
+   transaction as the move.** Not after it, not in a second call from `app.go`. If the
+   move commits and the timer does not, §4's coupling is a lie for exactly as long as it
+   takes the user to notice.
+2. **A cascade opens no timer.** Dragging a parent to Doing cascades `doing` onto every
+   unfinished descendant with a column (**D2**), which could be twelve nodes; the single
+   active timer is global (§4), so at most one of them could have it and there is no
+   principled way to choose. *Rejected alternative:* start the timer on the first
+   leaf in sort order — it picks a card the user did not point at, and the user then
+   has to notice and stop it. A cascade is a planning gesture, not a "start working now"
+   gesture.
+3. **Moving a node out of `doing` closes its open entry** — to any column, `done`
+   included. *Rejected alternative:* leave the entry open, since only `Stop` closes
+   timers. That leaves a running timer on a card sitting in Done, which is both wrong
+   in the data and visibly wrong on screen: `TimerView.Running` would be true on a
+   finished card.
+
+- **A move that `domain.DoingRefusal` refuses — a project — opens nothing**, because the
+  move itself fails. This is not a fourth rule; it follows from **D9** and must not be
+  re-stated as one.
+- **The existing single-active invariant is untouched.** Moving a second card to `doing`
+  closes the first card's entry exactly as `TimerService.Start` already does. The
+  coupling reuses that code path; it does not get its own.
+- **Accepted consequence:** time is attributed to the card the user dragged, and only
+  ever to that one. Time spent on a subtask the user never dragged is not recorded by
+  dragging its parent, which is honest — §4 already says *"never billed for time you did
+  not spend"* about sleep, and the same principle applies here.
+
+**Implementation consequence — one entry point, no bypass (S2-03).** There must be
+exactly **one** move-to-column method reachable from `app.go`, and it must be the
+coupled one. Two methods, one coupled and one not, is a second spelling with a
+call-site-shaped fuse.
+
+### D14 — Archiving re-inspects a node that becomes a leaf (PM ruling, Stage 2; closes K2)
+
+**When archiving leaves a node with no remaining child that has a Kanban column, that
+node's stored status is rewritten to the status it derived immediately before the
+archive**, with `completed_at` set or cleared to match.
+
+This is the ruling **K2** asked for, generalised from "a project" to "any node", because
+the situation is not special to projects — a project is only where **D11** gave it
+teeth.
+
+- **The failure it closes.** `P{C1:done, C2:backlog}` derives `backlog` and renders in
+  the Backlog column. An earlier drag of `P` to Done wrote `done` into `P`'s *stored*
+  status, where it has been dead weight ever since. Archive `C1` and `C2`: `P` is now a
+  leaf, **D11** says a leaf project counts as one work leaf decided by its **stored**
+  status, and `P` silently becomes a **done** unit in its parent's bar — on a status
+  nobody set, minutes after the board showed it as Backlog. The state is
+  self-consistent, which is exactly why it never announces itself.
+- **The principle: continuity.** What the board showed before the archive is what it
+  shows after. Archiving a child is a statement about the child, and it must not change
+  what the parent claims about itself.
+- **Rejected alternative (a): reset the stored status to `backlog`.** Simple, and wrong
+  in the common case — archiving the finished children of a finished project would
+  un-finish it.
+- **Rejected alternative (b): never trust a leaf project's stored status; treat it as
+  unfinished always.** This reverses **D11** for the case D11 was written for, and makes
+  a genuinely completed project impossible to record.
+- **Rejected alternative (c): leave it, K2 is self-consistent.** Self-consistent and
+  wrong is the worst of the three states, because nothing will ever flag it.
+- **Accepted consequence:** archiving is no longer a pure "hide these rows" operation —
+  it can write a status onto a node it did not archive. That write is bounded, and the
+  boundary is checkable: **only** onto an ancestor that the archive turned into a leaf,
+  and **only** to the value that ancestor was already displaying.
+
+**Implementation notes (S2-06) — the rule gets one spelling.** "Has no remaining child
+with a column" is `NodeType.HasColumn` and `Node.IsLeaf` (**D10**), asked of the set as
+it will be *after* the archive; the status written is `domain.DeriveStatus` of the set as
+it was *before*. Both already exist. **No new predicate.** Restore needs no rule: once a
+node has column-bearing children again, derivation takes over and the stored status stops
+being consulted.
+
+### D15 — A card whose progress is undefined says so (PM ruling, Stage 2; closes K3)
+
+**A node whose `Progress.Defined` is false draws no bar and renders an explicit, localised
+"empty project" marker in its place** — one line, `muted`, in the slot the bar would have
+occupied. It never renders a percentage, a `0/0`, or an empty bar track.
+
+- **The failure it closes — K3.** An empty project stored `done` sits in the Done column
+  with **nothing on it at all**: no bar, because its own progress is undefined
+  (**D11** part 1), and no other chrome that says anything. It is the one place a
+  finished card is blank.
+- **The rule is about `Defined`, not about `done`.** An empty project in Backlog has the
+  same problem in a quieter way, and a rule that fires only in the Done column would be
+  a rule with a column in it. One condition, one marker, every column.
+- **Rejected alternative (a): render a 0% bar.** `Defined == false` exists precisely
+  because **neither 0% nor 100% is true** (**D7**, **D9**). Drawing an empty track is
+  rendering 0% with extra steps.
+- **Rejected alternative (b): render nothing and rely on the card's type icon.** That is
+  the current behaviour and it is what K3 reports as a defect.
+- **Rejected alternative (c): have Go return a "display this instead of a bar" string.**
+  Tempting given §1, and wrong: the *rule* ("undefined progress means no bar") is already
+  in Go, on the `Defined` flag. What the absence looks like is presentation, and a
+  user-visible string returned from Go is a string that cannot be translated by the i18n
+  layer.
+- **Accepted consequence:** an empty project is visibly empty in every column, including
+  Done. A card that reads "done" and "empty" at once is the honest rendering of the state
+  **D11** deliberately allows.
+
+**Implementation notes (S2-14):** one branch, in the card's progress slot, on
+`progress.defined`. The strings are i18n keys in `en.json`/`ru.json` like every other
+string. The frontend still computes **nothing** — it branches on a flag Go set.
 
 ### FTS5 — spike it, do not guess (was Q8, unchanged)
 **Spike FTS5 on `modernc.org/sqlite` in Stage 1**, first thing. If FTS5 is not
@@ -664,13 +892,17 @@ and closed Stage 0. `pkg-config --exists gtk+-3.0 webkit2gtk-4.1` now succeeds.
 
 ---
 
-### Known issues — recorded, carried into Stage 2
+### Known issues — all decided, none deleted
 
-**K1, K2 and K3 are the open ones, and all three are Stage 2's to decide** (see §5,
-"Carried into Stage 2"). **K4 is RESOLVED** in `9664506` and is kept on the record
-below, not deleted, so the failure mode stays visible.
+**All four are now DECIDED, none is deleted.** K1, K2 and K3 were carried into Stage 2
+as things to rule on, and Stage 2 planning ruled on all three: **K1 → D12**,
+**K2 → D14**, **K3 → D15**. Each is now **decided but not yet implemented** — the
+tickets are **S2-08**, **S2-06** and **S2-14** respectively — and each stays on the
+record below with its decision named, so the failure mode remains visible and so nobody
+re-opens a question that has an answer. **K4 is RESOLVED** in `9664506`, likewise kept.
 
-**K1 — `BackgroundColour` never reaches GTK under a comma-decimal locale.**
+**K1 — `BackgroundColour` never reaches GTK under a comma-decimal locale.
+DECIDED by D12; implemented by S2-08.**
 This machine runs `LC_NUMERIC=ru_RU.UTF-8`. Wails builds the window background as a
 CSS string in C at `window.c:205` and formats the alpha with the **process locale**
 rather than the C locale, so it emits
@@ -683,37 +915,54 @@ GTK's CSS parser rejects that declaration — a comma is an argument separator, 
 decimal point — and the background colour is therefore **silently never applied**.
 Nothing is logged; the window just uses its default.
 
-This is an **upstream Wails bug**, not ours, and it is **not fixed in Stage 1**:
-Stage 1 is Go-only, has no window work in it, and a locale workaround bolted on now
-would be untestable until there is a palette to compare against. **The decision is
-carried into Stage 2** (`TASKS.md`, C3), where the palette/theme work makes the window
-background have to match a token. The options to weigh there, none of them chosen here:
+This is an **upstream Wails bug**, not ours, and it was **not fixed in Stage 1**:
+Stage 1 is Go-only, has no window work in it, and a locale workaround bolted on then
+would have been untestable until there was a palette to compare against.
+
+Three options were recorded here and carried into Stage 2 as **C3**:
 
 1. force `LC_NUMERIC=C` for the process before `wails.Run`;
 2. leave the window background transparent and let the frontend paint it, which is
    where the palette lives anyway;
 3. patch upstream and pin the fork.
 
+**Option 1 was chosen by the user during Stage 2 planning, together with a second
+half the options above did not contain: seed the background colour from the persisted
+palette/theme rather than from a constant.** That is **D12** in §7, which records the
+reasoning, the two rejected options and the containment rule that keeps a second hex
+literal out of `main.go`. It is implemented by ticket **S2-08**.
+
 Related but **separate**: `main.go` passed `&options.RGBA{R: 27, G: 38, B: 54, A: 1}`.
 Alpha is 0–255, so `A: 1` is ~0.4% opacity — a real bug of ours, fixed in Stage 1 by
 ticket **S1-02**. Fixing it does not fix K1, and K1 is why the fix cannot be verified
 by eye on this machine.
 
-**K2 — a leaf project's stale stored status now has teeth.**
+**K2 — a leaf project's stale stored status now has teeth. DECIDED by D14; implemented
+by S2-06.**
 Since **D11**, a leaf project's *stored* status decides whether it counts as done in
 its parent's denominator. Archiving the last real child of a project that an earlier
 cascade had written `done` leaves it counted as a **done** unit on a status nobody set
 deliberately. The state is self-consistent — column and bar agree — so this is not a
-contradiction, which is exactly why it will not announce itself. It wants a rule about
-**re-inspecting a project's stored status when its last child is archived**. That
-ruling is **carried into Stage 2** (`TASKS.md`, C4) and must be recorded here as a
-decision when it is made.
+contradiction, which is exactly why it will not announce itself. It wanted a rule about
+**re-inspecting a project's stored status when its last child is archived**.
 
-**K3 — an empty project stored `done` renders in the Done column with no bar at all.**
+**The ruling is D14**, taken during Stage 2 planning: when archiving leaves a node with
+no remaining child that has a Kanban column, that node's stored status is rewritten to
+the status it *derived immediately before the archive*, with `completed_at` set or
+cleared to match. The principle is continuity — what the board showed before the
+archive is what it shows after. See D14 for the three rejected alternatives.
+
+**K3 — an empty project stored `done` renders in the Done column with no bar at all.
+DECIDED by D15; implemented by S2-14.**
 Its own progress is undefined (**D11**, part 1), so no bar is drawn, while its status
 puts the card in Done. Not a contradiction, but it is **the one place a finished card
-shows nothing**. **Carried into Stage 2** (`TASKS.md`, C5): the card-chrome work
-decides what, if anything, a done-but-unmeasurable card should render.
+shows nothing**.
+
+**The ruling is D15**, taken during Stage 2 planning: a card whose `Progress.Defined`
+is false draws **no bar** and renders an explicit, localised "empty project" marker in
+the bar's place — in every column, not only in Done, because the condition is
+`Defined == false` and not `status == done`. It never renders a percentage, a `0/0` or
+an empty track: `Defined == false` exists precisely because neither 0% nor 100% is true.
 
 **K4 — RESOLVED in `9664506`, not an open issue. A no-column type cannot have
 children at all.**
@@ -736,10 +985,12 @@ remain the open ones.**
 
 ---
 
-**Status: decisions locked — D1–D11, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
+**Status: decisions locked — D1–D15, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
 CLOSED (PASS) — all twenty-two tickets, S1-01 … S1-22, ACCEPT met at 100.0% / 92.9%,
-PASS returned on the fourth review at `a1f09b7` after three FAILs whose history is
-kept in §5. **K4** is RESOLVED in `9664506`; **K1**, **K2** and **K3** stay open and
-are carried into Stage 2 together with the `MoveToColumn(doing)` → `TimerService.Start`
-wiring and the `Board()` O(n²·log n) fix. Stage 2 is next and not yet planned.
-See §5, "Stage 1 — CLOSED, PASS" and "Carried into Stage 2".**
+PASS returned on the fourth review at `a1f09b7` after three FAILs whose history is kept
+in §5. **Stage 2 is CURRENT and planned**: twenty-two tickets, S2-01 … S2-22, in
+`TASKS.md`, none implemented yet. All five carried obligations are absorbed into
+tickets — C1 → S2-03, C2 → S2-01, C3 → S2-08, C4 → S2-06, C5 → S2-14 — and every known
+issue now has a decision: **K1 → D12** (user), **K2 → D14** and **K3 → D15** (PM
+rulings, overturnable), **K4** RESOLVED in `9664506`. Nothing is open. See §5,
+"Stage 2 — CURRENT, planned".**
