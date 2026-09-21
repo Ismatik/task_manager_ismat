@@ -8,6 +8,85 @@ It does not restate the plan: [`PLAN.md`](./PLAN.md) is the brief and the decisi
 
 ---
 
+## RESUME HERE — temporary handoff, delete when Stage 2 starts
+
+> This section is scaffolding for picking the work back up on another machine.
+> **Delete it once Stage 2 is underway.** Everything below it is permanent.
+
+### Where the work stopped
+
+| | |
+|---|---|
+| Last commit | `a1f09b7`, 50 commits on `main`, pushed to `origin` |
+| Stage 0 | **CLOSED** — Reviewer PASS |
+| Stage 1 | **Reviewer PASS, but the docs do not say so yet** |
+| Stage 2 | Not started |
+
+Coverage: `internal/domain` **100.0%**, `internal/service` **92.9%** (bar is ≥90%),
+`internal/store` 86.4% (not gated). All five `make check` gates green, including
+`wails build -tags webkit2_41`.
+
+### Do this first
+
+1. **Mark Stage 1 CLOSED** in `PLAN.md` and `TASKS.md`. Both still say
+   `IMPLEMENTED, NOT CLOSED`; the Reviewer passed it on the fourth round at
+   `a1f09b7`. Record the ACCEPT criterion as met (100.0% / 92.9%), **keep the
+   four-round review history** — it is the most useful thing in the document — and
+   keep K4 on the record as RESOLVED rather than deleting it.
+2. Then plan Stage 2 (Kanban + Habits strip, the launch screen).
+
+### Stage 2 must not forget these
+
+- **Wire `MoveToColumn(doing)` to `TimerService.Start`.** `PLAN.md` §4 couples them,
+  but no Stage 1 ticket did the wiring and both services just sit there composable.
+  If this is not an explicit Stage 2 acceptance criterion it will silently never ship.
+- **`Board()` is O(n²·log n)** — `snapshot.view` rebuilds its index per node. Fine at
+  200 nodes, not at 10k. Fix it before the board is on screen, not after.
+- **No type rule may be spelled twice.** Three of Stage 1's four review failures were
+  the same defect: a rule written down in two places and edited in one. The inventory
+  is currently clean — `HasColumn`, `HasDue`, `DoingRefusal`/`CanBeDoing`,
+  `countsAsWork`, habit-requires-recurrence and `DefaultActivity` are each the single
+  definition of their rule. **This applies to TypeScript too**: the frontend renders
+  what Go returns and re-implements none of it.
+- **Screenshots and README.** `README.md` is deliberately not written yet — every
+  screen it needs belongs to Stage 2+. Write it once the board exists. Automated
+  capture will need `sudo apt install xvfb imagemagick` (none of `xvfb-run`, `scrot`,
+  `import`, `grim` are installed).
+
+### Known issues carried in (recorded in `PLAN.md`, none scheduled)
+
+- **K1** — `BackgroundColour` never reaches GTK on this machine. `LC_NUMERIC=ru_RU.UTF-8`
+  makes Wails' `window.c:205` emit `rgba(27, 38, 54, 0,0)` with a comma, so GTK fails to
+  parse it. Upstream bug, three options recorded, none chosen. **Decide it with the
+  palette work** — it will show up as a flash of wrong background on the dark theme.
+- **K2** — since D11 a leaf project's stale *stored* status has teeth: archiving the last
+  real child of a project an earlier cascade wrote `done` leaves it counted as a done unit.
+- **K3** — an empty project stored `done` renders in the Done column with no bar at all.
+
+### Environment, already done
+
+- `pkg-config`, `libgtk-3-dev`, `libwebkit2gtk-4.1-dev` are installed. Ubuntu 24.04 has
+  **no** `libwebkit2gtk-4.0-dev`; that is why every wails command needs `-tags webkit2_41`.
+- Wails CLI v2.16.0 at `$(go env GOPATH)/bin/wails`, not necessarily on `PATH`.
+- `origin` → `github.com/Ismatik/task_manager_ismat`. `main` was force-pushed to
+  `a1f09b7` to drop a stray `7e50583 "Tests over other parts"` WIP commit that
+  `9664506` already superseded. Nothing was lost.
+
+### How the work is run
+
+Orchestrator plus three sub-agents: **PM** owns `PLAN.md`/`TASKS.md` and decides when a
+stage is done (never writes code); **Dev** implements exactly one ticket at a time and
+commits per ticket; **Reviewer** reads the diff, runs the five gates, checks acceptance
+criteria, and returns PASS or blocking issues. **A stage cannot close without PASS.**
+One stage at a time, then stop and wait.
+
+Two habits that earned their keep in Stage 1 and should continue: **negative-control
+testing** (break the fix, confirm the specific test fails, restore) and **property
+sweeps with an independent reference implementation** — `internal/domain/sweep_test.go`
+is the committed example, and it caught bugs four rounds of example-based tests missed.
+
+---
+
 ## What Nexus is
 
 A personal task manager for the Linux desktop: a single Wails v2 binary (Go backend,
