@@ -1,0 +1,1 @@
+store — client-side UI state only (selection, open panels, filters); domain state is owned by Go. See ARCHITECTURE.md §6.
