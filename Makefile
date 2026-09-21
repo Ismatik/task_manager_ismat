@@ -204,6 +204,20 @@ GUARD_COMPUTE_RE = ([[:space:]][<>]=?[[:space:]]|&&|\|\||[^?.]\?[^?.]|[[:space:]
 # allow-list that starts out populated is an allow-list nobody reads.
 GUARD_ALLOW_RE =
 
+# The file the stage's ACCEPT criterion is demonstrated in (S2-22).
+#
+# "Create a task, move it across all five columns, and complete it — with no
+# mouse." Check 6 below is what turns the second half of that sentence from a
+# claim in a commit message into something that fails: the file may press keys
+# and nothing else, so `click`, `pointer` and `mouse` have no business in it in
+# any spelling, not even in a comment. It is an EXACT check, like 1, 2 and 5 —
+# a hit is a defect and there is nothing to argue about.
+#
+# It is scoped to this one file on purpose. The rest of the suite is free to
+# use a pointer where a pointer is what is under test (S2-17's drag), and
+# saying so here is what keeps that from looking like an oversight.
+GUARD_ACCEPT_FILE = frontend/src/App.accept.test.tsx
+
 .PHONY: guard
 guard: ## The mechanical rules greps over frontend/src (not a gate)
 	@allow='$(GUARD_ALLOW_RE)'; \
@@ -226,6 +240,12 @@ guard: ## The mechanical rules greps over frontend/src (not a gate)
 	[ -z "$$out" ] || { fail "check 4c (heuristic), a line of bare prose in a .tsx file — a JSX text node on its own line. Same fix as 4b." "$$out"; }; \
 	out=$$(git grep -n --untracked -E '(^|[^A-Za-z0-9_])P[0-2]([^A-Za-z0-9_]|$$)' -- frontend/src ':!frontend/src/locales' ':!frontend/src/lib/priority.ts' | keep); \
 	[ -z "$$out" ] || { fail "check 5, a P0/P1/P2 chip label outside its one module. The priority->chip mapping (ARCHITECTURE.md section 6: 1->P0, 2->P1, 3->P2, 4->no chip) lives in frontend/src/lib/priority.ts and nowhere else." "$$out"; }; \
+	if [ ! -s $(GUARD_ACCEPT_FILE) ]; then \
+		fail "check 6, the ACCEPT flow test is missing or empty. Deleting it must not be a way to pass this check." "$(GUARD_ACCEPT_FILE)"; \
+	else \
+		out=$$(git grep -n --untracked -iE '(click|pointer|mouse)' -- $(GUARD_ACCEPT_FILE) | keep); \
+		[ -z "$$out" ] || { fail "check 6, a pointing device in the keys-only ACCEPT test. Stage 2's ACCEPT criterion is 'create a task, move it across all five columns, and complete it - with no mouse', and $(GUARD_ACCEPT_FILE) is where that is demonstrated. It may use user-event's keyboard and tab and nothing else." "$$out"; }; \
+	fi; \
 	echo; \
 	if [ $$status -ne 0 ]; then \
 		echo "make guard FAILED: see the FAIL block(s) above."; \
@@ -233,7 +253,7 @@ guard: ## The mechanical rules greps over frontend/src (not a gate)
 		echo "commented entry to GUARD_ALLOW_RE in the Makefile — never an inline suppression."; \
 		exit 1; \
 	fi; \
-	echo "make guard: all five mechanical rules checks passed over frontend/src."
+	echo "make guard: all six mechanical rules checks passed over frontend/src."
 
 .PHONY: dev
 dev: ## Run the app in live-development mode (needs GTK/WebKit)
