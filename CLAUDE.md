@@ -54,14 +54,26 @@ fixed at the source, never allow-listed.
 
 ### Stage 3 must not forget these
 
-- **Five things are owed to a hand pass** and cannot be verified on this machine (no
-  display; `xvfb-run`, `scrot`, `import`, `grim` all absent): the ten-step keyboard-only
-  run on `./build/bin/nexus` — including three D8 due-badge assertions that have **no**
-  mechanical backing at all; no flash of the wrong background in either theme
-  (D12/K1); Russian not clipping at a real 1024×768 (jsdom has no layout engine, so the
-  suite asserts the anti-clipping *mechanisms*, never the absence of clipping); the
-  `:focus-visible` ring actually painted in both palettes; and "a window opens and the
-  first `Board()` returns five columns".
+- **The machine CAN take screenshots. It could all along.** `xvfb-run`, `import` and
+  `convert` are installed; the claim that they were absent was wrong and it sent three
+  stages of checks into the hand-owed pile without cause. Two things must be known before
+  trying:
+  - **WebKitGTK will not paint under Xvfb** until `WEBKIT_DISABLE_DMABUF_RENDERER=1` and
+    `WEBKIT_DISABLE_COMPOSITING_MODE=1` are exported. Without them the window is present
+    in the X tree at the right size and the capture is **one flat colour** — which reads
+    exactly like "the app is broken" and is not.
+  - **Input cannot be driven.** `xdotool`, `xte`, `wmctrl` and python-Xlib are all absent
+    and installing them needs `sudo`. So static states can be photographed; keystrokes,
+    clicks, drags and window resizes cannot be sent. There is also no window manager, so
+    the window cannot be resized at all.
+- **Verified by capture, no longer owed**: Russian not clipping at a real 1024×768, and
+  "a window opens and the board renders five columns in Go's order".
+- **Still owed to a hand pass**, because each needs input or a resize: the ten-step
+  keyboard-only run on `./build/bin/nexus` — including three D8 due-badge assertions that
+  have **no** mechanical backing at all; no flash of the wrong background in either theme
+  (D12/K1); the `:focus-visible` ring actually painted in both palettes; the dragged card
+  following the pointer across a column boundary (K6); and that resizing no longer breaks
+  the layout (K7) — the one the user actually reported.
 - **C6** — five enum sets (statuses, types, themes, palettes, accents) are spelled a
   second time as keys in `en.json`/`ru.json`, with nothing tying them to Go. Ruled a
   judgement call rather than a defect, since locale files must name what they translate.
