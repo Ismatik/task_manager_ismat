@@ -4757,12 +4757,27 @@ ratified for S2-22 is not repeated:
 
 | Check | Added by | What it greps |
 |---|---|---|
-| 7 | **S3-01** | `.focus(` appears in exactly one module (`lib/focus.ts`). A focus call anywhere else is a second spelling of *"focus must not scroll"* (**D22**). |
-| 8 | **S3-04** | `backdrop-blur-glass` appears **only** in the three files **D19** allow-lists. A hit anywhere else is a new compositing layer nobody decided on. |
+| 7 | **S3-01** | A focus move appears in exactly one module (`lib/focus.ts`). Three spellings are grepped — `.focus(`, `el['focus']()` and **React's `autoFocus` prop**, which calls `focus()` with no options and therefore scrolls. A focus move anywhere else is a second spelling of *"focus must not scroll"* (**D22**). |
+| 8 | **S3-04** | `backdrop-blur-glass` appears in the three files **D19** allow-lists **and nowhere else**. **8a**: a hit outside is a new compositing layer nobody decided on. **8b**: a missing one is Aurora silently losing the effect. |
 
 Both are **exact greps, not heuristics** — which is why they are allowed to be guard checks
 at all (**D17**). `GUARD_ALLOW_RE` **stays empty**: every hit so far has been a real bug
 fixed at the source, and no Stage 3 ticket may be the first to allow-list one.
+
+**Two things block B needs from this table before it writes a single form.**
+
+1. **`autoFocus` is now a check-7 failure, and that is aimed squarely at block B.** There
+   were **zero** occurrences in `frontend/src` when the check was widened, so nothing was
+   broken — but the detail slide-over
+   ([S3-21](#s3-21--featfrontend-the-panels-field-editors)) and every form
+   after it are exactly where `<input autoFocus />` gets written, and React implements it
+   with a bare `focus()` and no `preventScroll`, which is **D22**'s defect wearing a JSX
+   prop. The fix is never to suppress the check: call `focusWithoutScrolling()` from an
+   effect. Tests are still excluded from check 7, so a test may assert the prop's absence.
+2. **A check that only forbids is half a check.** Check 8 forbade the blur outside its
+   allow-list and asserted nothing about it being present, so deleting it from `Column.tsx`
+   was green everywhere. Any block B ticket adding a guard check must say what a missing
+   thing looks like as well as what a forbidden one does.
 
 ### Stage 3 ticket index
 
@@ -4938,6 +4953,25 @@ Requirements:
 
 **Commit:** `fix(frontend): give the shell one height chain and stop focus scrolling (S3-01)`
 
+### RE-OPENED by the block A review — a factually wrong comment, and check 7's blind spots
+
+Neither is blocking; both are the defect class this project treats as real.
+
+- **`src/test/node-builtins.d.ts` stated a false reason.** It said
+  `new URL('./style.css', import.meta.url)` *"yields an `http:` URL under the jsdom
+  environment"*, attributing it to jsdom. Measured: the literal expression **is rewritten by
+  Vite at transform time into an asset reference**, and only then does jsdom's document
+  origin make it `http://localhost:3000/src/style.css`. `import.meta.url` on its own is
+  `file:///…/frontend/src/…`. Going through a variable first dodges the rewrite and yields a
+  `file:` URL whose `.pathname` `readFileSync` accepts — so that route is not *closed*, it
+  is *declined*, and the comment now says which. **The conclusion is unchanged**: `?raw`
+  under `test.css: false` really does yield the empty string (measured: `css.length === 0`),
+  so `node:fs` is still needed and the declaration file stays. `App.layout.test.tsx:36`
+  carried the same error one step further — *"both of those routes fail SILENTLY"* — when
+  only `?raw` does; the URL route throws.
+- **Check 7 could not see `autoFocus` or `el['focus']()`.** Both now fail it. Why this was
+  done now rather than left for block B is in the guard-check table above.
+
 ---
 
 ## S3-02 — fix: no localised string may refuse to shrink (K8, D20)
@@ -4997,6 +5031,64 @@ Requirements:
 - [ ] `make front-test`, `make check` green.
 
 **Commit:** `fix(frontend): let every localised string shrink, and widen the ru audit (S3-02)`
+
+### RE-OPENED by the block A review — the audit claimed a property it did not have
+
+**Blocking issue, and it is D17 inside the ticket written to close the previous instance of
+D17.** The first implementation judged a class token **only if the token matched one of
+seven `DECIDES_*` regex families**. So the audit was an allow-list *within an enumerated
+family set*, and anything outside those families was invisible. Measured on this tree
+against the installed `tailwindcss@3.4.19`:
+
+| probe, on a Russian string | refusals reported |
+|---|---|
+| `whitespace-nowrap` | 1 |
+| `text-nowrap` — same effect, `text-wrap: nowrap` | **0** |
+| `w-24` | 1 |
+| `size-24` — sets width *and* height | **0** |
+
+Both are shipped Tailwind 3.4 utilities available in this build today. Meanwhile
+`shrink.ts`'s header, `App.accept.test.tsx`'s comment and this ticket's commit body all
+stated the opposite — *"a utility nobody has used yet is caught the day it is first
+used"*. And `shrink.test.ts`'s case titled *"catches a utility it has never heard of"* used
+`shrink-hard`, which matches `/^shrink(-.*)?$/` — **inside** an enumerated family, so it
+demonstrated nothing about the only property that distinguished the new audit from a word
+list.
+
+**Resolved by inverting the classification, not by widening the families** — option (b) of
+the two the review offered, because option (a) would have left the K8 failure shape intact
+and only narrowed it. A token is now a refusal **unless** it is on `IRRELEVANT` (a Tailwind
+property family that cannot touch inline size), on `PERMITTED` (a utility that does, and is
+a permission, each with its reason), or a `w-`/`min-w-`/`max-w-` on a container. `IRRELEVANT`
+is still an enumeration — but an omission from it is a **false positive**, which is loud,
+where an omission from `DECIDES_*` was a **false negative**, which is silence.
+
+- The lists were **measured, not remembered**: a 357-utility corpus compiled through postcss
+  with this project's own Tailwind config, every generated declaration read, each utility
+  labelled by whether it declares width / min-width / max-width / flex / flex-basis /
+  flex-shrink / flex-grow / flex-wrap / white-space / text-wrap / text-overflow /
+  overflow-wrap / word-break / hyphens / overflow / -webkit-line-clamp / aspect-ratio. Both
+  halves are committed in `shrink.test.ts` and asserted against the module. `sr-only`
+  (`width: 1px`), `line-clamp-*`, `aspect-*`, `container` and the whole `size-*` family are
+  all inline-size-relevant and **none of them was on the original list**.
+- Variants are peeled before judging, so `md:w-24` and `lg:focus:text-nowrap` are refusals.
+  Before, the whole token matched nothing on either list.
+- `shrink-hard` is gone from the test. The case now uses `text-nowrap`, `size-24` and a
+  non-existent `quango-42`, none of which is inside any family the module names.
+- The two prose claims — `shrink.ts`'s header and `App.accept.test.tsx:377` — are rewritten
+  to say what the module does, including what it used to say and why that was false.
+
+**Added acceptance criteria (met):**
+- [x] `text-nowrap` and `size-24` planted on `DueBadge`'s real localised date make
+      `App.accept.test.tsx > lets every element carrying Russian text shrink` fail, naming
+      both tokens and the string `"31 дек. 2026 г."`. Restored, green.
+- [x] Negative control on the corpus: replacing `/^text-(xs|sm|base|lg|xl|[2-9]xl)$/` with an
+      open `/^text-/` fails *"reports or deliberately permits every utility that touches
+      inline size"*, naming `text-nowrap text-balance text-pretty text-ellipsis text-clip`.
+- [x] Negative control on the inversion: restoring the family gate fails *"catches a utility
+      it has never heard of"* with `text-nowrap was invisible to the audit`.
+- [x] No false positives: the 262-entry neutral half of the corpus, and every screen the
+      app renders, report zero refusals.
 
 ---
 
@@ -5112,6 +5204,30 @@ Requirements:
 - [ ] `make guard`, `make front-test`, `make check` green.
 
 **Commit:** `fix(frontend): blur only the column and the overlays (S3-04)`
+
+### RE-OPENED by the block A review — check 8 was one-directional
+
+**Non-blocking, but it left half of D19 with no mechanical backing at all.** Check 8
+forbade `backdrop-blur-glass` *outside* the allow-list and asserted nothing about it being
+*on* the three files. Confirmed: **deleting the blur from `Column.tsx` entirely was green**
+across all five gates, `make guard` and the whole frontend suite. Aurora would have lost the
+effect that distinguishes it from Studio with nothing in the project to say so.
+
+Check 8 is now two-directional — **8a** outside, **8b** present in each of
+`GUARD_BLUR_FILES`. Two things shaped it:
+
+- **8b drops whole-line comments first**, with the same filter checks 4b and 4c use. A plain
+  presence grep stayed GREEN with the blur deleted from every `className` in `Column.tsx`,
+  because that file's own header explains the class twice. That is the negative control.
+- **8a still excludes no file**, so nothing under `frontend/src` may name the class except
+  the three winners — which is why 8b lives in the `Makefile` rather than in a test, and why
+  the three losing components describe the class without spelling it. Same precedent as
+  check 6, and deliberate rather than an oversight.
+
+**Added acceptance criteria (met):**
+- [x] Removing `backdrop-blur-glass` from every `className` in `Column.tsx` fails check 8b,
+      naming the file. Restored, green.
+- [x] `GUARD_ALLOW_RE` still empty.
 
 ---
 
@@ -5302,6 +5418,29 @@ Requirements:
 - [ ] `make guard`, `make front-test`, `make check` green.
 
 **Commit:** `fix(frontend): cap, de-duplicate and auto-dismiss toasts (S3-07)`
+
+### RE-OPENED by the block A review — an order-dependent test, and a hand-written list
+
+`Toast.test.tsx`'s *"gave every action a sentence of its own"* read a **module-level `Map`
+that the preceding `it.each` filled**. Under `--sequence.shuffle`, or a `.only` run of that
+one case, it reported a size mismatch rather than a duplicate — failing for a reason that is
+not the reason it is named for. The 15-action list was also hand-enumerated, so a sixteenth
+store action was covered by nothing and nothing said so.
+
+Both are fixed, and the review's fallback ("say so and leave it honest about its
+enumeration") was **not** needed — exhaustive-or-red turned out to be cheap:
+
+- `OPERATION_KEYS` is derived from the store's own source with
+  `import.meta.glob('../store/*.ts', { query: '?raw' })` — the same trick
+  `App.keyboard.test.tsx` already uses to scan for a switched-off focus ring. A new
+  `callGo(…, 'toast.operation.x')` turns a named test red until the sweep grows.
+- A new case, *"drives every operation the store can raise"*, compares the driven set with
+  that derived set in **both** directions.
+- *"gives every operation a sentence of its own"* is self-contained: it renders one toast per
+  operation key itself and compares the wording. Distinctness is a property of the KEY; the
+  `it.each` pins each action to its key (newly asserted, via `operationKey`), and the set
+  test pins the keys to the store. Two actions sharing a sentence still fails, on its own,
+  in any order.
 
 ---
 
