@@ -321,9 +321,6 @@ type FakeStore = ReturnType<typeof createAppStore>;
 /** An error in no Go table: a failure, whichever action raised it. */
 const boom = new Error('store: database is locked');
 
-/** What each action's toast actually reads as. Filled by the sweep below. */
-const seen = new Map<string, string>();
-
 /**
  * Exactly the string Go sends when D9 declines to put a project into doing.
  *
@@ -426,11 +423,42 @@ describe('a refusal that crossed the boundary', () => {
   });
 });
 
+/**
+ * Every `toast.operation.*` key the store actually passes to `callGo`, read off
+ * the store's own source.
+ *
+ * The same `import.meta.glob('?raw')` trick App.keyboard.test.tsx uses to scan
+ * for a switched-off focus ring, and it is here for the reason the sweep below
+ * used to lack: the 15-entry list was HAND-ENUMERATED, so a sixteenth store
+ * action was covered by nothing and nothing said so. This set is derived, so
+ * adding one turns a named test red until the sweep grows with it.
+ *
+ * It reads the string literals rather than the en.json keys on purpose: a key
+ * that exists in the locale file but that no action passes is not a gap, and a
+ * key an action passes that the locale file lacks is a raw key on screen, which
+ * `App.accept.test.tsx` already fails on.
+ */
+const OPERATION_KEYS = new Set(
+  Object.values(
+    import.meta.glob('../store/*.ts', {
+      query: '?raw',
+      import: 'default',
+      eager: true,
+    }) as Record<string, string>,
+  ).flatMap((source) =>
+    [...source.matchAll(/toast\.operation\.([A-Za-z0-9]+)/g)].map((match) => match[1]),
+  ),
+);
+
 describe('every toast names the operation it came from', () => {
   // One failure per store action. The assertion is that the RENDERED sentences
   // are all different: a stack of three toasts is only legible if each says
   // which of the three things the user did went wrong, and after K12's
   // screenshot nobody could say which three they were.
+  //
+  // Each entry's NAME is the operation key the action is expected to raise, so
+  // that the enumeration can be checked against OPERATION_KEYS above rather than
+  // trusted.
   const actions: [string, (go: FakeGo) => void, (store: FakeStore) => Promise<unknown>][] = [
     ['loadBoard', (go) => go.reject('Board', boom), (s) => s.getState().loadBoard()],
     ['loadHabits', (go) => go.reject('HabitStrip', boom), (s) => s.getState().loadHabits()],
@@ -486,18 +514,56 @@ describe('every toast names the operation it came from', () => {
 
     const raised = store.getState().toasts.filter((toast) => toast.cause === boom);
     expect(raised.length, `${name} raised no toast`).toBeGreaterThan(0);
+    expect(raised[0].operationKey, `${name} named a different operation`).toBe(
+      `toast.operation.${name}`,
+    );
     await renderToasts('en', [raised[0]]);
 
-    seen.set(name, screen.getByRole('alert').textContent ?? '');
-    expect(seen.get(name)).not.toContain('toast.operation.');
+    expect(screen.getByRole('alert').textContent ?? '').not.toContain('toast.operation.');
   });
 
-  it('gave every action a sentence of its own', () => {
-    // Runs last, over what the sweep above recorded. Two actions sharing one
-    // operation key would be two toasts nobody can tell apart.
-    expect(seen.size).toBe(actions.length);
-    expect(new Set(seen.values()).size, `duplicate wording: ${[...seen.values()].join(' | ')}`).toBe(
-      actions.length,
+  it('drives every operation the store can raise', () => {
+    // What the old version of the next test was silently assuming. The sweep's
+    // 15 entries were hand-written, so a sixteenth `callGo(..., 'toast.operation.x')`
+    // in the store was covered by nothing at all. Both directions are named:
+    // an operation nobody drives, and a driven name that is not an operation.
+    const driven = new Set(actions.map(([name]) => name));
+
+    const undriven = [...OPERATION_KEYS].filter((key) => !driven.has(key));
+    expect(undriven, `the store raises these and this file drives none of them: ${undriven.join(' ')}`)
+      .toEqual([]);
+
+    const unknown = [...driven].filter((name) => !OPERATION_KEYS.has(name));
+    expect(unknown, `driven, but no store action passes them to callGo: ${unknown.join(' ')}`).toEqual(
+      [],
     );
+  });
+
+  it('gives every operation a sentence of its own', async () => {
+    // SELF-CONTAINED, and that is the change. This used to read a module-level
+    // Map that the it.each above filled, so under --shuffle or a `.only` run it
+    // reported a size mismatch rather than a duplicate — a test that fails for a
+    // reason that is not the reason it is named for.
+    //
+    // It renders one toast per operation key instead of re-driving the store:
+    // the wording is a property of the KEY, the test above pins each action to
+    // its key, and the test above that pins the key set to the store's own
+    // source. Two actions sharing a sentence therefore still fails here, and
+    // fails on its own.
+    const sentences = new Map<string, string>();
+
+    for (const key of OPERATION_KEYS) {
+      const { unmount } = await renderToasts('en', [
+        { ...failure, operationKey: `toast.operation.${key}` },
+      ]);
+      sentences.set(key, screen.getByRole('alert').textContent ?? '');
+      unmount();
+    }
+
+    const wording = [...sentences.values()];
+    expect(
+      new Set(wording).size,
+      `duplicate wording: ${[...sentences].map(([key, text]) => `${key}=${text}`).join(' | ')}`,
+    ).toBe(sentences.size);
   });
 });
