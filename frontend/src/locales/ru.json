@@ -136,6 +136,10 @@
     "error": {
       "title": "Что-то пошло не так",
       "body": "Nexus не смог выполнить это действие. Ничего не изменилось.",
+      "repeated_one": "Произошло {{count}} раз",
+      "repeated_few": "Произошло {{count}} раза",
+      "repeated_many": "Произошло {{count}} раз",
+      "repeated_other": "Произошло {{count}} раза",
       "dismiss": "Закрыть"
     }
   }

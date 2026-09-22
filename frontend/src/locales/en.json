@@ -134,6 +134,8 @@
     "error": {
       "title": "Something went wrong",
       "body": "Nexus could not finish that. Nothing was changed.",
+      "repeated_one": "Happened {{count}} time",
+      "repeated_other": "Happened {{count}} times",
       "dismiss": "Dismiss"
     }
   }

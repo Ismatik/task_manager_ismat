@@ -59,7 +59,7 @@ describe('the surfaces that lost the backdrop filter (D19)', () => {
   it('leaves the toast translucent and unpromoted', async () => {
     await renderIn(
       'en',
-      <ToastList toasts={[{ id: 1, messageKey: 'toast.error.body' }]} onDismiss={() => {}} />,
+      <ToastList toasts={[{ id: 1, messageKey: 'toast.error.body', count: 1 }]} onDismiss={() => {}} />,
     );
     // The panel, not the positioning wrapper: the wrapper never had a surface.
     const panel = screen.getByRole('alert').firstElementChild;
