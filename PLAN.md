@@ -4,7 +4,19 @@ My restatement of the brief, written before any code. It stays the source of tru
 the data model and the decisions; only the stage status below moves. **Stages 0, 1 and 2
 are all CLOSED (PASS).** Stage 2 closed on the **second** review, at `8818db4`; round 1
 returned FAIL on two blocking issues, both fixed (`ae6befd`, `4b1af9c`, and the ruling
-they were missing is **D17**). Stage 3 is not started. See §5 and `TASKS.md`.
+they were missing is **D17**). **Stage 3 is PLANNED and not started.** See §5 and
+`TASKS.md`.
+
+**Stage 2's PASS was mechanical, and the user has since run the app by hand on real
+hardware — the thing no gate on this machine can do. It found nine defects.** They are
+recorded below as **K6 – K14**, each traced to an exact line by a read-only
+investigation, and each ruled on in §7 as **D18 – D26**. Eight of them are invisible to
+every gate this repository has, because jsdom has no layout engine and no font engine and
+this machine has no display. **Stage 3 therefore opens with a blocking remediation block,
+S3-01 … S3-09, which must be green before a single feature ticket starts** — that was the
+user's condition for proceeding. This is **D17's lesson arriving in a second place**: the
+Russian anti-clipping audit was green *on a real clipping bug*, because it asserts the
+absence of `truncate` and `whitespace-nowrap` and `shrink-0` was not on the list.
 
 ---
 
@@ -188,7 +200,7 @@ and stop for your "next".
 | 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) — **CLOSED, PASS** | `make check` green, empty window opens, second launch focuses the first |
 | 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **CLOSED, PASS** (PASS on the **fourth** review, at `a1f09b7`; it failed the first three — the history is kept below) | **≥90% coverage** on `internal/domain` + `internal/service` — **MET: 100.0% / 92.9%** |
 | 2 | **Kanban + Habits strip** (launch screen) — **CLOSED, PASS** (PASS on the **second** review, at `8818db4`; round 1 returned FAIL on two blocking issues, fixed by `ae6befd` and `4b1af9c` — the history is kept below). S2-01 … S2-22 all committed, plus the gap-closing `7af4d1d` — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — **MET**: `frontend/src/App.accept.test.tsx` drives the assembled `<App />` with an exact asserted call sequence (one `CreateNode`, then `MoveToColumn` with each of the four statuses Go supplied, in order), and **`make guard` check 6 fails if a mouse event ever enters that file** — **and moving a card to Doing itself opens a `time_entry`** (§4 coupling, **D13**; ticket S2-03), asserted from the UI. The **ten-step hand run on the real binary is still owed** and is carried into Stage 3 |
-| 3 | **Detail + Tree + Search/Archive** — slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | Every field round-trips through Go; reparent in tree shows on Kanban instantly |
+| 3 | **Defect remediation, then Detail + Tree + Search/Archive** — **PLANNED**, S3-01 … S3-28. **Opens with a blocking block, S3-01 … S3-09**, closing the nine defects the user's hand pass found (**K6–K14**, ruled by **D18–D26**): the height chain, the `shrink-0` overflow, the window minimum size, the blur policy, the missing `DragOverlay`, the Cyrillic UI font, the toast flood and the refusal channel — then the hand pass that confirms them. **No feature ticket starts until that block is green.** Then: slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | **Two halves.** Block A: every defect in **K6–K14** is closed, each with a named mechanical check *or* an honest statement that only an eye can see it, plus the hand pass of **S3-09**. Block B: **every field round-trips through Go; reparent in tree shows on Kanban instantly** |
 | 4 | **Quick-add + Focus mode** — frameless standalone window, Go-side NL parser (date, `!priority`, `#tag`, `>Project` fuzzy, `~estimate`, `@type`), live preview chips, Enter creates & closes, Esc closes; Focus mode (one card, large timer, Esc exits); sleep/lock timer handling | `deploy KA Avto fri 15:00 !high #work >KA Avto ~2h` parses correctly in tests **and** in the UI |
 | 5 | **Platform integration** — tray via `energye/systray`, badge = overdue + due today, menu (Open / Quick add / Start-Stop timer / Quit); `.desktop` + `install.sh` → autostart, GNOME `gsettings` shortcut Super+Space → `nexus --quick`, warn if AppIndicator missing | Reboot → app opens; Super+Space → quick-add |
 | 6 | **Backup, export, PMP timelog** — nightly JSON export of all tables to `~/Nexus/backups/YYYY-MM-DD.json`, keep 30; Restore-from-file with confirmation; Markdown export of a subtree; day timelog screen grouping `time_entries` by node with editable minutes, output in PMP KIT format with Copy | **Restore reproduces an identical Kanban** |
@@ -660,6 +672,51 @@ reboot checklist, executed and reported. `QA.md` with 25 manual scenarios coveri
 every rule in §4. Known gaps reported honestly — **nothing marked done that was not
 actually verified.**
 
+### Stage 3 — PLANNED, not started
+
+**Twenty-eight tickets, S3-01 … S3-28, in `TASKS.md`, in two blocks.** The split is not
+cosmetic: the user ran the app on real hardware after Stage 2 closed, found nine defects,
+and said *"if these details are resolved in the next steps, we are good to go."* That is a
+precondition, so it is a block and not a backlog.
+
+**Block A — S3-01 … S3-09, blocking.** The defects, in an order chosen so that no ticket
+has to reach outside its Scope:
+
+| Ticket | Defect | Issue / ruling |
+|---|---|---|
+| S3-01 | No height chain; the *document* scrolls instead of the board, and every `.focus()` scrolls its ancestors | **K10** / **D22** |
+| S3-02 | `shrink-0` on max-content localised strings overflows the column — **it overflows in English too** | **K8** / **D20** |
+| S3-03 | The window has no minimum size and the user changes display scaling often | **K9** / **D21** |
+| S3-04 | ~50 simultaneous `backdrop-filter` surfaces; resizing breaks the layout until restart | **K7** / **D19** |
+| S3-05 | The dragged card vanishes on grab — there is no `DragOverlay` | **K6** / **D18** |
+| S3-06 | Neither UI font contains a single Cyrillic glyph; `<html lang>` is frozen at `en` | **K11** / **D23** (the user's) |
+| S3-07 | Error toasts stack without limit and cover the board | **K12** / **D24** |
+| S3-08 | A domain *refusal* is rendered as "something went wrong", and nothing says **what** failed | **K12** / **D25** |
+| S3-09 | The hand pass that confirms all of the above, plus the four checks still owed from Stage 2 | — |
+
+**Why that order.** S3-01 fixes the vertical and the scroll axes; S3-02 then fixes the
+horizontal against a settled height chain; **S3-03 comes third because it derives the
+window's minimum size from the layout floor, and the floor is not final until S3-01 and
+S3-02 have both landed**. S3-04 and S3-05 both rewrite `Column.tsx`; blur goes first
+because S3-05's overlay has to work whatever the blur policy turned out to be, and not the
+other way round. S3-06 through S3-08 touch none of those files. S3-09 is a human at a real
+keyboard and is the gate into block B.
+
+**Block B — S3-10 … S3-28, the feature stage.** Go first (S3-10 … S3-18: the detail read,
+the field writers, the type switcher, tags, attachments, the editable time log, search
+filters, the archive list, and the enum-set publication that closes **C6**), then the
+frontend (S3-19 … S3-27: the slide-over, the field editors, inline subtasks, the
+recurrence editor, attachments and the time log with the running clock, the tree view, the
+search screen, the archive view, and the latent non-Latin-keyboard defect **K13**).
+**S3-28 is `README.md`**, and it is **blocked on the user running
+`sudo apt install xvfb imagemagick`** — the board exists now, so it is finally writable,
+but nothing on this machine can take a screenshot.
+
+**Two questions are open and are the user's to answer**, not the PM's — they are stated in
+full at the end of §7: **OQ1**, which Cyrillic face to vendor, and **OQ2**, what *"custom
+RRULE"* is allowed to mean given that Stage 1's parser rejects `COUNT`, `UNTIL`,
+`BYSETPOS`, `BYMONTH` and ordinal weekdays at parse time.
+
 ## 6. How we work
 
 I am the **orchestrator**. Three sub-agents, delegated explicitly:
@@ -677,8 +734,10 @@ I am the **orchestrator**. Three sub-agents, delegated explicitly:
 
 ## 7. Resolved decisions
 
-The open questions are **closed**. Referenced as **D1–D17** and **E1–E3** from tickets
-in `TASKS.md`.
+Referenced as **D1–D26** and **E1–E3** from tickets in `TASKS.md`. Every question that
+has been asked is closed; **two questions have not been asked yet and are recorded at the
+end of this section as OQ1 and OQ2**, because a PM who answers them silently is the defect
+this project keeps finding.
 
 **D1–D12 were given by the user and are authoritative** — they override anything
 earlier in this document that contradicts them. **D1–D7** were settled before Stage 0.
@@ -688,13 +747,25 @@ same authority. D10 and D11 came out of the second review, and **D10 generalises
 derivation rule in §4**, which has been amended accordingly. **D12** was confirmed by
 the user while Stage 2 was being planned and closes **K1**.
 
-**D13, D14, D15, D16 and D17 are PM rulings.** D13, D14 and D15 were made during Stage 2
+**D23 was given by the user** during the Stage 3 planning pass, after they ran the app by
+hand: vendor a Cyrillic-capable face and register it under the **same two family names**
+via `unicode-range`, so `design/` is not edited and Latin keeps its designed typeface. It
+carries the same authority as D1–D12. The user also supplied the **discriminating
+experiment** behind **K7** — switching to Studio, whose `--blur` is `0px`, repaired a
+stuck layout live with no restart — which is evidence, not a decision, and is recorded
+under K7.
+
+**D13, D14, D15, D16, D17 and D18–D22, D24, D25, D26 are PM rulings.** D13, D14 and D15
+were made during Stage 2
 planning because `TASKS.md` **C1**, **C4** and **C5** demanded a decision and the user's
 brief did not contain one; **D16** was made *during* Stage 2, when the Dev asked what
 draws Aurora's background drift and correctly declined to invent it; **D17** was made
 *after* Stage 2 was implemented, when the Reviewer's first round found the habit check
 day being computed in TypeScript on a decision that had been *"made in a code comment"*
-and never written down. They are written in
+and never written down. **D18–D22 and D24–D26** were made while Stage 3 was being planned,
+on the nine defects the user's hand pass found: each one is a rule that has to be written
+somewhere, and a rule written only in a component is the defect class this project has
+paid for five times. They are written in
 the same form and bind the Dev exactly as the rest do — a rule with no single written
 spelling is the defect that cost Stage 1 three review rounds — but their provenance is
 different and **the user may overturn any of them**. If one is overturned, the ticket
@@ -1242,6 +1313,358 @@ nothing**. It is evidence that the *named patterns* are absent. Reading the diff
 the check, and a derivation renamed away from those five words is invisible to the grep
 by construction.
 
+### D18 — the dragged card is drawn in a `DragOverlay`, and the source item is hidden (PM ruling, Stage 3 planning; closes K6)
+
+**The card the user is dragging is rendered once, in a `<DragOverlay>` mounted as a direct
+child of `DndContext`. The card's own `<li>` stays in the list, keeps its space, and is
+hidden while `isDragging`.**
+
+- **Why an overlay and not a fix to the in-place translation.** Without an overlay,
+  `@dnd-kit/sortable` sets `useDragOverlay = false` and translates the source item *inside
+  its own column*, which produces two independent failures at once. The neighbouring
+  column paints over it, because `backdrop-filter` creates a stacking context and the
+  column's `z-10` can only order siblings within one column; and each column is its own
+  `SortableContext`, so the moment the pointer crosses into another column `overIndex`
+  goes to `-1` in the source context, the transform becomes `null`, and **the card
+  teleports home and stops following the pointer**. An overlay is not a workaround for
+  either of those — it is the mode the library documents for cross-container dragging, and
+  it removes both causes rather than fighting them.
+- **`draggingNodeId` finally gets a consumer.** `store/ui.ts` has held it since S2-17 and
+  **nothing anywhere reads it**. The overlay reads it. A piece of state with no reader is a
+  second spelling waiting to happen; this ruling either uses it or it should have been
+  deleted.
+- **One card component, not two.** The overlay renders the **existing `<Card>`**. A
+  separate "drag preview" component would be a second rendering of the card, which is the
+  defect class by another name — and it would drift the first time a chip is added.
+- **Reduced motion routes through the existing helper.** `dropAnimation={null}` when
+  `prefersReducedMotion()` is true, asked of the same `lib/appearance.ts` helper
+  `Column.tsx` already calls. Not a second media query.
+- **Rejected alternative: raise the source card's `z-index` and drop the blur.** It cannot
+  work. Even if the stacking context were gone, the `SortableContext` boundary still makes
+  the transform `null` across columns, so the card would still stop following the pointer —
+  and it would trade a visible bug for an invisible one.
+- **Accepted consequence:** the dragged card is painted outside the column's overflow and
+  outside its surface, so it is *unblurred* while in flight even under Aurora. That is what
+  a lifted object should look like, and it is a change a user will notice.
+
+### D19 — blur the few large surfaces, not every small one (PM ruling, Stage 3 planning; closes K7)
+
+**`backdrop-blur-glass` is applied to the five column surfaces and the two overlay
+scrims — and to nothing else.** It is removed from the card, the habit chip and the toast.
+Those three keep their translucent `bg-surface`/`bg-elevated` tokens, so Aurora stays
+translucent; they simply stop each creating a compositing layer.
+
+The full allow-list, and it is meant to be exhaustive:
+
+| Keeps `backdrop-blur-glass` | Loses it |
+|---|---|
+| `components/Column.tsx` — 5 instances, large | `components/Card.tsx` — one per card, unbounded |
+| `components/QuickAdd.tsx` — the full-screen scrim, at most 1 | `components/HabitChip.tsx` — one per habit |
+| `components/CommandPalette.tsx` — the full-screen scrim, at most 1 | `components/Toast.tsx` — one per toast |
+
+- **The tension, stated rather than glossed.** `design/README.md` specifies Aurora's
+  surfaces as translucent **with backdrop blur**, and `design/` is read-only. This ruling
+  does not edit it and does not contradict its *semantics*: every surface is still
+  translucent, and the blur is still what separates Aurora from Studio. What changes is
+  **how many elements** carry the effect — a count the design handoff never states,
+  because a handoff specifies a look and not a compositing budget.
+- **The evidence is the user's, and it is a discriminating experiment rather than a
+  theory.** With the layout stuck broken after a resize, **switching the palette to Studio
+  — whose `--blur` is `0px` — repaired it live, with no restart.** That is WebKitGTK
+  compositing-layer staleness and it eliminates the competing scrollbar-hysteresis
+  explanation, which no palette switch could have touched.
+- **Rejected alternative (a): drop `backdrop-filter` entirely.** It is the one property
+  that makes Aurora Aurora, and `design/` is explicit about it. Removing it to fix a
+  compositing bug is deciding a design question with an engineering hammer.
+- **Rejected alternative (b): keep all ~50 and force a repaint on resize.** A
+  `requestAnimationFrame` nudge, a forced reflow, a transform toggle — every one of them is
+  a workaround for a symptom whose cause we have already identified, and each is a second
+  rule about resizing that nothing tests.
+- **Rejected alternative (c): make the blur conditional on element count.** A rule that
+  reads "blur cards when there are fewer than N" is a rule nobody can see the boundary of.
+- **Accepted consequence, and the escalation ladder if it is not enough.** Seven blurred
+  surfaces may still be too many for this WebKitGTK build. **This cannot be proven on this
+  machine** — there is no display, so S3-04's real check is S3-09's hand pass. If the hand
+  pass still reproduces the stuck layout: step 2 is to drop the blur from the column as
+  well, leaving it on the two overlays only; step 3 is that Aurora's `--blur` is unusable
+  on this platform, which is a **user decision** and not a PM one, because at that point
+  the palette's specified appearance is what is being given up.
+
+### D20 — no localised string may refuse to shrink (PM ruling, Stage 3 planning; closes K8)
+
+**An element whose text comes from i18n, from `formatDate`, or from `formatNumber` may not
+carry `shrink-0`, a fixed width, `whitespace-nowrap` or `truncate`.** `shrink-0` stays
+legal on a **fixed-size non-text box** — an icon, the timer dot, the progress track —
+because those have a size that does not depend on the locale.
+
+- **The failure it closes.** `html { font-size: 13px }` makes every Tailwind rem 13/16 of
+  nominal, so `min-w-36` is **117px, not 144px** and `gap-2`/`p-2` are 6.5px. At the floor
+  the usable card interior is ~87px, and `DueBadge`'s `shrink-0 font-mono` takes its
+  max-content width: ~94px in English, ~125px in Russian. **It overflows in English.** The
+  user's screenshot shows the consequence one level up: the `shrink-0` card-count span
+  ("0 карточек", ~86px) starves the column heading down to ~16px, so it wraps **one
+  character per line** — "Бэ / кл / ог".
+- **This is D17 in a second place, and that is the part that generalises.** `Card.tsx`
+  states in a comment that *"nothing on this card has a fixed width and nothing is
+  `whitespace-nowrap`"*, and `App.accept.test.tsx` asserts the absence of `truncate` and
+  `whitespace-nowrap`. **Both are true, and the card clipped anyway**, because `shrink-0`
+  on a max-content localised string clips identically and was not on the list. A
+  mechanism-based audit is only as good as its enumeration of mechanisms, and an
+  enumeration is a guess about the future.
+- **So the audit changes shape, not just its word list.** Adding `shrink-0` to the grep
+  would fix this bug and leave the next one. The audit becomes a **walk over the rendered
+  Russian DOM** that asks, of every element carrying localised text, whether any
+  shrink-refusing utility is on it — so a *new* utility with the same effect is caught by
+  the same test the day it is used.
+- **Rejected alternative: let the column grow and let the board scroll.** The board already
+  scrolls horizontally, so this looks free. It is not: it makes five columns unreachable
+  without scrolling at the default window size, and it converts a text-fitting bug into a
+  navigation one.
+- **Accepted consequence:** a long localised date can now wrap inside a badge. A date on
+  two lines is ugly; a date sliced off at the column edge is unreadable, and the user has
+  a screenshot of the second one.
+- **What this ruling cannot promise.** jsdom has **no layout engine**, so no test in this
+  repository will ever assert "it does not clip". The audit asserts mechanisms. **The
+  absence of clipping is S3-09's hand pass, at a real 1024×768 and in Russian**, and the
+  estimated onset widths — RU heading ~784px, RU due badge ~814px, EN due badge ~659px,
+  board floor 624px — are **±5% arithmetic, not measurements**.
+
+### D21 — the window's minimum size is derived from the layout floor, never typed (PM ruling, Stage 3 planning; closes K9)
+
+**`main.go` gains `MinWidth`/`MinHeight`, and the numbers are computed from named inputs
+that are each written down exactly once. A literal `MinWidth: 640` is refused.**
+
+- **The failure it closes.** `main.go` sets `Width: 1024, Height: 768` and no minimum, and
+  Wails calls `SetMinSize(0, 0)` unconditionally, so GTK is hinted with
+  `min_width = min_height = 0` and the window can be dragged ~380px below the layout's own
+  ~624px floor. **The user changes display scaling often and it varies**, so the startup
+  window is not reliably 1024 CSS px and may begin near or below the floor.
+- **The rule this collides with is this project's hardest one.** A minimum width in Go is
+  the CSS floor written down a second time, and *"a rule spelled twice is two rules"* has
+  cost this project four review rounds. The containment is the same shape as **D12**'s:
+  D12 forbade a hex literal in `main.go` and made the colour be *derived from
+  `design/tokens.css`*, which Go already parses. The floor gets the same treatment.
+- **The inputs, each with exactly one home:** the root font size (`frontend/src/style.css`,
+  `html { font-size: … }`), Tailwind's spacing unit, the column's `min-w-*` unit count
+  (`components/Column.tsx`), the board `gap-*` and the shell `p-*` unit counts, and the
+  **column count, which must come from the set Go already publishes** — not from a `5`
+  typed in `main.go`.
+- **The criterion is drift, not correctness.** Changing `min-w-36` to `min-w-32`, or the
+  root font size, must make a **named test fail** unless the Go-side floor changes in the
+  same commit. Demonstrated by negative control, as Stage 1 and Stage 2 both required.
+- **Rejected alternative: pick a round number like 800×600 and document it.** It is a
+  magic number with a paragraph next to it, which is a magic number. It also goes stale
+  silently the first time a column's minimum width changes — and nothing would notice.
+- **Accepted consequence:** the vertical floor is softer than the horizontal one. The
+  board's own minimum height is one column header plus one card, and a card's height
+  depends on how many chips it carries and how the title wraps — which is layout, and
+  layout is exactly what cannot be computed here. **`MinHeight` is therefore a stated
+  composition of named terms, and the ticket must say which of its terms are estimates.**
+  A term that cannot be derived is disclosed, not rounded up quietly.
+
+### D22 — one height chain; the board scrolls, the document does not; focus never scrolls (PM ruling, Stage 3 planning; closes K10)
+
+**Three rules, one ruling, because they are three symptoms of one missing decision about
+who owns the scroll.**
+
+1. **The shell is a full-height chain.** `html`, `body` and `#root` are full height; the
+   shell fills it; `<main>` carries `min-h-0` so it may actually shrink. Today there is
+   **no `#root` rule at all**, `body` has only `min-height: 100vh`, and `<main>` has
+   `min-w-0` — which is a **no-op**, because the shell is a *column* flex container and the
+   axis that needs releasing is the block axis. So `<main>`'s `min-height: auto` floors it
+   at min-content, the shell grows past the viewport, and the **document** scrolls. The
+   user's screenshot shows the document-level vertical scrollbar.
+2. **The board owns both scroll axes, explicitly.** `Kanban.tsx` sets `overflow-x-auto`
+   and nothing else, and per CSS Overflow 3 an `overflow-x` of `auto` against an
+   `overflow-y` of `visible` **promotes `overflow-y` to `auto`**. So the board already
+   clips and scrolls vertically, silently, contradicting its own comment. The axes are to
+   be stated rather than inherited from a spec rule nobody reads.
+3. **No `.focus()` call anywhere may scroll its ancestors.** Every one of the eleven
+   `.focus()` calls in `frontend/src` omits `{ preventScroll: true }`, so each scrolls
+   every scrollable ancestor including the board. **The rule gets one spelling**: a single
+   focus helper, and a `make guard` check that `.focus(` appears in exactly one module. A
+   rule applied eleven times by hand is a rule that will be applied ten times after the
+   next ticket.
+
+- **Ruled out, with the reason, so nobody rediscovers it: the "latched `scrollLeft`"
+  theory.** It was investigated and is **wrong**. The columns are `flex-1 basis-0`, so
+  `scrollWidth` tracks `clientWidth`, the user agent clamps the scroll offset on resize,
+  and nothing in `frontend/src` ever reads or writes `scrollLeft`/`scrollTop` — grepped.
+  A stale horizontal offset is not what the user saw.
+- **Rejected alternative: set `overflow: hidden` on `body` and stop there.** It hides the
+  document scrollbar without giving the board a height to scroll inside, so the bottom of
+  the board becomes unreachable instead of scrollable. It is the fix that makes the bug
+  quieter.
+- **Accepted consequence:** the page no longer scrolls as a document, so anything the shell
+  contains that does not fit must have its own scroll container. Today only the board
+  qualifies; every later region — the detail slide-over, the tree, the archive list — must
+  say which one it is.
+
+### D23 — vendor a Cyrillic face under the same two family names (THE USER'S, Stage 3 planning; closes K11)
+
+**A Cyrillic-capable face is vendored and registered under the *same two family names* the
+palettes already use, scoped with `unicode-range`, so Latin keeps its designed typeface and
+`design/` is not edited.** Suggested range: `U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1,
+U+2116`.
+
+- **The failure it closes.** `design/tokens.css` sets Aurora's `--font-ui` to
+  `'Space Grotesk'` and Studio's to `'Figtree'`. Verified from
+  `node_modules/@fontsource/*/unicode.json` **and from the shipped `frontend/dist/assets/`
+  the user is actually running**: Space Grotesk covers `[vietnamese, latin-ext, latin]` and
+  Figtree covers `[latin-ext, latin]`. **Neither contains a single Cyrillic glyph.** Only
+  JetBrains Mono does. **81 of the 82 leaves in `ru.json` are Cyrillic**, so switching to
+  Russian drops the entire UI out of its designed typeface into the system `sans-serif`
+  while every number and date stays in JetBrains Mono — two unrelated typefaces in one
+  header, different metrics, and a `flex-wrap` header very plausibly gaining a second row.
+  **This is the user's reported "theme and colour buttons break when I switch language".**
+- **Why `unicode-range` and not a family-list fallback.** A fallback list would work, but it
+  would have to be written into `--font-ui`, which lives in `design/tokens.css`, which is
+  **read-only**. Registering extra `@font-face` rules under the same family names in
+  `frontend/src/style.css` adds coverage to a family without editing the declaration that
+  names it — which is precisely what `unicode-range` is for.
+- **Local-only is not negotiable here either.** The face is vendored through `@fontsource`
+  and bundled from `node_modules`, exactly as the three existing faces are. **No CDN, no
+  `<link>`, no runtime fetch.** A new npm dependency must be called out on its ticket.
+- **Pair it with a mechanical check, or this recurs on the next locale.** A test asserting
+  that **every codepoint used in `ru.json` is covered by some bundled `unicode-range` for
+  `--font-ui`** — over the ranges actually bundled, not a range retyped into the test.
+- **Which face is NOT decided here — see OQ1.** Manrope and Inter were both named as
+  candidates. Choosing silently would be inventing a design decision and attributing it to
+  the handoff, which is what **D6 as amended** forbids.
+- **Related and confirmed, and settled by the same ruling.** `frontend/index.html` hard-codes
+  `<html lang="en">` and **nothing ever updates it** — grepped, zero writers. `lib/appearance.ts`
+  already receives the whole `SettingsView`, already runs once at boot and once per settings
+  write, and is already the one module that writes to `documentElement`. **`root.lang` is
+  written there**: one site, one spelling. The static `lang="en"` in `index.html` stays as
+  the pre-boot default, exactly as `data-palette="aurora"` does.
+
+### D24 — toasts are capped, de-duplicated and self-dismissing (PM ruling, Stage 3 planning; part of K12)
+
+**The toast list holds at most three toasts; an identical consecutive `messageKey`
+increments a count on the existing toast instead of appending; every toast dismisses itself
+after a bounded interval, and the interval is paused while the toast has focus or the
+pointer is over it.**
+
+- **The failure it closes.** `store/toast.ts` appends unconditionally — **no cap, no
+  de-duplication, no auto-dismiss**. The user's screenshot shows three identical toasts
+  filling the lower half of the window and covering the board.
+- **Why a count and not silent suppression.** Three failures are not one failure. Collapsing
+  them without saying so would hide a repeat, and a repeat is the most useful thing about the
+  second one. The count is a number, so it is rendered in `font-mono` like every other
+  number, and pluralised through i18next — Russian has three plural forms.
+- **Why auto-dismiss at all, given the "no silent failure" rule.** The rule is that a failure
+  must be *surfaced*, not that it must be *permanent*. The raw cause already goes to the
+  console and stays there. A toast that never leaves converts one failure into a permanently
+  smaller window.
+- **The design intent at `store/toast.ts:5-12` is preserved exactly**: a toast carries an
+  **i18n key, never a sentence**, and the raw Go error goes to the console only. Nothing in
+  this ruling puts text in the store.
+- **Rejected alternative: a cap with no de-duplication.** Three identical toasts capped at
+  three is still three identical toasts. The cap bounds the damage; the de-duplication is
+  what makes the list informative.
+- **Accepted consequence:** a burst of more than three *distinct* failures loses the oldest
+  from the screen. It is still in the console, which is where the detail has always lived.
+
+### D25 — a refusal is not a failure, and every toast says what failed (PM ruling, Stage 3 planning; part of K12)
+
+**A rule that correctly refuses an action gets its own message, distinct from "something
+went wrong", and every toast — refusal or failure — names the operation the user attempted.**
+
+- **The failure it closes.** Every rejection from Go raises the single key
+  `toast.error.body` — *"Nexus could not finish that. Nothing was changed."* So **D9**
+  refusing to put a project into `doing` (a rule working exactly as specified) is rendered
+  as a malfunction, and the user has no way to tell which of three stacked toasts came from
+  which action. **After the fact, we still do not know which three operations failed in the
+  user's screenshot** — that is the diagnostic half, and it is why "name the operation" is
+  part of this ruling and not a nicety.
+- **The refusal code is Go's, and it has one spelling.** Go already owns a clean inventory
+  of sentinels — `ErrProjectNeverDoing`, `ErrTypeHasNoColumn`, `ErrTypeHasNoDue`,
+  `ErrTypeHasNoChildren`, `ErrCircularParent`, `ErrNoRecurrence`,
+  `ErrUnsupportedRecurrence`, `ErrTimerNotAllowed`, `ErrNodeArchived`, `ErrNodeDone`,
+  `ErrNotAHabit`, `ErrInvalidSetting`. **One table maps sentinel → stable code**, in Go, and
+  nothing else classifies anything. An error that is in no table is a **failure**, not a
+  refusal, and keeps today's key.
+- **The frontend classifies nothing and parses no prose.** It maps a code to an i18n key.
+  That is a **label table**, the same shape the five Kanban columns already have and the
+  shape **D26** moves the other enum sets to — Go publishes the set, the locale file
+  supplies the words. **The frontend must never match on Go's English error text**; a
+  message is not an API.
+- **The mapping must be exhaustive or red.** A code Go can emit with no key in
+  `en.json`/`ru.json` fails a test. Otherwise the next sentinel ships as a blank toast.
+- **Rejected alternative (a): let each call site choose its own key.** That is twenty
+  try/catch blocks, nineteen of which are right — the exact reasoning `store/call.ts`
+  already gives for existing in the first place.
+- **Rejected alternative (b): have Go return the user-visible sentence.** Rejected for the
+  same reason as **D15**'s option (c): a string returned from Go cannot be translated by the
+  i18n layer, and Nexus ships in two languages.
+- **Accepted consequence:** a refusal is no longer styled as an error. It is information —
+  the rule announcing itself — and the user learns the rule instead of concluding the app is
+  broken.
+
+### D26 — Go publishes every enum set; the locale files supply labels only (PM ruling, Stage 3 planning; closes C6)
+
+**Of C6's two recorded options, Stage 3 takes the first: bind a set-publishing method for
+each set — statuses, node types, themes, palettes, accents, priorities — so the frontend
+enumerates what Go enumerates and the locale file is reduced to labels.**
+
+- **Why the first option and not the parity test.** The preferred fix was already named as
+  preferred in `TASKS.md`, for the right reason: it **removes** the second spelling instead
+  of detecting it. The board's five columns are the worked example inside this repository —
+  the frontend takes the set from Go and `en.json` only names it — and C6 is the request to
+  generalise the shape that already works.
+- **An honest correction to C6's own text.** A fresh audit found current key parity
+  **clean**: 82 RU leaves against 80 EN, the two extra being `board.column.cardCount_few`
+  and `_many`, the CLDR plural forms Russian requires, and `locales.test.ts` already
+  enforces parity. **C6 is a drift risk for future enum values, not a present defect.** It
+  is still worth closing, on exactly the stated criterion: **adding a value to a Go set must
+  turn something red** until the frontend offers it.
+- **This is the same shape as D25's refusal codes**, deliberately. One mechanism, used
+  twice, rather than two.
+
+### OQ1 — which Cyrillic face? OPEN, for the user
+
+**D23 fixes the approach and leaves the face open.** Manrope and Inter were both named as
+candidates and neither was chosen.
+
+| Option | For | Against |
+|---|---|---|
+| **Inter** — *recommended* | Very wide Cyrillic coverage; screen-first design and hinting at 13px, which is Nexus' base size; x-height close to both Space Grotesk and Figtree, so line boxes do not jump between Latin and Cyrillic in the same string | Neutral to the point of anonymous; it will not look like Space Grotesk's geometry |
+| **Manrope** | Geometric, visibly closer to Aurora's Space Grotesk; a good match under one of the two palettes | The same file also serves Studio, where it is a worse match than Inter is |
+| **Two faces, one per palette** | Best visual match on both | Doubles the bundled font weight, and D23 as the user stated it says *"a" face registered under the **same** two family names* |
+
+**Recommendation: Inter, one face, both family names.** One face means one `unicode-range`
+block and one coverage test. **The Dev must verify the chosen package's real coverage from
+its `unicode.json` before committing** — including `U+2116` (№) and the combining acute
+`U+0301` — rather than trusting this table.
+
+### OQ2 — what may "custom RRULE" mean? OPEN, for the user
+
+The brief promises a *"recurrence editor (daily/weekly/custom RRULE)"* in the detail panel.
+**Stage 1's hand-rolled parser does not support "custom RRULE" in the general sense.**
+`internal/domain/recurrence.go` accepts `FREQ=DAILY`, `FREQ=WEEKLY` with optional `BYDAY`,
+and `FREQ=MONTHLY` with optional `BYMONTHDAY` (1..31), plus `INTERVAL` and `WKST=MO`.
+Everything else — **`COUNT`, `UNTIL`, `BYSETPOS`, `BYMONTH`, ordinal weekdays like "the 2nd
+Monday"** — is rejected **at parse time** with `ErrUnsupportedRecurrence`.
+
+So the promise and the implementation disagree, and somebody has to say which one moves.
+
+| Option | What ships | Cost |
+|---|---|---|
+| **A — *recommended*. Custom means custom within the supported subset.** The editor offers exactly what the parser accepts: frequency, interval, weekdays, month-day. A rule outside it is not offerable, so `ErrUnsupportedRecurrence` becomes unreachable from the UI | A complete, honest editor in Stage 3, with no new domain work and no new dependency | "Custom RRULE" reads narrower than the brief's phrasing. `UNTIL`/`COUNT` — "every weekday until 31 Dec" — is the most plausible thing a user will reach for and will not find |
+| **B — widen the parser first.** Add `COUNT` and `UNTIL` (the two that carry real user value), leave `BYSETPOS`/`BYMONTH`/ordinal weekdays rejected | Covers most real habits. Bounded: two fields, both of which terminate a series | New domain work in a stage that already opens with nine defects, and **streaks (D5) count scheduled occurrences** — a terminating series changes what "a scheduled occurrence passed unchecked" means at the end of the series, which is a rule that needs its own decision |
+| **C — adopt an RRULE library.** | Full RFC 5545 | A dependency in the one package that is **pure and has 100% coverage**, to serve an editor whose UI cannot express most of what it would then accept |
+
+**Recommendation: A for Stage 3, with B carried as a named follow-up** if the user wants
+end dates. Under A, **S3-22's acceptance criterion is that the editor cannot compose a rule
+Go would reject** — which is a checkable claim, and a better one than a free-text RRULE box
+with an error message under it.
+
+Whichever is chosen, one rule holds: **the editor does not parse, validate or expand an
+RRULE in TypeScript.** It collects structured choices, Go builds and validates the rule and
+returns the structure back, and the frontend renders that structure through i18n. A
+human-readable sentence **is not returned from Go** — that is D15's rejected option (c), and
+it cannot be translated.
+
 ### FTS5 — spike it, do not guess (was Q8, unchanged)
 **Spike FTS5 on `modernc.org/sqlite` in Stage 1**, first thing. If FTS5 is not
 available in the pinned version, **fall back to LIKE-based search on `title` +
@@ -1274,7 +1697,16 @@ and closed Stage 0. `pkg-config --exists gtk+-3.0 webkit2gtk-4.1` now succeeds.
 
 ### Known issues — all decided, none deleted
 
-**All five are now DECIDED, none is deleted.** K1, K2 and K3 were carried into Stage 2
+**All fourteen are DECIDED, none is deleted.** **K6 – K14 are new**, and all nine come out
+of the one thing no gate on this machine can do: **the user ran the app by hand on real
+hardware.** Eight of the nine are invisible to `make check`, `make front-test` and
+`make guard` alike, because jsdom has no layout engine and no font engine and this machine
+has no display. Each was then traced to exact lines by a read-only investigation, and each
+has a ruling — **K6 → D18, K7 → D19, K8 → D20, K9 → D21, K10 → D22, K11 → D23 (the
+user's), K12 → D24 and D25, K13 → deferred with a ticket, K14 → deferred by the user.**
+They become the blocking block **S3-01 … S3-09**.
+
+K1, K2 and K3 were carried into Stage 2
 as things to rule on, and Stage 2 planning ruled on all three: **K1 → D12**,
 **K2 → D14**, **K3 → D15**. K1 and K2 are **implemented** (`2fe9e84`, `bff9a82`); K3's
 ticket is **S2-14** and is still ahead. Each stays on the record below with its decision
@@ -1393,6 +1825,141 @@ who is expected to read it.
 
 ---
 
+#### K6 – K14 — found by the user's hand pass after Stage 2 closed
+
+**None of these was findable here.** Stage 2's PASS was honest about what it covered; this
+is the part it said it did not cover, arriving all at once. **The lesson is not that the
+gates are bad — it is that the five checks Stage 2 listed as owed to a human were owed for
+a reason, and eight of these nine live in exactly that gap.**
+
+**K6 — the dragged card vanishes the moment it is grabbed. DECIDED by D18; ticket S3-05.**
+`views/Kanban.tsx:294-306` mounts `DndContext` with **no `DragOverlay`**. Confirmed against
+the installed `@dnd-kit/sortable@10.0.0`: `sortable.cjs.development.js:314` computes
+`useDragOverlay = Boolean(dragOverlay.rect !== null)`, which is **false**, so
+`shouldDisplaceDragSource` is true and the active card's own `<li>` is translated in place
+inside its column. Two independent consequences follow from that one fact:
+
+1. **The neighbouring column paints over it.** `components/Column.tsx:165` carries
+   `backdrop-blur-glass` → `backdrop-filter`, which per Filter Effects L2 creates a
+   **stacking context — including under Studio, because `blur(0px)` is not `none`**. The
+   `z-10` at `Column.tsx:126` only orders siblings *within* the source column and cannot
+   reach across one.
+2. **The card teleports home and stops following the pointer.**
+   `sortable.cjs.development.js:514-524`: each column is its own `SortableContext`
+   (`Column.tsx:187`), so once the pointer is over another column `overIndex` is `-1` in
+   the source context, `finalTransform` becomes `null`, and the translation is dropped.
+
+`draggingNodeId` (`store/ui.ts:28`) is currently **write-only, with no consumer anywhere in
+`frontend/src`**. D18 gives it one.
+
+**K7 — resizing the window breaks the layout, and it does NOT recover without a restart.
+DECIDED by D19; ticket S3-04. Cause CONFIRMED BY EXPERIMENT.**
+The user ran the discriminating test: with the layout stuck broken, **switching the palette
+to Studio — whose `--blur` is `0px` — repaired it live, with no restart.** That is
+WebKitGTK compositing-layer staleness, and it **eliminates the competing
+scrollbar-hysteresis theory**, which a palette switch could not have affected.
+`backdrop-blur-glass` is currently on **every** surface — roughly fifty simultaneously:
+`Column.tsx:165`, `Card.tsx:91`, `HabitChip.tsx:69`, `QuickAdd.tsx:239`,
+`CommandPalette.tsx:163`, `Toast.tsx:54` — and each one gets its own compositing layer.
+**D19 keeps the blur on the five columns and the two overlay scrims and removes it from the
+card, the chip and the toast**, with a stated escalation ladder if seven is still too many.
+Whether it is enough **cannot be established on this machine**; it is S3-09's hand pass.
+
+**K8 — `shrink-0` on a max-content localised string overflows the column. DECIDED by D20;
+ticket S3-02. CONFIRMED BY ARITHMETIC AND BY SCREENSHOT.**
+`frontend/src/style.css:38` sets `html { font-size: 13px }`, so every Tailwind rem is 13/16
+of nominal: **`min-w-36` is 117px, not 144px**, and `gap-2`/`p-2` are 6.5px, not 8px. At the
+floor the usable column content width is ~102px and the card interior ~87px.
+`DueBadge.tsx:43` is `shrink-0 font-mono`, so it takes its max-content width and refuses to
+shrink: **~94px in English and ~125px in Russian against 87px available — it overflows even
+in English.** The same defect is at `Column.tsx:175` (the card-count span) and
+`HabitChip.tsx:69`. The user's screenshot proves the consequence: the column headings wrap
+**one character per line** — "Бэ / кл / ог", "Се / го / дн / я" — because the `shrink-0`
+count span "0 карточек" (~86px) starves the heading down to ~16px. Estimated onset widths,
+**±5% and not measurements**: RU heading ~784px, RU due badge ~814px, EN due badge ~659px,
+board floor 624px.
+
+**The irony is the important part, and it is D17 in a new place.** `Card.tsx:36-43` states
+*"nothing on this card has a fixed width and nothing is `whitespace-nowrap`"* and
+`App.accept.test.tsx:344-355` asserts the absence of `truncate` and `whitespace-nowrap`.
+Both are true. **`shrink-0` on a localised max-content string clips identically and was not
+on the list, so the mechanism-based RU audit was green on a real clipping bug.**
+
+**K9 — the window has no minimum size, and display scaling varies. DECIDED by D21; ticket
+S3-03.**
+`main.go:137-139` sets `Width: 1024, Height: 768` and **no `MinWidth`/`MinHeight`**. Wails
+calls `SetMinSize(0, 0)` unconditionally (`window.go:134-135` → `window.c:266`), hinting
+GTK with `min_width = min_height = 0`, so the window can be dragged roughly **380px below
+the layout's own ~624px floor**. **The user has confirmed they change display scaling
+frequently and that it varies**, so the startup window is not reliably 1024 CSS px and may
+begin at or below the floor — which is why this is not merely a nicety about dragging an
+edge.
+
+**K10 — there is no height chain, so the document scrolls instead of the board. DECIDED by
+D22; ticket S3-01.**
+There is no `html`/`body` height rule and **no `#root` rule at all** — verified in the
+compiled CSS. The only height declarations are `body { min-height: 100vh }`
+(`style.css:44`) and `min-h-screen` on the shell (`App.tsx:142`). `<main className="min-w-0
+flex-1">` (`App.tsx:154`) **lacks `min-h-0`**, so its `min-height: auto` floors it at
+min-content and it cannot shrink — and the `min-w-0` that is there is a **no-op**, because
+the shell is a *column* flex container. Separately, `Kanban.tsx:316` sets `overflow-x-auto`,
+and per CSS Overflow 3 an `overflow-x` of `auto` with `overflow-y: visible` **promotes
+`overflow-y` to `auto`**, so the board already clips and scrolls in **both** axes,
+contradicting its own comment at `Kanban.tsx:307-310`. Finally, **every `.focus()` call in
+the codebase omits `{ preventScroll: true }`** — `Kanban.tsx:152`, `HabitStrip.tsx:85`,
+`QuickAdd.tsx:121,164,168,201,225`, `CommandPalette.tsx:93,95`,
+`AppearanceControls.tsx:164` — so each one scrolls every scrollable ancestor, the board
+included. The user's screenshot shows a document-level vertical scrollbar, which is this.
+
+**Investigated and explicitly RULED OUT — do not let a ticket chase it:** the "latched
+`scrollLeft`" theory. The columns are `flex-1 basis-0`, so `scrollWidth` tracks
+`clientWidth` and the user agent clamps the offset; nothing in the frontend ever reads or
+writes `scrollLeft`/`scrollTop` — grepped.
+
+**K11 — neither UI font contains a single Cyrillic glyph. DECIDED by D23, which is the
+USER'S ruling; ticket S3-06.**
+`design/tokens.css:18` sets Aurora's `--font-ui` to `'Space Grotesk'` and `:56` sets
+Studio's to `'Figtree'`. Verified from `node_modules/@fontsource/*/unicode.json` **and from
+the shipped `frontend/dist/assets/` the user is running**: Space Grotesk covers
+`[vietnamese, latin-ext, latin]`, Figtree covers `[latin-ext, latin]`. **Neither has
+Cyrillic.** Only JetBrains Mono does. **81 of the 82 leaves in `ru.json` are Cyrillic**, so
+Russian drops the whole UI into the system `sans-serif` while numbers and dates stay in
+JetBrains Mono — two unrelated typefaces in one header, different metrics, and the
+`flex-wrap` header very plausibly gaining a second row. **This is the user's reported
+"theme and colour buttons break when I switch language".** Related and confirmed:
+`frontend/index.html:14` hard-codes `<html lang="en">` and **nothing ever updates it** —
+grepped, zero writers.
+
+**K12 — error toasts stack without limit, and none of them says what failed. DECIDED by
+D24 (the stacking) and D25 (the message); tickets S3-07 and S3-08.**
+`store/toast.ts:35-47` appends unconditionally: **no cap, no de-duplication, no
+auto-dismiss.** The user's screenshot shows three identical toasts — *"Что-то пошло не так
+/ Nexus не смог выполнить это действие / Ничего не изменилось"* — filling the lower half of
+the window and covering the board. Two separate problems, kept separate on purpose: the
+**stacking**, and the fact that a domain **refusal** (D9 declining to put a project into
+`doing`, say) is a rule working correctly and is being rendered as a malfunction.
+**Unresolved and worth saying plainly: we still do not know which three operations failed
+in that screenshot.** Whatever ships, the user must end up able to tell — that is a
+criterion on S3-08, not a wish.
+
+**K13 — keyboard shortcuts match the character, so a Cyrillic layout would kill Ctrl+N and
+Ctrl+K. LATENT, NOT the reported bug; ticket S3-27, deliberately ranked low.**
+`lib/keyboard.ts:107-115` matches on `event.key`, and `event.code` is used **nowhere** in
+`frontend/src`. Under a Cyrillic keyboard layout the N key emits `т` and K emits `л`, so
+both chords would silently stop working. **The user has confirmed they keep a Latin
+layout**, so this is not what they hit. It is a real latent defect in a Russian-language
+application and it is recorded rather than fixed under pressure — **it is not in the
+blocking block.**
+
+**K14 — the palette *selection* is not visibly indicated. DEFERRED BY THE USER; not
+scheduled, and that is the user's call, not an omission.**
+The user raised it in their own words and then explicitly parked it: record it as a later
+design refinement, and it is fine as it stands. It is logged here so it is not lost, and it
+is **not** in Stage 3's blocking block and not in its feature block. It returns when the
+user asks for it.
+
+---
+
 **Status: decisions locked — D1–D17, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
 CLOSED (PASS) — all twenty-two tickets, S1-01 … S1-22, ACCEPT met at 100.0% / 92.9%,
 PASS returned on the fourth review at `a1f09b7` after three FAILs whose history is kept
@@ -1423,5 +1990,24 @@ enum sets spelled a second time in the locale files — a judgement call, not a 
 and **nothing draws a drift**, which no document may imply otherwise.
 **A green `make guard` is NOT proof that the frontend computes nothing**: checks 3a/3b
 are name-based heuristics, `wireDate` sat behind a green guard for an entire stage, and
-**D17** says so — reading the diff is still the check. Stage 3 is **not started**.
-See §5, "Stage 2 — CLOSED, PASS" and "Carried into Stage 3", and `TASKS.md`.**
+**D17** says so — reading the diff is still the check.
+**Stage 3 is PLANNED and not started** — twenty-eight tickets, **S3-01 … S3-28**, in
+`TASKS.md`, in two blocks. **The user has since run the app by hand on real hardware and
+found nine defects**, recorded as **K6 – K14** and ruled as **D18 – D26**: eight of the
+nine are invisible to every gate here, because jsdom has no layout engine and no font
+engine and this machine has no display. **Block A, S3-01 … S3-09, is blocking and must be
+green before a single feature ticket starts** — the user's own condition. **D23 is the
+user's** (vendor a Cyrillic face under the same two family names via `unicode-range`), as
+is the discriminating Studio experiment behind **K7**; **D18–D22 and D24–D26 are PM
+rulings and the user may overturn any of them**. **D26 closes C6** by publishing the enum
+sets from Go — noting the honest correction that current locale parity is **clean**, so C6
+is a drift risk and not a present defect. **Two questions are open and are the user's:
+OQ1**, which Cyrillic face (recommendation: Inter), and **OQ2**, what *"custom RRULE"* may
+mean given that Stage 1's parser rejects `COUNT`, `UNTIL`, `BYSETPOS`, `BYMONTH` and
+ordinal weekdays at parse time (recommendation: custom *within the supported subset*, with
+a widening carried as a named follow-up). **K13** (shortcuts match the character, not the
+key) is latent and ranked low; **K14** (the palette selection is not visibly indicated) is
+**deferred by the user**. The **three D8 due-badge assertions still have no mechanical
+backing**, and S3-09 is where that is fixed and the rest is looked at by eye.
+See §5, "Stage 2 — CLOSED, PASS", "Stage 3 — PLANNED, not started" and "Carried into
+Stage 3", and `TASKS.md`.**

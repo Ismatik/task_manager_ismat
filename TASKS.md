@@ -34,13 +34,21 @@
   `main.tsx` (see [Composition — who mounts what](#composition--who-mounts-what)), and
   the out-of-scope line contradicted the brief on *set priority* (see
   [The plan correction](#the-plan-correction--set-priority-from-the-palette-is-stage-2)).
-- **Stage 3 — Detail + Tree + Search/Archive: NOT STARTED.** Nothing is planned and no
-  ticket exists. What it inherits is listed under
-  [Carried into Stage 3](#carried-into-stage-3) — the five hand-pass checks, **C6**,
-  **K1/D12 · K2 · K3**, **D16/K5**, and the standing warning that **a green `make guard`
-  is not a proof**.
+- **[Stage 3 — Defect remediation, then Detail + Tree + Search/Archive](#stage-3--defect-remediation-then-detail--tree--searcharchive):
+  PLANNED, not started.** Twenty-eight tickets, **S3-01 … S3-28**, in **two blocks**.
+  **Block A, [S3-01 … S3-09](#block-a--the-blocking-defect-block-s3-01--s3-09), is
+  blocking**: the user ran the app by hand on real hardware after Stage 2 closed and found
+  **nine defects** — recorded as **K6 – K14** in [`PLAN.md` §7](./PLAN.md) and ruled as
+  **D18 – D26** — and their condition for proceeding was *"if these details are resolved in
+  the next steps, we are good to go."* **No feature ticket starts until block A is green.**
+  Block B, S3-10 … S3-28, is the feature stage: the detail slide-over, the tree view,
+  search and archive, plus **C6** (closed by **D26**) and `README.md`. What Stage 3
+  inherits is listed under [Carried into Stage 3](#carried-into-stage-3) — every item there
+  is now absorbed into a named ticket or an explicit refusal. **Two questions are open and
+  are the user's**: **OQ1** (which Cyrillic face) and **OQ2** (what *"custom RRULE"* may
+  mean) — both in [`PLAN.md` §7](./PLAN.md).
 
-Decisions referenced as **D1–D17 / E1–E3** and known issues **K1–K5** live in
+Decisions referenced as **D1–D26 / E1–E3** and known issues **K1–K14** live in
 [`PLAN.md` §7](./PLAN.md). Four decisions were confirmed by the user *during* Stage 1
 and are recorded there — **D8** (a column move always overwrites the due date),
 **D9** (type beats leaf-ness — a project is never timeable), **D10** (a node with no
@@ -56,7 +64,18 @@ the consequence. **D17** was added *after* Stage 2 was implemented, out of the R
 first round: **Go decides the habit check day and the frontend never names a date Go will
 act on** — and, as part of the same entry, that `make guard`'s checks 3a/3b are
 **name-based heuristics**, so a green guard is not proof that the frontend computes
-nothing. **Every known issue now has a decision; none is open.**
+nothing. **Nine more known issues, K6 – K14, came out of the user's hand pass on real
+hardware after Stage 2 closed**, and were ruled on while Stage 3 was planned: **D18** (the
+dragged card is drawn in a `DragOverlay`), **D19** (blur the few large surfaces, not every
+small one), **D20** (no localised string may refuse to shrink), **D21** (the window minimum
+is derived from the layout floor, never typed), **D22** (one height chain; the board
+scrolls, the document does not; focus never scrolls), **D23** — **the user's** — (vendor a
+Cyrillic face under the same two family names via `unicode-range`), **D24** (toasts are
+capped, de-duplicated and self-dismissing), **D25** (a refusal is not a failure, and every
+toast says what failed) and **D26** (Go publishes every enum set — this is what closes
+**C6**). **Every known issue now has a decision; none is open.** **Two *questions* are
+open and are the user's to answer: OQ1** (which Cyrillic face) and **OQ2** (what *"custom
+RRULE"* may mean) — both stated in full in `PLAN.md` §7.
 
 **Do not implement anything that is not on a ticket**, and do not add tickets here —
 the PM writes them.
@@ -4237,10 +4256,32 @@ be discovered at review.
 
 ### Owed to a hand pass — NOT VERIFIED
 
-**Five checks are outstanding, and no document in this repository may describe them as
-done.** **Stage 2's PASS did not cover any of them**, and closing the stage does not
-close them: they are [carried into Stage 3](#carried-into-stage-3) exactly as they stand
-here. They are not outstanding through negligence: **there is no display on this
+**PARTLY DISCHARGED BY THE USER SINCE, AND ONE OF THEM CAME BACK FAILED** — read the box
+first. The heading is left as it was so that every link into this section still resolves.
+
+> **Updated when Stage 3 was planned.** The user has since run the app by hand on real
+> hardware. **That pass discharged item 5, returned item 3 as a FAILURE, and left items 1,
+> 2 and 4 still owed** — and it found nine defects nothing here could have found,
+> **K6 – K14** in [`PLAN.md` §7](./PLAN.md). The per-item status is in the list below;
+> everything still owed is re-issued as [**S3-09**](#s3-09--test-the-hand-pass-that-closes-the-blocking-block),
+> together with the new checks the nine defects created.
+>
+> | # | Owed by Stage 2 | After the user's pass |
+> |---|---|---|
+> | 1 | The ten-step keyboard run, incl. the three D8 due-badge assertions | **STILL OWED.** The user drove the app with the mouse; no step-by-step keyboard report exists. The three D8 badge claims **still have no mechanical backing** — S3-09 adds the two mechanical halves that *can* exist and states exactly what the hand run adds on top |
+> | 2 | No background flash on the first frame, in **both** themes | **STILL OWED** — not reported either way |
+> | 3 | Russian not clipping at a real 1024×768 | **VERIFIED — AND IT FAILED.** It clips, in Russian *and* in English. This is **K8**, fixed by [S3-02](#s3-02--fix-no-localised-string-may-refuse-to-shrink-k8-d20), and **re-verification is owed** |
+> | 4 | The `:focus-visible` ring actually painted, in both palettes | **STILL OWED** — not reported either way |
+> | 5 | S2-07's *"a window opens and the first `Board()` returns five columns"* | **DISCHARGED.** The user ran the built binary, saw the board with its columns and cards, dragged cards, and switched palette, theme and language. Verified by observation rather than by a step-by-step report, and that is enough for this claim |
+>
+> **Nothing above is re-ticked in the Stage 2 DONE list.** Stage 2 closed on what Stage 2
+> verified; this note records what happened afterwards.
+
+**Five checks were outstanding at the close of Stage 2, and no document in this repository
+may describe any of them as done except where the box above says so.** **Stage 2's PASS did
+not cover any of them**, and closing the stage did not close them: they were
+[carried into Stage 3](#carried-into-stage-3) exactly as they stand
+here. They were not outstanding through negligence: **there is no display on this
 machine**, and `xvfb-run`, `scrot`, `import` and `grim` are **all absent**, so the
 Reviewer cannot run them either. They are owed to a human at a real keyboard in front of
 a real window. Items 1–4 are the precise contents of the right-hand column above; item 5
@@ -4427,8 +4468,25 @@ it returns when a spec exists, and **it is not to be invented** (**K5**).
 **These are Stage 3 acceptance criteria, not suggestions.** Stage 2 closed clean, but it
 closed owing the items below. **Whoever plans Stage 3 must turn each one into a ticket
 with a checkable criterion, or state explicitly why not.** Same contract as
-[Carried into Stage 2](#carried-into-stage-2). Nothing here is scheduled yet, and
-**nothing here reopens a Stage 2 ticket.**
+[Carried into Stage 2](#carried-into-stage-2). **Nothing here reopens a Stage 2 ticket.**
+
+> **DISCHARGED BY THE STAGE 3 PLAN — every item below is now absorbed.** The contract said
+> *a ticket with a checkable criterion, or an explicit refusal*; here is the disposition,
+> so that Stage 3 absorbs this list rather than rediscovering it.
+>
+> | Carried item | Absorbed by |
+> |---|---|
+> | The warning that a green `make guard` is **not a proof** | Not a ticket — it is [rule 16 for the Dev agent in Stage 3](#rules-for-the-dev-agent-stage-3-additions) and a DONE criterion. It also **came true a second time**: see **K8**/**D20**, where the RU anti-clipping audit was green on a real clipping bug |
+> | Hand-pass check 1 — the ten-step keyboard run and the three D8 badge assertions | [**S3-09**](#s3-09--test-the-hand-pass-that-closes-the-blocking-block), which also adds the two mechanical halves the badge claim was missing |
+> | Hand-pass check 2 — no background flash, both themes | [**S3-09**](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) |
+> | Hand-pass check 3 — Russian not clipping at 1024×768 | **It came back FAILED** — that is **K8**. Fixed by [**S3-02**](#s3-02--fix-no-localised-string-may-refuse-to-shrink-k8-d20); re-verified in [**S3-09**](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) |
+> | Hand-pass check 4 — the `:focus-visible` ring painted | [**S3-09**](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) |
+> | Hand-pass check 5 — a window opens and `Board()` returns five columns | **DISCHARGED** by the user's pass |
+> | **K1/D12**, **K2/D14**, **K3/D15** | Implemented in Stage 2 and unchanged. K1's no-flash half is hand-pass check 2, above |
+> | **D16 / K5** — the drift gate with nothing behind it | **Explicitly refused again.** No drift specification exists, so no ticket. Not to be invented |
+> | **C6** — enum membership spelled twice | [**S3-18**](#s3-18--featservice-publish-every-enum-set-c6-d26), taking the first of the two recorded options (**D26**). With an honest correction: current locale parity is **clean**, so C6 is a **drift risk**, not a present defect |
+> | Draw the running timer clock | [**S3-23**](#s3-23--featfrontend-attachments-the-editable-time-log-and-the-running-clock), which adds **exactly what it renders** |
+> | Aurora's background drift | Refused, as above |
 
 ### ⚠️ Read this first — a green `make guard` is NOT a proof
 
@@ -4526,3 +4584,1501 @@ Stage 3 picks **one** of:
 
 Either way the criterion is the same: **adding a value to a Go set must turn something
 red** until the frontend offers it.
+
+**Stage 3 takes the first option**, as **D26**, and it is ticket
+[**S3-18**](#s3-18--featservice-publish-every-enum-set-c6-d26).
+
+---
+
+## Stage 3 — Defect remediation, then Detail + Tree + Search/Archive
+
+**Status: PLANNED, not started.** Twenty-eight tickets, **S3-01 … S3-28**, one
+conventional commit each, in **two blocks**.
+
+**Block A — [S3-01 … S3-09](#block-a--the-blocking-defect-block-s3-01--s3-09) — is
+blocking, and blocking is meant literally: no ticket from S3-10 onwards may be started
+until every ticket in block A is committed and `make check`, `make cover`,
+`make front-test` and `make guard` are all green at the end of it.** That is the user's
+condition, in their words: *"if these details are resolved in the next steps, we are good
+to go."*
+
+**Block B — S3-10 … S3-28 — is the feature stage** from `PLAN.md` §5: the task detail
+panel, the tree view, search and archive, plus **C6** and `README.md`.
+
+### What the user's hand pass found — and why no gate here could have found it
+
+Stage 2 closed on a Reviewer PASS that was **honest about its own limits**: it listed five
+checks as *owed to a human at a real keyboard*, because there is no display on this machine
+and `xvfb-run`, `scrot`, `import` and `grim` are all absent. The user then ran
+`./build/bin/nexus` on real hardware, and **the gap Stage 2 named is exactly where nine
+defects were sitting.**
+
+They are **K6 – K14** in [`PLAN.md` §7](./PLAN.md), each traced to exact lines by a
+read-only investigation, each ruled on as **D18 – D26**:
+
+| | Defect | Ruling | Ticket |
+|---|---|---|---|
+| **K6** | The dragged card vanishes on grab — there is no `DragOverlay`, so the source `<li>` is translated in place, painted over by the next column's stacking context, and dropped to `null` at the `SortableContext` boundary | **D18** | [S3-05](#s3-05--fixfrontend-the-dragged-card-follows-the-pointer-k6-d18) |
+| **K7** | Resizing breaks the layout and it does **not** recover without a restart. ~50 simultaneous `backdrop-filter` surfaces; **confirmed by the user's own discriminating experiment** — switching to Studio (`--blur: 0px`) repaired a stuck layout live | **D19** | [S3-04](#s3-04--fixfrontend-blur-the-few-large-surfaces-not-every-small-one-k7-d19) |
+| **K8** | `shrink-0` on a max-content localised string overflows the column. **It overflows in English too.** The RU audit was green on it | **D20** | [S3-02](#s3-02--fix-no-localised-string-may-refuse-to-shrink-k8-d20) |
+| **K9** | No `MinWidth`/`MinHeight`; the window can be dragged ~380px below the layout floor, and **the user changes display scaling often** | **D21** | [S3-03](#s3-03--fix-the-window-minimum-size-derived-from-the-layout-floor-k9-d21) |
+| **K10** | No height chain, so the **document** scrolls; `overflow-x: auto` silently promotes `overflow-y`; every `.focus()` scrolls its ancestors | **D22** | [S3-01](#s3-01--fixfrontend-one-height-chain-the-board-owns-the-scroll-and-focus-never-scrolls-k10-d22) |
+| **K11** | Neither UI font has a single Cyrillic glyph, so Russian drops the whole UI to the system `sans-serif`; `<html lang>` is frozen at `en` | **D23** — **the user's** | [S3-06](#s3-06--featfrontend-a-cyrillic-face-under-the-same-family-names-and-html-lang-k11-d23) |
+| **K12** | Toasts stack without limit, and a domain *refusal* is rendered as "something went wrong" with no clue which action failed | **D24**, **D25** | [S3-07](#s3-07--fixfrontend-toasts-are-capped-de-duplicated-and-self-dismissing-k12-d24), [S3-08](#s3-08--feat-a-refusal-is-not-a-failure-and-every-toast-says-what-failed-k12-d25) |
+| **K13** | Shortcuts match `event.key`, so a Cyrillic keyboard layout would kill Ctrl+N / Ctrl+K. **Latent** — the user keeps a Latin layout | ranked low, on purpose | [S3-27](#s3-27--fixfrontend-shortcuts-match-the-key-not-the-character-k13) |
+| **K14** | The palette **selection** is not visibly indicated | **DEFERRED BY THE USER** | none — and that is the user's call |
+
+**⚠️ The generalisable lesson, and it is D17 arriving in a second place.** `Card.tsx:36-43`
+says in a comment that *"nothing on this card has a fixed width and nothing is
+`whitespace-nowrap`"*, and `App.accept.test.tsx:344-355` asserts the absence of `truncate`
+and `whitespace-nowrap`. **Both statements are true, and the card clipped anyway**, because
+`shrink-0` on a localised max-content string clips identically and was not on the list.
+**A mechanism-based audit is only as good as its enumeration of mechanisms, and an
+enumeration is a guess about the future.** So S3-02 does not simply add a word to a grep —
+it changes the audit's *shape* (see **D20**).
+
+### ACCEPT
+
+Two halves, and the first gates the second.
+
+> **Block A.** Every defect in **K6 – K14** is closed, each with a **named mechanical
+> check** where one is possible and an **explicit statement that only an eye can see it**
+> where one is not — plus **S3-09**, the hand pass, run by a human on real hardware and
+> reported item by item.
+
+> **Block B.** *"Every field round-trips through Go; reparent in the tree shows on Kanban
+> instantly"* — `PLAN.md` §5.
+
+**How block B's half is demonstrated**, so it is not left to interpretation: a mechanical
+test that, for **every editable field the detail panel exposes**, opens the panel on a
+node, changes the field by keyboard, asserts the **exact Go call and argument**, and then
+asserts the panel re-renders **Go's answer** and not the typed value — a field that renders
+what the user typed rather than what Go stored is a field that has not round-tripped. Plus
+a tree test that reparents a node and asserts the Kanban board reflects it without a manual
+refresh. Plus S3-09's successor hand pass at the end of the stage.
+
+### What Stage 3 must deliver
+
+- **The nine defects, first, and completely.** Block A.
+- **The detail slide-over**: Markdown editor and preview, inline subtasks, tags, due,
+  priority, estimate, activity, the recurrence editor, attachments copied into the app
+  data dir, the editable time log, the type switcher.
+- **The tree view**: collapsible, inline rename, drag-to-reparent, arrow/Enter/Tab
+  keyboard navigation.
+- **Search** with tag/type/status/date filters, over the backend S1-04 chose.
+- **The archive view**, with restore.
+- **C6**, closed by **D26**: Go publishes every enum set.
+- **`README.md`**, which has been deliberately unwritten since Stage 0 because it needed a
+  screen to photograph. It has one now — but automated capture is **blocked on the user
+  installing `xvfb` and `imagemagick`** (see S3-28).
+
+### What Stage 3 must NOT do
+
+Out of scope, and it must stay out: the **standalone frameless quick-add window** and the
+natural-language parser (Stage 4 — Stage 3's quick-add stays the in-app one), **focus
+mode**, the **tray**, autostart and the `.desktop`/`install.sh` work, **D-Bus sleep/lock**
+timer handling, **backup, restore-from-file and export**, the **PMP timelog screen**, the
+**calendar**, **stats** and **Gantt**.
+
+**And two specific refusals, carried forward unchanged:**
+
+- **Aurora's background drift** (**D16**, **K5**). No specification exists. The gate is
+  built and **nothing draws a drift**; it returns when a spec does, and **it is not to be
+  invented**. No document may be edited into implying the visual exists.
+- **Making the palette selection more visibly indicated** (**K14**). The user raised it and
+  then explicitly deferred it. It is not Stage 3 work, and adding it is scope creep with a
+  user's sentence quoted out of context.
+
+### Rules for the Dev agent, Stage 3 additions
+
+The six rules at the top of this file and Stage 2's additions 7–15 **all still apply in
+full**, unchanged. These are added:
+
+16. **A green `make guard` is NOT a proof, and this is now true twice over.** Checks 3a/3b
+    are name-based heuristics (**D17**, `wireDate`), and **K8** is the second instance of
+    the same shape in a different tool: the Russian anti-clipping audit was green on a card
+    that overflowed in English. **No commit body, ticket report or status line may cite a
+    green mechanical check as evidence for a claim the check does not actually make.** Say
+    what was checked and say what was not.
+17. **Say which half of each claim is mechanical and which is by eye.** Several of block
+    A's defects are invisible to jsdom, which has **no layout engine and no font engine**.
+    A ticket that cannot mechanically prove its own fix must say so **in its acceptance
+    criteria and in its commit body**, and the visual half goes on
+    [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block)'s list. Pretending a
+    test covers it is the one unrecoverable error here.
+18. **Block A is blocking.** Do not start S3-10 until S3-01 … S3-09 are all committed and
+    all four commands are green. If a block A ticket cannot be completed as written, stop
+    and report — do not skip ahead.
+19. **A rule still gets exactly one spelling, and block A is full of new candidates**:
+    `preventScroll`, the blur allow-list, the layout floor, the refusal-code table, the
+    Cyrillic `unicode-range`. Each of those is a rule. Each gets one home, named in its
+    ticket.
+
+### New dependencies, and why each one is justified
+
+Same contract as Stage 2: a normal npm package, installed into `node_modules`, bundled by
+Vite, **making no network call at runtime** — and that is an acceptance criterion on the
+ticket that adds it, not a hope.
+
+| Package | Ticket | Why it, and not hand-rolled |
+|---|---|---|
+| `@fontsource/<face chosen by OQ1>` | S3-06 | **K11**: neither UI face has a Cyrillic glyph, so 81 of `ru.json`'s 82 leaves render in the system `sans-serif`. Vendored exactly as the three existing faces are — **woff2 files from `node_modules`, fingerprinted into `dist/assets`, no CDN, no `<link>`**. **Which face is OQ1 and is the user's to answer**; the Dev must verify the chosen package's real coverage from its `unicode.json` before committing. |
+| `react-markdown` + `remark-gfm` | S3-19 | The brief specifies a Markdown editor **and preview**. A hand-rolled renderer is a security surface and a correctness sink. **`react-markdown` does not render raw HTML by default, and `rehype-raw` must NOT be added** — a local-only app rendering arbitrary HTML from its own database is a needless hole. Both are pure-JS, bundled, no network. |
+
+**Nothing else.** In particular: **no RRULE library** — see **OQ2**, option C, and the
+reason it is not recommended; **no e2e browser runner**, rejected in Stage 2 for reasons
+that have not changed; **no date library**, because dates are Go's and `Intl` formats them.
+
+### The gate commands, and the two non-gate targets
+
+**`make check` is still exactly the five gates.** Unchanged in number and definition.
+
+`make cover` and `make front-test` are unchanged. **`make guard` grows from six checks to
+eight**, and each new check is added by the ticket whose own criterion requires it, with
+the `Makefile` **named in that ticket's Scope** — the Scope-list omission that had to be
+ratified for S2-22 is not repeated:
+
+| Check | Added by | What it greps |
+|---|---|---|
+| 7 | **S3-01** | `.focus(` appears in exactly one module (`lib/focus.ts`). A focus call anywhere else is a second spelling of *"focus must not scroll"* (**D22**). |
+| 8 | **S3-04** | `backdrop-blur-glass` appears **only** in the three files **D19** allow-lists. A hit anywhere else is a new compositing layer nobody decided on. |
+
+Both are **exact greps, not heuristics** — which is why they are allowed to be guard checks
+at all (**D17**). `GUARD_ALLOW_RE` **stays empty**: every hit so far has been a real bug
+fixed at the source, and no Stage 3 ticket may be the first to allow-list one.
+
+### Stage 3 ticket index
+
+| ID | Title | Prefix |
+|---|---|---|
+| **Block A — blocking** | | |
+| [S3-01](#s3-01--fixfrontend-one-height-chain-the-board-owns-the-scroll-and-focus-never-scrolls-k10-d22) | One height chain, the board owns the scroll, and focus never scrolls (**K10**, **D22**) | `fix:` |
+| [S3-02](#s3-02--fix-no-localised-string-may-refuse-to-shrink-k8-d20) | No localised string may refuse to shrink (**K8**, **D20**) | `fix:` |
+| [S3-03](#s3-03--fix-the-window-minimum-size-derived-from-the-layout-floor-k9-d21) | The window minimum size, derived from the layout floor (**K9**, **D21**) | `fix:` |
+| [S3-04](#s3-04--fixfrontend-blur-the-few-large-surfaces-not-every-small-one-k7-d19) | Blur the few large surfaces, not every small one (**K7**, **D19**) | `fix:` |
+| [S3-05](#s3-05--fixfrontend-the-dragged-card-follows-the-pointer-k6-d18) | The dragged card follows the pointer (**K6**, **D18**) | `fix:` |
+| [S3-06](#s3-06--featfrontend-a-cyrillic-face-under-the-same-family-names-and-html-lang-k11-d23) | A Cyrillic face under the same family names, and `<html lang>` (**K11**, **D23**) | `feat:` |
+| [S3-07](#s3-07--fixfrontend-toasts-are-capped-de-duplicated-and-self-dismissing-k12-d24) | Toasts are capped, de-duplicated and self-dismissing (**K12**, **D24**) | `fix:` |
+| [S3-08](#s3-08--feat-a-refusal-is-not-a-failure-and-every-toast-says-what-failed-k12-d25) | A refusal is not a failure, and every toast says what failed (**K12**, **D25**) | `feat:` |
+| [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) | **The hand pass that closes the blocking block** | `test:` |
+| **Block B — the feature stage** | | |
+| [S3-10](#s3-10--featservice-nodedetail--the-one-read-the-panel-renders) | `NodeDetail` — the one read the panel renders | `feat:` |
+| [S3-11](#s3-11--featservice-the-field-writers--title-description-due-estimate-activity) | The field writers — title, description, due, estimate, activity | `feat:` |
+| [S3-12](#s3-12--featservice-the-type-switcher) | The type switcher | `feat:` |
+| [S3-13](#s3-13--featservice-tags) | Tags | `feat:` |
+| [S3-14](#s3-14--featservice-attachments-copied-into-the-app-data-dir) | Attachments copied into the app data dir | `feat:` |
+| [S3-15](#s3-15--featservice-the-editable-time-log) | The editable time log | `feat:` |
+| [S3-16](#s3-16--featservice-search-with-tagtypestatusdate-filters) | Search with tag/type/status/date filters | `feat:` |
+| [S3-17](#s3-17--featservice-the-archive-list-and-restore) | The archive list and restore | `feat:` |
+| [S3-18](#s3-18--featservice-publish-every-enum-set-c6-d26) | Publish every enum set (**C6**, **D26**) | `feat:` |
+| [S3-19](#s3-19--featfrontend-the-detail-slide-over--shell-keyboard-markdown) | **The detail slide-over** — shell, keyboard, Markdown | `feat:` |
+| [S3-20](#s3-20--featfrontend-the-panels-field-editors) | The panel's field editors | `feat:` |
+| [S3-21](#s3-21--featfrontend-inline-subtasks) | Inline subtasks | `feat:` |
+| [S3-22](#s3-22--featfrontend-the-recurrence-editor-oq2) | The recurrence editor (**OQ2**) | `feat:` |
+| [S3-23](#s3-23--featfrontend-attachments-the-editable-time-log-and-the-running-clock) | Attachments, the editable time log, and the running clock | `feat:` |
+| [S3-24](#s3-24--featfrontend-the-tree-view) | **The tree view** | `feat:` |
+| [S3-25](#s3-25--featfrontend-the-search-screen) | **The search screen** | `feat:` |
+| [S3-26](#s3-26--featfrontend-the-archive-view) | **The archive view** | `feat:` |
+| [S3-27](#s3-27--fixfrontend-shortcuts-match-the-key-not-the-character-k13) | Shortcuts match the key, not the character (**K13**) | `fix:` |
+| [S3-28](#s3-28--docs-readmemd-and-the-screenshots--blocked-on-the-user) | `README.md` and the screenshots — **BLOCKED on the user** | `docs:` |
+
+**Sequencing, and the three constraints that are real.**
+
+- **Block A before block B, entirely.** Rule 18.
+- **Inside block A: S3-01 → S3-02 → S3-03.** The height chain settles first, the widths
+  settle second, and **S3-03 derives the window's minimum size from the layout floor — so
+  it must come after the floor is final.** Running it earlier bakes in a number that S3-02
+  then changes.
+- **S3-04 before S3-05.** Both rewrite `Column.tsx`. The blur policy goes first because
+  S3-05's `DragOverlay` has to work under whatever the policy turned out to be, and
+  because S3-05 deletes the `z-10` that only existed to fight the stacking context S3-04
+  is reducing.
+- **S3-06, S3-07 and S3-08 touch none of those files** and could in principle move, but
+  they are kept after the layout work so the hand pass in S3-09 sees one settled screen.
+- **Inside block B: every Go ticket before the frontend ticket that calls it.**
+  S3-10 … S3-18 are Go and touch no `frontend/src` file except the regenerated
+  `frontend/wailsjs`. **S3-19 before S3-20 … S3-23**, which fill the panel it creates.
+  **S3-24 introduces the view switch** and therefore precedes S3-25 and S3-26.
+
+### Composition — who mounts what, in Stage 3
+
+**The rule from Stage 2 stands unchanged and is the reason that section exists:**
+
+> **A component that is built and not mounted is an unfinished ticket.** The ticket that
+> builds a top-level piece is the ticket that mounts it, in the same commit. "Mounted"
+> means reachable in the running app from `main.tsx`.
+
+`frontend/src/App.mount.test.tsx`'s orphan walk stays green throughout, and **each mounting
+ticket keeps its own `render(<App />)` reachability criterion**, because the two halves do
+different jobs and neither is sufficient alone — the Dev demonstrated the orphan walk's
+blind spot twice in Stage 2.
+
+| Region in `App.tsx` | Filled by | Mounted in |
+|---|---|---|
+| detail slide-over layer (a new region, beside the overlay layer) | `components/DetailPanel.tsx` | **S3-19** |
+| region 3 becomes a **view switch** on a new `activeView` in `store/ui.ts` | `views/Tree.tsx` | **S3-24** |
+| region 3 — the search screen | `views/Search.tsx` | **S3-25** |
+| region 3 — the archive view | `views/Archive.tsx` | **S3-26** |
+
+Everything else is mounted by its parent: the field editors of S3-20, the subtask list of
+S3-21, the recurrence editor of S3-22 and the attachment/time-log sections of S3-23 are all
+children of S3-19's panel and become reachable when it opens.
+
+**Two consequences worth stating before they are discovered.**
+
+1. **S3-24 owns the view switch, not just the tree.** Today `views/Kanban.tsx` is region 3
+   and nothing else can be. S3-24 introduces `activeView`, the switch in `App.tsx`, and
+   flips the command palette's `view:tree` row from *unavailable, coming in stage N* to
+   available. S3-25 and S3-26 then each add one view and one palette row, and **no row may
+   be left silently doing nothing** — the Stage 2 standard.
+2. **The detail panel and the overlays must not be open at once by accident.**
+   `store/ui.ts` holds **one** overlay, which is what makes that impossible today. The
+   panel is not an overlay — it is a slide-over beside the board — so S3-19 must say
+   explicitly what happens when `Ctrl+K` is pressed with the panel open, and test it.
+
+---
+
+### Block A — the blocking defect block (S3-01 … S3-09)
+
+**Nine tickets. None of block B starts until all nine are committed and green.**
+
+**Read this before starting any of them.** Most of what these tickets fix is **invisible to
+every mechanical check in this repository**: jsdom has no layout engine, so every
+`offsetWidth` is 0 and nothing ever overflows; jsdom has no font engine, so no test can see
+which glyphs a face contains at paint time; there is no display, so nothing here can watch
+a window resize or a compositing layer go stale. **Each ticket below therefore states, in
+its own acceptance criteria, which half of its claim is mechanical and which half is
+[S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block)'s.** A ticket that
+claims more than it proved is the one failure this project has decided it will not accept
+(rule 17, **D17**).
+
+---
+
+## S3-01 — fix(frontend): one height chain, the board owns the scroll, and focus never scrolls (K10, D22)
+
+**This is K10, ruled by D22**, and it is first because everything else in block A is
+measured against a settled layout.
+
+Three symptoms, one missing decision about who owns the scroll. There is **no `#root` rule
+at all** in the compiled CSS; `body` has only `min-height: 100vh`; `<main>` (`App.tsx:154`)
+carries `min-w-0`, which is a **no-op in a column flex container**, and **not** the
+`min-h-0` it needs, so its `min-height: auto` floors it at min-content and the document
+grows past the viewport. `Kanban.tsx:316` sets `overflow-x-auto`, which per CSS Overflow 3
+**promotes `overflow-y` to `auto`**, so the board already scrolls in an axis its own comment
+says it does not. And all eleven `.focus()` calls omit `{ preventScroll: true }`, so each
+scrolls every scrollable ancestor.
+
+**Scope (may touch):** `frontend/src/style.css`, `frontend/src/App.tsx`,
+`frontend/src/views/Kanban.tsx`, a new `frontend/src/lib/focus.ts` and its test, the call
+sites `frontend/src/components/{HabitStrip,QuickAdd,CommandPalette,AppearanceControls}.tsx`,
+the `Makefile` (guard check 7 — declared here deliberately, so it is not a Scope omission),
+tests beside them.
+
+Requirements:
+
+- **A full-height chain**: `html`, `body` and `#root` are full height, the shell fills it,
+  and `<main>` carries **`min-h-0`** so it may shrink below its content. The useless
+  `min-w-0` on `<main>` goes, or is justified in a comment — a class that does nothing is a
+  claim that misleads the next reader.
+- **The board states both axes explicitly** and owns its own scrolling. The comment at
+  `Kanban.tsx:307-310` is corrected to describe what the code now does; a comment that
+  contradicts the CSS is worse than no comment.
+- **One focus helper, and only one.** A single `focusWithoutScrolling(element)` in
+  `frontend/src/lib/focus.ts`. **Every** existing `.focus()` call routes through it —
+  `Kanban.tsx:152`, `HabitStrip.tsx:85`, `QuickAdd.tsx:121,164,168,201,225`,
+  `CommandPalette.tsx:93,95`, `AppearanceControls.tsx:164`.
+- **`make guard` check 7**: `.focus(` appears in exactly one module. An exact grep, not a
+  heuristic.
+- **The killed theory stays killed.** Do **not** add `scrollLeft`/`scrollTop` handling. The
+  "latched `scrollLeft`" explanation was investigated and ruled out (**D22**): columns are
+  `flex-1 basis-0`, so `scrollWidth` tracks `clientWidth` and the UA clamps the offset. A
+  comment naming it as ruled out is welcome; code for it is not.
+
+**Acceptance criteria**
+- [ ] `git grep -n '\.focus(' frontend/src` returns hits in **exactly one** non-test
+      module. **`make guard` check 7 enforces it** — negative control: add a bare `.focus()`
+      to a component, watch check 7 fail naming the file and line, remove it.
+- [ ] A test asserts `focusWithoutScrolling` passes `{ preventScroll: true }` — driven
+      through a spy on a real element, not by reading the source.
+- [ ] A test asserts `<main>` carries `min-h-0` and that the shell, `#root`, `body` and
+      `html` form an unbroken height chain, read off the rendered DOM and the stylesheet.
+- [ ] The S2-16 keyboard suite and the S2-22 ACCEPT flow pass **unmodified**. This is a
+      layout change; a changed keyboard test means something else moved.
+- [ ] **Stated honestly:** jsdom has no layout engine, so **none** of the above proves the
+      document stops scrolling or that the board scrolls instead. That is
+      [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) item 1, and the
+      commit body must say so.
+- [ ] `make guard`, `make front-test`, `make check` green.
+
+**Commit:** `fix(frontend): give the shell one height chain and stop focus scrolling (S3-01)`
+
+---
+
+## S3-02 — fix: no localised string may refuse to shrink (K8, D20)
+
+**This is K8, ruled by D20.** `html { font-size: 13px }` (`style.css:38`) makes every
+Tailwind rem 13/16 of nominal, so **`min-w-36` is 117px, not 144px**, and `gap-2`/`p-2` are
+6.5px. At the floor, column content is ~102px and the card interior ~87px.
+`DueBadge.tsx:43` is `shrink-0 font-mono` and takes its max-content width — **~94px in
+English, ~125px in Russian, against 87px available. It overflows in English.** Same defect
+at `Column.tsx:175` (the card-count span) and `HabitChip.tsx:69`. The user's screenshot
+shows the consequence: headings wrapping **one character per line**, because an 86px
+`shrink-0` count span starves a heading down to ~16px.
+
+**The audit changes shape, and that is the point of this ticket.** Adding `shrink-0` to the
+existing grep fixes this bug and leaves the next one. See **D20**.
+
+**Scope (may touch):** `frontend/src/components/{DueBadge,Column,HabitChip,Card}.tsx`,
+`frontend/src/App.accept.test.tsx` (the Russian audit at ~line 344), a new shared helper
+under `frontend/src/test/`, tests beside them. **Not** `frontend/src/style.css` — the 13px
+base is `design/README.md`'s and is not being changed.
+
+Requirements:
+
+- **Remove `shrink-0` from every element whose text is localised** — i18n output,
+  `formatDate`, `formatNumber`: `DueBadge.tsx:43`, `Column.tsx:175`, `HabitChip.tsx:93`,
+  `Card.tsx:107`. Give them `min-w-0` and let them wrap, per **D20**.
+- **`shrink-0` stays where it is correct** and the distinction is stated in a comment:
+  a **fixed-size, non-text box** — `TypeIcon`, `TimerDot`, `HabitChip`'s icons,
+  `ProgressBar`'s track — has a size that does not depend on the locale.
+  `PriorityChip` (`P0`…`P3`) and `ProgressBar`'s ratio are bounded ASCII; **state the
+  ruling either way in a comment rather than leaving it to the next reader to re-derive.**
+- **`Card.tsx:36-43`'s comment is corrected.** It currently asserts a property the card did
+  not have. A comment that is confidently wrong is how this defect survived a review.
+- **The Russian audit becomes a DOM walk**: render each screen in Russian and, for **every
+  element carrying localised text**, assert that no shrink-refusing utility is on it —
+  `shrink-0`, `flex-none`, a fixed `w-*`, `whitespace-nowrap`, `truncate`. A walk catches a
+  *new* utility with the same effect on the day it is used; a word list does not.
+- The audit must **fail on the pre-fix tree**. That is the negative control and it is not
+  optional here: this is the second time a green audit covered a real clipping bug.
+
+**Acceptance criteria**
+- [ ] The rewritten audit, run against the tree **before** this ticket's component changes,
+      **fails**, naming `DueBadge`, the column count span and the habit streak. Restore,
+      confirm green. Record both runs in the commit body.
+- [ ] `git grep -n 'shrink-0' frontend/src` — every surviving hit is on a fixed-size
+      non-text box or a bounded-ASCII string, and the commit body lists them one by one
+      with which of the two it is.
+- [ ] The audit walks the **rendered DOM in Russian**, not the source text, and covers the
+      board, the card, the habit strip, both overlays, the header and a toast.
+- [ ] `make guard` check 6 still passes over `App.accept.test.tsx` — the audit added **no
+      mouse event**.
+- [ ] **Stated honestly:** jsdom has no layout engine, so this proves the **mechanisms**
+      and **never** the absence of clipping. The onset widths in **K8** — RU heading
+      ~784px, RU badge ~814px, EN badge ~659px — are **±5% arithmetic, not measurements**.
+      Confirming the fix at a real 1024×768, in both languages, is
+      [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) item 2.
+- [ ] `make front-test`, `make check` green.
+
+**Commit:** `fix(frontend): let every localised string shrink, and widen the ru audit (S3-02)`
+
+---
+
+## S3-03 — fix: the window minimum size, derived from the layout floor (K9, D21)
+
+**This is K9, ruled by D21**, and it comes third because **the floor is not final until
+S3-01 and S3-02 have landed.**
+
+`main.go:137-139` sets `Width: 1024, Height: 768` and no minimum. Wails calls
+`SetMinSize(0, 0)` unconditionally (`window.go:134-135` → `window.c:266`), so GTK is hinted
+with `min_width = min_height = 0` and the window can be dragged ~380px below the layout's
+own ~624px floor. **The user changes display scaling often and it varies**, so the startup
+window is not reliably 1024 CSS px.
+
+**The rule this collides with is the hardest one in this repository**, and **D21** is the
+containment: a `MinWidth: 640` in Go is the CSS floor written down a second time. The
+precedent is **D12** — `main.go` may not name a colour, so `background.go` derives it from
+`design/tokens.css`. Do the same with the floor.
+
+**Scope (may touch):** `main.go`, a new `layout.go` and `layout_test.go` at the repo root
+beside `background.go`. **No file under `frontend/` is modified** — the test *reads* frontend
+sources, which is not touching them.
+
+Requirements:
+
+- `MinWidth` and `MinHeight` on `options.App`, computed — **not typed**.
+- **Each input has exactly one home**, and the Go side derives or verifies rather than
+  restating: the root font size (`frontend/src/style.css`), Tailwind's spacing unit, the
+  column `min-w-*` unit count (`components/Column.tsx`), the board `gap-*` and shell `p-*`
+  unit counts, and the **column count taken from the set Go already uses to build the five
+  columns** — never a `5` typed into `main.go`.
+- **The recommended mechanism, and the Dev may substitute a better one and say so:** a Go
+  **test** parses `frontend/src/style.css` and the relevant component sources and asserts
+  the constants in `layout.go` still match. Parsing at test time and not at run time keeps
+  the binary free of file reads and keeps the frontend sources out of the embedded assets.
+- **`MinHeight` is a stated composition of named terms**, and the ticket says which terms
+  are estimates. A card's height depends on chip count and title wrapping, which is layout
+  and cannot be computed here — **disclose it, do not round it up quietly** (**D21**).
+- `main.go` gains **no magic number and no hex literal**; D12's grep
+  (`git grep -nE '#[0-9a-fA-F]{3,8}|RGBA\{' main.go`) still returns nothing.
+
+**Acceptance criteria**
+- [ ] **The drift test is the criterion.** Change `min-w-36` to `min-w-32` in
+      `Column.tsx` → the named Go test **fails**. Change `html { font-size: 13px }` → it
+      **fails**. Restore both, confirm green, and record all four runs in the commit body.
+- [ ] `git grep -nE 'MinWidth:|MinHeight:' main.go` shows each fed by a **named identifier**,
+      never an integer literal.
+- [ ] The column count is read from Go's published set; a test adding a sixth status moves
+      the computed floor without any edit to `main.go`.
+- [ ] The commit body shows the **arithmetic**, term by term, for both dimensions, and
+      marks each estimated term as estimated.
+- [ ] `make check` green, `make cover` green (this adds Go code — its tests land in the
+      same commit, rule 14).
+- [ ] **Stated honestly:** that GTK actually enforces the hint, and that the window is
+      usable at exactly the minimum under a non-default display scaling, is
+      [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) item 3.
+
+**Commit:** `fix(app): derive the window minimum size from the layout floor (S3-03)`
+
+---
+
+## S3-04 — fix(frontend): blur the few large surfaces, not every small one (K7, D19)
+
+**This is K7, ruled by D19.** `backdrop-blur-glass` is on **every** surface — roughly fifty
+at once: `Column.tsx:165`, `Card.tsx:91`, `HabitChip.tsx:69`, `QuickAdd.tsx:239`,
+`CommandPalette.tsx:163`, `Toast.tsx:54` — and each is its own compositing layer. Resizing
+breaks the layout and **it does not recover without a restart**.
+
+**The cause is confirmed by the user's own discriminating experiment**, not by inference:
+with the layout stuck broken, **switching the palette to Studio — whose `--blur` is `0px` —
+repaired it live, with no restart.** That is WebKitGTK compositing-layer staleness, and it
+eliminates the competing scrollbar-hysteresis theory, which no palette switch could have
+affected.
+
+**Scope (may touch):** `frontend/src/components/{Column,Card,HabitChip,QuickAdd,CommandPalette,Toast}.tsx`,
+the `Makefile` (guard check 8 — declared here), tests beside them. **`design/` is read-only
+and is not touched.**
+
+Requirements:
+
+- Apply **D19**'s allow-list exactly: `backdrop-blur-glass` **stays** on `Column.tsx`
+  (5 instances, large), `QuickAdd.tsx` and `CommandPalette.tsx` (full-screen scrims, at most
+  one at a time). It is **removed** from `Card.tsx`, `HabitChip.tsx` and `Toast.tsx`.
+- **Translucency is kept.** The three losing surfaces keep their `bg-surface` /
+  `bg-elevated` tokens, so Aurora is still translucent — only the `backdrop-filter` goes.
+  **No new token, no palette conditional, no hex.**
+- **`make guard` check 8**: `backdrop-blur-glass` appears **only** in those three files. An
+  exact grep. This is what stops the class quietly returning to the card in Stage 4.
+- The comments at `Card.tsx:46`, `Column.tsx:39` and `Toast.tsx:28` explain the surface
+  treatment and must be **corrected to describe the new policy and to name D19** — three
+  stale comments would be three future arguments.
+- **Do not add a resize workaround.** No `requestAnimationFrame` nudge, no forced reflow, no
+  transform toggle. **D19** rejects them by name.
+
+**Acceptance criteria**
+- [ ] `git grep -n 'backdrop-blur-glass' frontend/src` returns hits in **exactly** the three
+      allow-listed files. **`make guard` check 8 enforces it** — negative control: put the
+      class back on `Card.tsx`, watch check 8 fail naming the file and line, remove it.
+- [ ] A test asserts the card, the habit chip and the toast still carry their surface token,
+      so the fix removed a filter and not the surface.
+- [ ] `git grep -nE '#[0-9a-fA-F]{3,8}' frontend/src` still returns nothing, and `design/`
+      is byte-identical.
+- [ ] The S2 component tests pass with only the class-name assertions that named
+      `backdrop-blur-glass` updated — and the commit body lists each one changed, so nothing
+      is weakened under cover of a class rename.
+- [ ] **Stated honestly, and this is the important one:** **nothing here proves the resize
+      bug is fixed.** There is no display on this machine. The real check is
+      [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) item 4 — resize
+      repeatedly, at more than one display scaling, in both palettes. **D19**'s escalation
+      ladder applies if it still reproduces: next drop the column's blur too, and after
+      that it is a **user decision**, because the palette's specified appearance is what
+      would be given up.
+- [ ] `make guard`, `make front-test`, `make check` green.
+
+**Commit:** `fix(frontend): blur only the column and the overlays (S3-04)`
+
+---
+
+## S3-05 — fix(frontend): the dragged card follows the pointer (K6, D18)
+
+**This is K6, ruled by D18**, and it is the most visible defect the user hit: **the card
+disappears the instant it is grabbed.**
+
+`views/Kanban.tsx:294-306` mounts `DndContext` with **no `DragOverlay`**. Confirmed against
+the installed `@dnd-kit/sortable@10.0.0`: `sortable.cjs.development.js:314` computes
+`useDragOverlay = Boolean(dragOverlay.rect !== null)` → **false**, so
+`shouldDisplaceDragSource` is true and the source `<li>` is translated in place. Two
+independent consequences: the next column's `backdrop-filter` stacking context **paints over
+it** (and `z-10` at `Column.tsx:126` can only order siblings within one column), and at
+`sortable.cjs.development.js:514-524` the per-column `SortableContext` (`Column.tsx:187`)
+makes `overIndex` `-1` once the pointer leaves, so `finalTransform` becomes `null` and the
+card **teleports home and stops following the pointer**.
+
+**Scope (may touch):** `frontend/src/views/Kanban.tsx`,
+`frontend/src/components/{Column,Card}.tsx`, `frontend/src/store/ui.ts`, tests beside them.
+
+Requirements:
+
+- A **`<DragOverlay>` as a direct child of `DndContext`**, rendering the **existing
+  `<Card>`** for the active node. **Not** a second preview component — one card component,
+  or the two will drift.
+- The source `<li>` is **hidden while `isDragging`** (`opacity-0`) and **keeps its space**,
+  so the list does not jump on grab.
+- **Delete the now-dead `z-10`** at `Column.tsx:126`. It only ever existed to fight the
+  stacking context, it never could, and leaving it is leaving a false explanation in the
+  code.
+- **`draggingNodeId` (`store/ui.ts:28`) gets its first consumer.** It has been written and
+  read by nothing since S2-17. The overlay reads it. If the overlay ends up not needing it,
+  **say so and delete it** — a field with no reader is a second spelling waiting for a
+  caller.
+- **Reduced motion routes through the existing helper**: `dropAnimation={null}` when
+  `prefersReducedMotion()` is true, from the same `lib/appearance.ts` function
+  `Column.tsx:116` already calls. Not a second media query.
+- **S2-17's contract is unchanged**: cross-column drop still calls the coupled
+  `MoveToColumn`, in-column reorder still calls `MoveNode`, optimistic-with-rollback still
+  restores from Go's answer, and S2-16's keyboard map still works untouched.
+
+**Acceptance criteria**
+- [ ] With a drag in progress, the overlay renders the active card **once** and the source
+      `<li>` is present, space-holding and hidden. Asserted on the rendered tree.
+- [ ] `draggingNodeId` has a reader — `git grep -n 'draggingNodeId' frontend/src` shows a
+      consumer outside `store/`, or the field is gone and the commit body says why.
+- [ ] `git grep -n 'z-10' frontend/src/components/Column.tsx` returns nothing.
+- [ ] Under `prefers-reduced-motion: reduce`, `dropAnimation` is `null`, decided by the
+      **existing** helper — a test that stubs the media query both ways.
+- [ ] The whole S2-17 drag suite and the S2-16 keyboard suite pass **unmodified**.
+- [ ] `make guard` check 6 is untouched — this ticket does not go near
+      `App.accept.test.tsx`; drag tests are allowed a pointer, because a pointer is what is
+      under test.
+- [ ] **Stated honestly:** jsdom renders no pixels, so *"the card visibly follows the
+      pointer across a column boundary and is not painted over"* is
+      [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) item 5. What is
+      mechanical here is the overlay's existence, the source's hidden state, and the
+      unchanged call contract.
+- [ ] `make front-test`, `make check` green.
+
+**Commit:** `fix(frontend): render the dragged card in a DragOverlay (S3-05)`
+
+---
+
+## S3-06 — feat(frontend): a Cyrillic face under the same family names, and `<html lang>` (K11, D23)
+
+**This is K11, and D23 is the USER'S ruling** — it is not a PM call and may not be
+re-litigated by the Dev.
+
+`design/tokens.css:18` sets Aurora's `--font-ui` to `'Space Grotesk'`, `:56` sets Studio's
+to `'Figtree'`. Verified from `node_modules/@fontsource/*/unicode.json` **and from the
+shipped `frontend/dist/assets/`**: Space Grotesk covers `[vietnamese, latin-ext, latin]`,
+Figtree covers `[latin-ext, latin]`. **Neither contains a single Cyrillic glyph.** Only
+JetBrains Mono does. **81 of `ru.json`'s 82 leaves are Cyrillic**, so Russian drops the
+whole UI into the system `sans-serif` while numbers stay in JetBrains Mono — two typefaces
+in one header, different metrics, and a `flex-wrap` header very plausibly gaining a row.
+**This is the user's reported "theme and colour buttons break when I switch language".**
+
+> **⚠️ BLOCKED on OQ1 until the user answers it.** **Which face** is the user's decision.
+> `PLAN.md` §7 OQ1 recommends **Inter**, one face under both family names, with Manrope as
+> the runner-up. **Do not start this ticket with the face unchosen**, and do not choose it
+> in a commit message.
+
+**Scope (may touch):** `frontend/src/style.css`, `frontend/src/lib/appearance.ts` and its
+test, `frontend/index.html` (comment only), `frontend/package.json` and the lockfile, a new
+coverage test under `frontend/src/locales/`, tests beside them. **`design/` is read-only and
+is NOT edited** — that constraint is the whole reason D23 has the shape it has.
+
+Requirements:
+
+- **`@font-face` blocks in `frontend/src/style.css` registering the chosen face under BOTH
+  existing family names** — the same strings `design/tokens.css` names — scoped with
+  `unicode-range`. Suggested range, to be confirmed against the package's real coverage:
+  `U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116`.
+- **Vendored and local.** `@fontsource`, bundled from `node_modules`, fingerprinted into
+  `dist/assets` like the three existing faces. **No CDN, no `<link>`, no runtime fetch** —
+  rule 11, and it is a hard project rule, not a preference.
+- **A coverage test**: every codepoint used in `ru.json` is covered by some **bundled**
+  `unicode-range` for `--font-ui`. Read the ranges from what is actually bundled; a range
+  retyped into the test proves the test agrees with itself.
+- **`<html lang>` is written from settings, in one place.** `frontend/index.html:14`
+  hard-codes `lang="en"` and **nothing ever updates it** — grepped, zero writers.
+  `lib/appearance.ts` already receives the whole `SettingsView`, already runs at boot and on
+  every settings write, and is already the only module that writes to `documentElement`.
+  **`root.lang = appearance.language` belongs there.** The static `lang="en"` stays as the
+  pre-boot default, exactly as `data-palette="aurora"` does, and the comment says so.
+- **No second spelling of the language value.** `i18next` and `root.lang` both come from the
+  same `SettingsView` field; neither derives the other.
+
+**Acceptance criteria**
+- [ ] The coverage test **fails** if the `unicode-range` is narrowed, and **fails** if a
+      Cyrillic string is added to `ru.json` outside the covered ranges. Negative control
+      both ways, recorded in the commit body.
+- [ ] `document.documentElement.lang` is `ru` after the settings read reports Russian and
+      `en` after it reports English — asserted through `render(<App />)`, and with **exactly
+      one writer** in `frontend/src` (`git grep -n '\.lang *=' frontend/src`).
+- [ ] `git diff -- design/` is empty, and `--font-ui` is **not** redefined anywhere in
+      `frontend/src`.
+- [ ] `git grep -nE 'https?://' frontend/src` still returns nothing, and the new package's
+      files resolve from `node_modules` — the bundle is inspected and the commit body names
+      the emitted woff2 files.
+- [ ] `make front-test`, `make check` green; the build output size delta is recorded in the
+      commit body.
+- [ ] **Stated honestly:** jsdom has **no font engine**. Nothing here proves the Cyrillic UI
+      actually renders in the designed family, or that the header stops wrapping. That is
+      [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) item 6, in both
+      palettes.
+
+**Commit:** `feat(frontend): vendor a cyrillic ui face and set html lang from settings (S3-06)`
+
+---
+
+## S3-07 — fix(frontend): toasts are capped, de-duplicated and self-dismissing (K12, D24)
+
+**This is the first half of K12, ruled by D24.** `store/toast.ts:35-47` appends
+unconditionally — **no cap, no de-duplication, no auto-dismiss**. The user's screenshot
+shows three identical toasts filling the lower half of the window and covering the board.
+
+**The second half — what the message actually says — is
+[S3-08](#s3-08--feat-a-refusal-is-not-a-failure-and-every-toast-says-what-failed-k12-d25),
+deliberately kept separate.** One is a list policy, the other is a message contract.
+
+**Scope (may touch):** `frontend/src/store/toast.ts` and its test,
+`frontend/src/components/Toast.tsx` and its test, the locale files, tests beside them.
+
+Requirements:
+
+- **A cap of three.** A fourth push drops the oldest.
+- **De-duplication of an identical consecutive `messageKey`**: increment a count on the
+  existing toast rather than appending. The count is a **number**, so `font-mono`, and it is
+  **pluralised through i18next** — Russian has three plural forms, and `ru.json` already
+  carries `_few`/`_many` for the card count, which is the pattern to follow.
+- **Auto-dismiss after a bounded interval**, **paused while the toast has focus or the
+  pointer is over it** — a toast that vanishes while being read is a new defect.
+- **The store still holds no text.** `store/toast.ts:5-12`'s design intent is preserved
+  exactly: an **i18n key, never a sentence**, and the raw Go error to the console only.
+- **Timers must be testable and must not leak.** Fake timers in the test; the dismiss timer
+  is cleared on unmount and on manual dismiss.
+- The interval and the cap are **named constants in one place**, not numbers sprinkled
+  through the component and the store.
+
+**Acceptance criteria**
+- [ ] Four distinct pushes leave three toasts, oldest gone. Three identical pushes leave
+      **one** toast showing a count of 3, in `font-mono`, pluralised correctly in both
+      languages.
+- [ ] A toast dismisses itself after the interval, under fake timers; the timer is **paused**
+      while it holds focus, and resumes after blur.
+- [ ] Manual dismiss and unmount both clear the timer — asserted, so the suite does not leak
+      handles.
+- [ ] `git grep -n 'pushToast' frontend/src` shows every call still passing a **key**;
+      `store/toast.ts` contains no user-visible sentence.
+- [ ] The toast region is still keyboard-reachable and still announces (S2-13's a11y
+      behaviour is unchanged) — the existing `Toast.test.tsx` assertions survive.
+- [ ] `make guard`, `make front-test`, `make check` green.
+
+**Commit:** `fix(frontend): cap, de-duplicate and auto-dismiss toasts (S3-07)`
+
+---
+
+## S3-08 — feat: a refusal is not a failure, and every toast says what failed (K12, D25)
+
+**This is the second half of K12, ruled by D25.** Every rejection from Go raises the single
+key `toast.error.body` — *"Nexus could not finish that. Nothing was changed."* So **D9**
+declining to put a project into `doing` — **a rule working exactly as specified** — is
+rendered as a malfunction. And after the fact, **we still cannot tell which three operations
+failed in the user's screenshot.** Both halves are this ticket's.
+
+**Scope (may touch):** a new `internal/service/refusal.go` and its test, `app.go`,
+`frontend/wailsjs/**` (regenerated, committed in the same commit — rule 12),
+`frontend/src/store/call.ts`, `frontend/src/store/**` (the call sites that name their
+operation), `frontend/src/components/Toast.tsx`, the locale files, tests beside them.
+
+Requirements:
+
+- **One Go table, sentinel → stable code**, and nothing else classifies anything. The
+  inventory exists already: `ErrProjectNeverDoing`, `ErrTypeHasNoColumn`, `ErrTypeHasNoDue`,
+  `ErrTypeHasNoChildren`, `ErrCircularParent`, `ErrNoRecurrence`, `ErrUnsupportedRecurrence`,
+  `ErrTimerNotAllowed`, `ErrNodeArchived`, `ErrNodeDone`, `ErrNotAHabit`,
+  `ErrInvalidSetting`. An error in **no** table is a **failure**, not a refusal, and keeps
+  today's key.
+- **The transport, and the Dev may substitute a cleaner Wails-native channel if they
+  disclose it:** Wails marshals `error` into a rejected promise carrying the message string,
+  so the code travels **behind a fixed machine prefix** produced by **exactly one** Go
+  function and parsed by **exactly one** TypeScript function. Every bound method still
+  returns `(T, error)`.
+- **The frontend classifies nothing and parses no prose.** It maps **code → i18n key** — a
+  label table, the same shape the five Kanban columns already have and the shape **D26**
+  moves the other sets to. **Matching on Go's English error text is forbidden**: a message
+  is not an API.
+- **Every toast names the operation.** Each store action passes an operation key
+  (`move`, `create`, `check habit`, `set priority`, …) alongside the outcome, so a stack of
+  three toasts is legible. This is the diagnostic half and it is a requirement, not a
+  nicety.
+- **Exhaustive or red.** A code Go can emit with no key in `en.json`/`ru.json` fails a test.
+- **A refusal is styled as information, not as an error.** Token semantics: `danger` stays
+  for failures; a refusal uses a non-alarming surface. No new hex, no new token.
+
+**Acceptance criteria**
+- [ ] A test drives a real refusal end to end — `MoveToColumn(project, doing)` (**D9**) —
+      and asserts the toast shows the **specific** localised refusal message in both
+      languages, and **not** `toast.error.body`.
+- [ ] An error that is in no table still raises exactly one `toast.error.body`, unchanged.
+      S2's *"every rejection reaches a toast"* criterion is not weakened.
+- [ ] **Exhaustiveness test**: adding a sentinel to the Go table without adding a key turns
+      a named test red. Negative control, recorded in the commit body.
+- [ ] `git grep -n` finds **one** Go function producing the code and **one** TypeScript
+      function parsing it; no component and no store action does either.
+- [ ] Every toast raised anywhere in the app names its operation — asserted by driving one
+      failure per store action and checking the rendered text differs per action.
+- [ ] `frontend/wailsjs` is regenerated and committed in this commit;
+      `git status --porcelain` is empty after `make check`.
+- [ ] `make cover` green, `make guard`, `make front-test`, `make check` green.
+
+**Commit:** `feat(service): give refusals their own code and name the failed operation (S3-08)`
+
+---
+
+## S3-09 — test: the hand pass that closes the blocking block
+
+**This ticket is a human at a real keyboard in front of a real window.** It is not
+automatable here and pretending otherwise is the one failure this project will not accept.
+There is **no display on this machine**, and `xvfb-run`, `scrot`, `import` and `grim` are
+**all absent**.
+
+**It is also the gate into block B.** Rule 18: nothing from S3-10 onwards starts until this
+is reported.
+
+**Scope (may touch):** `internal/service/task_test.go` and a new
+`frontend/src/components/DueBadge.test.tsx` — **test files only, and only for the D8 item
+below. No production file.** The rest of this ticket is a report.
+
+### Part 1 — the D8 due-badge claim finally gets the mechanical halves it can have
+
+Since Stage 2 this has been the honest gap: the ACCEPT flow's fake client **does not model
+D8's due rewrite**, so *"the badge reads the upcoming Friday"*, *"the badge reads today"*
+and *"the date is cleared on the way back"* have **no mechanical backing anywhere**. The
+fake must **not** be taught the rule — a fake that implements D8 is D8 with a second
+spelling, which is the defect this project keeps paying for. Instead, two halves that are
+each honest:
+
+- **Go's half**: a service-level test that moves a node to This week, then to Today, then
+  back to Backlog, and asserts the `due` and `due_source` that come back from `Board()` —
+  the upcoming Friday, today (with the Friday edge case from `PLAN.md` §4), and cleared.
+- **The frontend's half**: `DueBadge` renders **the DTO's date**, formatted, and nothing
+  else — reinforcing what `Card.test.tsx` already pins for `overdue`.
+
+**What remains hand-only after both**: that the two halves meet across the real IPC bridge
+in a real window. Say exactly that, and no more.
+
+### Part 2 — the hand script
+
+Build and launch, then report **every item, pass or fail, in the ticket's commit body or
+report**:
+
+```sh
+make build && ./build/bin/nexus
+```
+
+| # | What to do | What must be true | Closes |
+|---|---|---|---|
+| 1 | Look at the window. Resize the board content past the bottom | The **board** scrolls; the **document** does not. No document-level scrollbar. Tab through every region — **the board never jumps or scrolls when focus moves** | **K10** / S3-01 |
+| 2 | At a real 1024×768, in **English** and then in **Russian** | Nothing clips. Column headings do **not** wrap one character per line; the due badge and the card-count are fully readable; the habit chip fits | **K8** / S3-02 |
+| 3 | Drag the window edge inward as far as it will go, at **more than one display scaling** | It stops at the minimum and the layout is still usable there — not broken, not clipped | **K9** / S3-03 |
+| 4 | Resize the window repeatedly, in **both palettes**, at **more than one display scaling** | The layout never sticks broken, and never needs a restart. **If it still does**, report it and apply **D19**'s escalation ladder — do not quietly add a repaint hack | **K7** / S3-04 |
+| 5 | Grab a card and drag it slowly across every column boundary | The card is **visible under the pointer the whole time**, is not painted over by the next column, and does not teleport home. Drop works; a rejected drop rolls back | **K6** / S3-05 |
+| 6 | Switch to Russian, in **both palettes** | The whole UI is in the designed family — **not** the system `sans-serif`. Numbers and dates are still JetBrains Mono. The header does not gain a row. `document.documentElement.lang` is `ru` | **K11** / S3-06 |
+| 7 | Force several failures in a row, and one real refusal (drag a project to Doing) | At most three toasts; identical ones collapse with a count; each dismisses itself; **each says which operation failed**; the refusal reads as a rule, not as a malfunction | **K12** / S3-07, S3-08 |
+| 8 | **Steps 1–10 of [Stage 2's hand script](#half-2--by-hand-on-the-real-binary-mouse-untouched)**, mouse untouched, reported step by step | As written there — **including the three D8 due-badge assertions at steps 3, 4 and 7** | Stage 2 hand-pass item 1 |
+| 9 | Quit and relaunch, in **both** themes | **No flash of the wrong background** on the first frame (**D12**, **K1**) | Stage 2 hand-pass item 2 |
+| 10 | Tab around, in **both palettes** | The `:focus-visible` accent ring is **actually painted** and is visible against both | Stage 2 hand-pass item 4 |
+
+**Acceptance criteria**
+- [ ] Part 1's two tests are committed and green, and the commit body states **precisely
+      what they do and do not prove** — specifically that the bridge is still hand-only.
+- [ ] The fake client was **not** taught D8. Confirmed by diff.
+- [ ] **All ten items above are reported individually, pass or fail.** A silent item is a
+      failed ticket. A failure is a normal outcome and is reported as one, with what was
+      seen.
+- [ ] Any item that fails produces a **named follow-up ticket** before block B starts — or
+      an explicit, recorded decision by the user to proceed anyway.
+- [ ] `make check`, `make cover`, `make front-test`, `make guard` all green at this commit —
+      **this is the point where block A is declared closed.**
+
+**Commit:** `test: back the d8 badge claim and run the block a hand pass (S3-09)`
+
+---
+
+### Block B — the feature stage (S3-10 … S3-28)
+
+**Do not start any of these until [block A](#block-a--the-blocking-defect-block-s3-01--s3-09)
+is closed by S3-09.**
+
+**S3-10 … S3-18 are Go** and touch no file under `frontend/src`; each commits the
+regenerated `frontend/wailsjs` if it changes a bound signature (rule 12), and each lands
+with its tests in the same commit (rule 14 — `make cover` has no headroom to spend).
+**S3-19 … S3-27 are the screens.** **S3-28 is the README.**
+
+**The prime directive has not moved.** The frontend renders what Go returns and computes
+nothing — and block B adds three new places that will be tempted: the Markdown preview
+(rendering, not deriving), the recurrence editor (**it must not parse, validate or expand an
+RRULE in TypeScript** — see **OQ2**), and the running timer clock (it renders Go's
+`elapsedSeconds`, and Stage 2 deleted the wall-clock helpers that sat on top of it for
+exactly this reason).
+
+---
+
+## S3-10 — feat(service): `NodeDetail` — the one read the panel renders
+
+**Scope (may touch):** `internal/service/dto.go`, `internal/service/read.go`,
+`internal/service/read_test.go`, `app.go`, `frontend/wailsjs/**`.
+
+Requirements:
+
+- One read, `NodeDetail(id)`, returning everything the slide-over shows: the node's own
+  fields, its **derived** status, progress and overdue flag, its tags, its children as the
+  same view the board uses, its time entries with a total, its attachments, its recurrence
+  as a **structure** (never a sentence), and its ancestor chain for a breadcrumb.
+- **Every derived value is on the DTO.** If the panel will show it, Go computes it —
+  including anything the tree/search screens will reuse.
+- **JSON tags per S2-02's wire contract.** No field ships with Go's exported name.
+- Built on the **existing** `Index` from S2-01: one index per call, no second traversal.
+
+**Acceptance criteria**
+- [ ] A table-driven test covers a task, a leaf project, an empty project
+      (`progress.defined == false`, **D15**), a habit, a note and a bug.
+- [ ] The derived status and progress come from the **same** `domain` entry points the board
+      uses — `git grep` shows no second derivation.
+- [ ] Every DTO field has a JSON tag; the generated `models.ts` is committed.
+- [ ] `make cover` green; `make check` green.
+
+**Commit:** `feat(service): add the node detail read (S3-10)`
+
+---
+
+## S3-11 — feat(service): the field writers — title, description, due, estimate, activity
+
+**Scope (may touch):** `internal/service/task.go`, `internal/service/task_test.go`,
+`app.go`, `frontend/wailsjs/**`.
+
+Requirements:
+
+- `SetTitle`, `SetDescription`, `SetDue`, `SetEstimate`, `SetActivity`, each built to the
+  shape `SetDue`/`SetPriority` already have: read, apply **one** field, let
+  `domain.Node.Validate` decide, write, read back. A refused value writes nothing.
+- **D1 holds:** any *user* edit of `due` sets `due_source = 'manual'`. That rule already has
+  one spelling; do not add a second.
+- **`HasDue` holds:** a `note` is refused a due date (`ErrTypeHasNoDue`). Ask the predicate;
+  do not restate it.
+- `activity` takes the fixed list from **D4**, which `domain` already owns.
+- **One entry point per field, reachable from `app.go`.** Two setters for one field, one
+  validating and one not, is a second spelling with a call-site-shaped fuse (**D13**'s
+  lesson).
+
+**Acceptance criteria**
+- [ ] Each setter round-trips: write, read back, the stored value is Go's normalised one.
+- [ ] A due date set by hand reports `due_source == 'manual'`, and a subsequent column move
+      overwrites it and flips it to `auto` (**D8**) — asserted in one test, because that is
+      the pair that confused Stage 1.
+- [ ] `SetDue` on a `note` is refused with `ErrTypeHasNoDue` and writes nothing.
+- [ ] Every new bound method returns `(T, error)`; `frontend/wailsjs` committed.
+- [ ] `make cover` green; `make check` green.
+
+**Commit:** `feat(service): add the detail-panel field writers (S3-11)`
+
+---
+
+## S3-12 — feat(service): the type switcher
+
+**Its own ticket because it is the rules-heaviest write in the stage.** Changing a node's
+type can invalidate its status, its due date and its right to have children — three rules
+that already exist and **must not be restated here**.
+
+**Scope (may touch):** `internal/service/task.go`, `internal/service/task_test.go`,
+`internal/domain/node.go` only if a predicate genuinely needs widening (**stop and report
+before doing so**), `app.go`, `frontend/wailsjs/**`.
+
+Requirements:
+
+- `SetType(id, type)`, deciding every consequence through the **existing** predicates:
+  `NodeType.HasColumn` (a type with no column may not hold a column status and may not have
+  children — `ErrTypeHasNoChildren`), `NodeType.HasDue`, `DoingRefusal`/`CanBeDoing`
+  (**D9**), and the habit-requires-recurrence check (`ErrNoRecurrence`).
+- **No new predicate, and no new spelling of an old one.** If a rule is missing, that is a
+  **stop-and-report**, not a local `if`.
+- The refusals surface through **S3-08**'s refusal codes, so the panel can say *why*.
+
+**Acceptance criteria**
+- [ ] A matrix test over every from-type × to-type pair, asserting the outcome and the
+      sentinel. Illegal transitions write **nothing**.
+- [ ] Switching a node **with children** to a no-column type is refused with
+      `ErrTypeHasNoChildren`; switching to `habit` without a recurrence is refused with
+      `ErrNoRecurrence`; switching to `note` with a due date is refused or clears it —
+      **whichever the existing predicates already imply, and the test says which and why**.
+- [ ] `git grep` shows the predicates called, not re-implemented.
+- [ ] `make cover` green; `make check` green.
+
+**Commit:** `feat(service): add the node type switcher (S3-12)`
+
+---
+
+## S3-13 — feat(service): tags
+
+**Scope (may touch):** `internal/service/tag.go` (new) and its test, `internal/store`'s tag
+repository (S1-14, already built), `app.go`, `frontend/wailsjs/**`.
+
+Requirements:
+
+- List, create, rename, recolour, delete, attach, detach — over the `tags` / `node_tags`
+  schema Stage 1 already migrated.
+- **Deleting a tag detaches it everywhere**, in one transaction.
+- **A tag's colour is chosen from the accent set Go publishes** (**D26**, S3-18), not a free
+  hex string. This is what keeps rule 9 — *no hex literal in `frontend/src`* — true when the
+  tag picker ships. The stored column keeps whatever it stores; the **offered set** is Go's.
+- Name uniqueness and trimming are decided in `domain`, once.
+
+**Acceptance criteria**
+- [ ] Attach/detach is idempotent; deleting a tag removes every `node_tags` row, asserted.
+- [ ] A colour outside the published set is refused and writes nothing.
+- [ ] `make cover` green; `make check` green.
+
+**Commit:** `feat(service): add tag management (S3-13)`
+
+---
+
+## S3-14 — feat(service): attachments copied into the app data dir
+
+**Scope (may touch):** `internal/service/attachment.go` (new) and its test,
+`internal/store`'s attachment repository (S1-16), `app.go`, `frontend/wailsjs/**`.
+
+Requirements:
+
+- An attachment is **copied into the app data directory**, never linked. The original may be
+  moved or deleted by the user and the attachment must survive it.
+- The stored path is **relative to the data dir**; a read that resolves outside the data dir
+  is refused. Path traversal is a rule, and it has one spelling.
+- MIME is detected from content, not from the extension.
+- **Local-only:** no fetch, no upload, no preview service. A file picker comes from the
+  Wails runtime; no new dependency.
+
+**Acceptance criteria**
+- [ ] Copying, then deleting the source, leaves the attachment readable.
+- [ ] A crafted relative path escaping the data dir is refused, asserted.
+- [ ] Removing an attachment removes both the row and the file, in that order, with the file
+      removal failure not orphaning the row.
+- [ ] `make cover` green; `make check` green.
+
+**Commit:** `feat(service): copy attachments into the app data dir (S3-14)`
+
+---
+
+## S3-15 — feat(service): the editable time log
+
+**Scope (may touch):** `internal/service/timer.go`, `internal/service/timer_test.go`,
+`internal/store`'s time-entry repository (S1-15), `app.go`, `frontend/wailsjs/**`.
+
+Requirements:
+
+- List a node's entries; edit an entry's start and end; insert an entry by hand; delete one.
+- **The single-active invariant is global and is not weakened** (§4, S1-19): an edit may not
+  produce a second open entry, and a hand-inserted entry may not overlap an open one.
+- **Minutes are stored as measured.** D4's rounding to the nearest 15 minutes is the **PMP
+  output format** (Stage 6), not storage. Rounding here would make Stage 6's numbers
+  unreconstructable.
+- An entry ending before it starts is refused in `domain`, once.
+
+**Acceptance criteria**
+- [ ] A table-driven test over edit/insert/delete, including every way to attempt two open
+      entries — each refused, nothing written.
+- [ ] The S1-19 timer suite passes **unmodified**.
+- [ ] `make cover` green; `make check` green.
+
+**Commit:** `feat(service): make the time log editable (S3-15)`
+
+---
+
+## S3-16 — feat(service): search with tag/type/status/date filters
+
+**Scope (may touch):** `internal/service/search.go` (S1-22) and its test, `internal/store`'s
+search implementation (S1-17), `app.go`, `frontend/wailsjs/**`.
+
+Requirements:
+
+- Filters on tag, type, **derived** status, and a due-date range, composable with the text
+  query.
+- **Whatever backend S1-04 chose stands** — FTS5 if available, `LIKE` over
+  `title` + `description_md` otherwise. **No cgo, ever**, and the fallback is pre-approved.
+- **Filtering happens in SQL where it can and in `domain` where it must.** A *derived*
+  status is not a column, so say explicitly which filters are pushed down and which are
+  applied after derivation — and make the ordering stable either way.
+- Archived nodes are excluded unless asked for (S3-17 is the view that asks).
+
+**Acceptance criteria**
+- [ ] A test asserts each filter alone and all four combined, including a derived-status
+      filter over a parent whose stored status disagrees — the case that must not regress.
+- [ ] Result ordering is deterministic, asserted over a fixture with ties.
+- [ ] `go list -deps ./... | grep -i mattn` prints nothing; `CGO_ENABLED=0 go build ./...`
+      succeeds.
+- [ ] `make cover` green; `make check` green.
+
+**Commit:** `feat(service): add search filters (S3-16)`
+
+---
+
+## S3-17 — feat(service): the archive list and restore
+
+**Scope (may touch):** `internal/service/read.go`, `internal/service/task.go` and their
+tests, `app.go`, `frontend/wailsjs/**`.
+
+Requirements:
+
+- A read listing archived nodes with enough context to identify one — title, type, parent
+  chain, `archived_at`.
+- Restore already exists (S1-18) and **needs no new rule**: once a node has
+  column-bearing children again, derivation takes over and the stored status stops being
+  consulted (**D14**'s closing note).
+- **D14 is not re-implemented here.** Archiving already re-inspects a node it turned into a
+  leaf (S2-06). This ticket reads and restores; it does not touch that rule.
+
+**Acceptance criteria**
+- [ ] Archiving a subtree lists it once, by its root, not once per descendant — or lists
+      every node, if that is the choice; **the ticket's test states which and why**.
+- [ ] Restore → the node reappears on the board in its **derived** column, asserted.
+- [ ] S2-06's D14 test passes **unmodified**.
+- [ ] `make cover` green; `make check` green.
+
+**Commit:** `feat(service): add the archive list (S3-17)`
+
+---
+
+## S3-18 — feat(service): publish every enum set (C6, D26)
+
+**This closes C6, by D26** — the first of C6's two recorded options, because it **removes**
+the second spelling instead of detecting it.
+
+**An honest correction that the ticket must carry:** a fresh audit found current locale
+parity **clean** — 82 RU leaves against 80 EN, the two extra being
+`board.column.cardCount_few` and `_many`, the CLDR plural forms Russian requires, and
+`locales.test.ts` already enforces parity. **C6 is a drift risk for future enum values, not
+a present defect.** Nothing is wrong on screen today; what is missing is the thing that
+would go red if it became wrong.
+
+**Scope (may touch):** `internal/service/settings.go` and its test, `app.go`,
+`frontend/wailsjs/**`, `frontend/src/lib/commands.ts`,
+`frontend/src/components/AppearanceControls.tsx`, `frontend/src/locales/*.json`,
+`frontend/src/locales/locales.test.ts`, tests beside them.
+
+Requirements:
+
+- Go publishes each set — **statuses, node types, themes, palettes, accents, priorities** —
+  over the wire, the way the five Kanban columns already are.
+- **The frontend enumerates what Go enumerates**; the locale files are reduced to **labels**.
+  `Object.keys` of a locale table stops being an authoritative set anywhere in
+  `frontend/src`.
+- **The criterion C6 states is the criterion:** adding a value to a Go set must turn
+  something red until the frontend offers it.
+- The same shape serves **S3-08**'s refusal codes. One mechanism used twice, not two.
+
+**Acceptance criteria**
+- [ ] Negative control, per set: add a value to the Go set, watch the **named** test fail,
+      remove it. Six sets, six demonstrations, recorded in the commit body.
+- [ ] `git grep -n 'Object.keys' frontend/src` shows **no** locale table used as a set.
+- [ ] The command palette and the appearance controls still offer exactly what they offered
+      before — the existing S2-20 and S2-21 suites pass with only the source of the set
+      changed, and the commit body says so file by file.
+- [ ] `make cover`, `make guard`, `make front-test`, `make check` green.
+
+**Commit:** `feat(service): publish the enum sets and reduce the locales to labels (S3-18)`
+
+---
+
+## S3-19 — feat(frontend): the detail slide-over — shell, keyboard, Markdown
+
+**This ticket creates the panel region and mounts it** — see
+[Composition](#composition--who-mounts-what-in-stage-3). A panel that exists and is not in
+the shell is an unfinished ticket.
+
+**Scope (may touch):** `frontend/src/components/DetailPanel.tsx` (new),
+`frontend/src/App.tsx`, `frontend/src/store/**`, `frontend/src/lib/keyboard.ts`,
+`frontend/package.json`, the locale files, tests beside them.
+
+Requirements:
+
+- A slide-over **beside the board**, not a modal over it, hydrated from `NodeDetail`
+  (S3-10). `Enter` on a focused card opens it; `Esc` closes it and **returns focus to the
+  card it came from**.
+- **Markdown editor and preview**, via `react-markdown` + `remark-gfm`. **`rehype-raw` must
+  not be added** — no raw HTML from the database, ever.
+- **It is not an overlay.** `store/ui.ts` holds one overlay and that is what keeps quick-add
+  and the palette mutually exclusive. The panel is separate state, so this ticket must
+  **state and test** what `Ctrl+N` and `Ctrl+K` do while the panel is open.
+- **It has its own scroll container** (**D22**): the document does not scroll, so anything
+  taller than the shell must say where it scrolls.
+- Focus is trapped while open where that is correct, and every control is keyboard-reachable.
+
+**Acceptance criteria**
+- [ ] **Mounted and reachable**: `render(<App />)`, keyboard only, opens the panel on a card
+      and closes it with `Esc`, focus restored. The test imports `App` and **does not import
+      `DetailPanel`** — that restriction is the assertion.
+- [ ] The preview renders GFM and **does not render raw HTML** — a fixture containing a
+      `<script>` and an `<img onerror=…>` is asserted inert.
+- [ ] `Ctrl+K` with the panel open behaves as specified, asserted.
+- [ ] The panel scrolls internally; the document does not (the S3-01 height-chain test still
+      passes).
+- [ ] The orphan check (`App.mount.test.tsx`) is green; `make guard`, `make front-test`,
+      `make check` green.
+
+**Commit:** `feat(frontend): add the detail slide-over with markdown (S3-19)`
+
+---
+
+## S3-20 — feat(frontend): the panel's field editors
+
+**Scope (may touch):** `frontend/src/components/DetailPanel.tsx` and new child components
+under `frontend/src/components/`, `frontend/src/store/**`, the locale files, tests beside
+them.
+
+Requirements:
+
+- Editors for **due, priority, estimate, activity, tags and type**, each calling the S3-11 /
+  S3-12 / S3-13 method and **re-reading**. Nothing is computed locally — not the overdue
+  flag, not whether a type may hold children, not whether a due date is allowed.
+- **Every offered set comes from Go** (**D26**, S3-18): priorities, types, activities,
+  tag colours.
+- **A refusal is shown as a refusal** (**D25**, S3-08) — in place, next to the field, and
+  the field reverts to Go's value.
+- The tag editor offers only published colours, so **rule 9 stays true**: no hex in
+  `frontend/src`.
+
+**Acceptance criteria**
+- [ ] **The round-trip criterion, per field**: change it by keyboard, assert the **exact Go
+      call and argument**, then assert the panel renders **Go's answer** — a field that
+      renders what the user typed has not round-tripped.
+- [ ] A refused edit (a due date on a `note`; a type switch that `ErrTypeHasNoChildren`
+      refuses) shows the specific refusal and leaves the field at Go's value.
+- [ ] `make guard` finds no recomputed rule; `git grep -nE '#[0-9a-fA-F]{3,8}' frontend/src`
+      returns nothing.
+- [ ] Every editor is keyboard-reachable and operable, mouse untouched.
+- [ ] `make front-test`, `make check` green.
+
+**Commit:** `feat(frontend): add the detail panel field editors (S3-20)`
+
+---
+
+## S3-21 — feat(frontend): inline subtasks
+
+**Scope (may touch):** `frontend/src/components/DetailPanel.tsx` and a new subtask list
+component, `frontend/src/store/**`, the locale files, tests beside them.
+
+Requirements:
+
+- Add, rename, reorder and complete children from inside the panel, through the **existing**
+  `CreateNode` / `MoveNode` / `MoveToColumn` calls.
+- **The parent's status and progress are not computed here.** They arrive re-derived from Go
+  after each write (**D2**, **D10**, **D11**). A locally incremented counter is a second
+  spelling of the progress rule.
+- Keyboard: add with `Enter`, navigate with arrows, reorder with a modifier chord that does
+  not collide with S2-16's map — **S2-16's map stays normative**.
+
+**Acceptance criteria**
+- [ ] Adding a child re-reads, and the parent's bar changes to **Go's** new value — asserted
+      against a fixture where a locally computed value would differ.
+- [ ] Reorder calls `MoveNode`, not `MoveToColumn`.
+- [ ] The S2-16 keyboard suite passes unmodified.
+- [ ] `make guard`, `make front-test`, `make check` green.
+
+**Commit:** `feat(frontend): add inline subtasks to the detail panel (S3-21)`
+
+---
+
+## S3-22 — feat(frontend): the recurrence editor (OQ2)
+
+> **⚠️ BLOCKED on OQ2 until the user answers it.** The brief promises *"daily/weekly/custom
+> RRULE"*; Stage 1's parser accepts `FREQ=DAILY`, `FREQ=WEEKLY` with `BYDAY`, and
+> `FREQ=MONTHLY` with `BYMONTHDAY`, plus `INTERVAL` and `WKST=MO`, and **rejects `COUNT`,
+> `UNTIL`, `BYSETPOS`, `BYMONTH` and ordinal weekdays at parse time**. `PLAN.md` §7 **OQ2**
+> states three options and recommends **A** — custom *within the supported subset*. **Do not
+> start this ticket with OQ2 unanswered**, and do not widen `internal/domain/recurrence.go`
+> under this ticket without the user's answer: that would be a domain change smuggled into a
+> UI ticket.
+
+**Scope (may touch):** a new recurrence editor component under `frontend/src/components/`,
+`frontend/src/store/**`, the locale files, tests beside them. **`internal/domain` only if
+OQ2 is answered B, in which case this ticket is split and the domain half comes first.**
+
+Requirements:
+
+- **The editor does not parse, validate or expand an RRULE in TypeScript.** It collects
+  structured choices; **Go** builds and validates the rule; the frontend renders the
+  structure Go returns **through i18n**.
+- **No human-readable sentence is returned from Go** — that is **D15**'s rejected option (c)
+  and it cannot be translated.
+- Under option A, **the editor cannot compose a rule Go would reject**, which makes
+  `ErrUnsupportedRecurrence` unreachable from the UI. That is the criterion, and it is a
+  better one than a free-text box with an error under it.
+- A habit requires a recurrence (`ErrNoRecurrence`); that rule is Go's and is not restated.
+
+**Acceptance criteria**
+- [ ] Every combination the editor can produce is accepted by Go — asserted by generating
+      the editor's whole reachable space and round-tripping each one.
+- [ ] `git grep -niE 'FREQ=|BYDAY|RRULE' frontend/src` finds **no parsing and no
+      construction** of a rule string outside the one call that hands the structure to Go.
+- [ ] The described rule renders correctly in **both** languages, from i18n keys and not
+      from a Go string.
+- [ ] `make guard`, `make front-test`, `make check` green.
+
+**Commit:** `feat(frontend): add the recurrence editor (S3-22)`
+
+---
+
+## S3-23 — feat(frontend): attachments, the editable time log, and the running clock
+
+**Scope (may touch):** new components under `frontend/src/components/`,
+`frontend/src/components/DetailPanel.tsx`, `frontend/src/lib/format.ts`,
+`frontend/src/store/**`, the locale files, tests beside them.
+
+Requirements:
+
+- Attachments: add, list, open, remove — over S3-14. The file picker is the Wails runtime's;
+  **no new dependency and no network.**
+- The editable time log: list, edit, insert, delete — over S3-15. The single-active
+  invariant is Go's and is not enforced a second time here.
+- **The running clock.** `ae6befd` deleted `displayElapsedSeconds`, `timerStartedAt`,
+  `formatTime` and `formatDuration` because they were **wall-clock arithmetic on top of Go's
+  `elapsedSeconds`, rendered by nothing** — the exact shape of a second implementation
+  waiting for its first caller. **This ticket adds back exactly what it renders and not one
+  helper more.** It renders Go's `elapsedSeconds`; if a ticking display needs a local
+  interval, that interval **re-reads from Go** rather than incrementing a local number.
+- Durations are `font-mono`, formatted in `lib/format.ts` — **one** duration format in the
+  application.
+
+**Acceptance criteria**
+- [ ] The clock renders Go's `elapsedSeconds`. A test supplying an `elapsedSeconds`
+      inconsistent with the start time renders **Go's number** — proving TypeScript is not
+      counting.
+- [ ] `git grep -n 'Date.now\|new Date' frontend/src` shows no elapsed-time arithmetic.
+- [ ] Editing an entry calls the S3-15 method and re-reads; an overlap is refused and shown
+      as a refusal.
+- [ ] Every helper added to `lib/format.ts` has a caller in this commit.
+- [ ] `make guard`, `make front-test`, `make check` green.
+
+**Commit:** `feat(frontend): add attachments, the time log and the running clock (S3-23)`
+
+---
+
+## S3-24 — feat(frontend): the tree view
+
+**This ticket introduces the view switch** — see
+[Composition](#composition--who-mounts-what-in-stage-3) — and mounts the first non-Kanban
+view.
+
+**Scope (may touch):** `frontend/src/views/Tree.tsx` (new), `frontend/src/App.tsx`,
+`frontend/src/store/ui.ts`, `frontend/src/lib/commands.ts`, `frontend/src/store/**`, the
+locale files, tests beside them.
+
+Requirements:
+
+- `activeView` in `store/ui.ts`; region 3 of the shell switches on it; the command palette's
+  **`view:tree` row flips from *unavailable, coming in stage N* to available**. **No palette
+  row may silently do nothing** — the Stage 2 standard.
+- Collapsible nodes, **inline rename**, **drag-to-reparent** (dnd-kit, already a dependency;
+  the S3-05 `DragOverlay` policy applies here too), and arrow/`Enter`/`Tab` keyboard
+  navigation.
+- **Reparenting calls `MoveNode` and re-reads.** The frontend does **not** walk the subtree,
+  and does not decide whether a parent is legal — `ErrTypeHasNoChildren` and `ErrCircularParent`
+  are Go's and surface as refusals (**D25**).
+- Expansion state is UI state and lives in `store/ui.ts`, per `ARCHITECTURE.md` §6.
+
+**Acceptance criteria**
+- [ ] **The ACCEPT half**: reparent a node in the tree, switch to Kanban, and the board shows
+      it **without a manual refresh** — asserted through `render(<App />)`, keyboard only.
+- [ ] A refused reparent (into its own subtree; onto a habit) rolls back and shows the
+      specific refusal.
+- [ ] **Mounted and reachable**: the test imports `App` and **does not import `Tree`**.
+- [ ] The whole tree is navigable and operable by keyboard alone, mouse untouched.
+- [ ] The orphan check is green; `make guard`, `make front-test`, `make check` green.
+
+**Commit:** `feat(frontend): add the tree view with drag-to-reparent (S3-24)`
+
+---
+
+## S3-25 — feat(frontend): the search screen
+
+**Scope (may touch):** `frontend/src/views/Search.tsx` (new), `frontend/src/App.tsx`,
+`frontend/src/store/**`, `frontend/src/lib/commands.ts`, the locale files, tests beside them.
+
+Requirements:
+
+- Query plus the four filters from S3-16 — tag, type, status, date range — each offered from
+  **Go's published set** (**D26**).
+- Results are Go's, in Go's order. **No client-side filtering, sorting or ranking**: that
+  would be a second search.
+- A result opens the detail panel; the view is fully keyboard-driven.
+- Registers its palette row.
+
+**Acceptance criteria**
+- [ ] Each filter and the query produce exactly one `Search` call with the expected
+      arguments; the rendered list is the response, unreordered.
+- [ ] An empty result renders a localised empty state, not a blank region.
+- [ ] **Mounted and reachable**: the test imports `App` and not `Search`.
+- [ ] `make guard`, `make front-test`, `make check` green.
+
+**Commit:** `feat(frontend): add the search screen (S3-25)`
+
+---
+
+## S3-26 — feat(frontend): the archive view
+
+**Scope (may touch):** `frontend/src/views/Archive.tsx` (new), `frontend/src/App.tsx`,
+`frontend/src/store/**`, `frontend/src/lib/commands.ts`, the locale files, tests beside them.
+
+Requirements:
+
+- Lists S3-17's archived nodes with enough context to identify one, and restores from there.
+- **Restore re-reads the board**; the node reappears in its **derived** column, which the
+  frontend does not compute.
+- Registers its palette row.
+
+**Acceptance criteria**
+- [ ] Restoring from the archive view puts the node back on the board in the column **Go**
+      reports, asserted through `render(<App />)`.
+- [ ] An empty archive renders a localised empty state.
+- [ ] **Mounted and reachable**: the test imports `App` and not `Archive`.
+- [ ] `make guard`, `make front-test`, `make check` green.
+
+**Commit:** `feat(frontend): add the archive view (S3-26)`
+
+---
+
+## S3-27 — fix(frontend): shortcuts match the key, not the character (K13)
+
+**This is K13, and it is ranked last on purpose.** `lib/keyboard.ts:107-115` matches on
+`event.key`, and `event.code` appears **nowhere** in `frontend/src`. Under a Cyrillic
+keyboard layout the N key emits `т` and K emits `л`, so **Ctrl+N and Ctrl+K would silently
+stop working**. **The user has confirmed they keep a Latin layout**, so this is *not* the bug
+they reported — it is a real latent defect in a Russian-language application, recorded and
+scheduled rather than fixed under pressure.
+
+**Scope (may touch):** `frontend/src/lib/keyboard.ts` and its test, tests beside them.
+
+Requirements:
+
+- Chords that name a **letter** match the physical key (`event.code`); chords that name a
+  **named key** (`ArrowRight`, `Escape`, `Space`) keep matching `event.key`, because those
+  are layout-independent already.
+- **One matcher, not two.** The rule lives in `matches()`, which is already the single
+  spelling — do not add a parallel path.
+- Modifier matching stays **exact in both directions** (the existing comment explains why)
+  and `Meta` stays required-up.
+
+**Acceptance criteria**
+- [ ] A synthetic event with `key: 'т'`, `code: 'KeyN'`, `ctrlKey: true` matches the
+      quick-add chord; one with `key: 'n'`, `code: 'KeyN'` still does.
+- [ ] Arrow, `Escape` and `Space` bindings are **unchanged** — the whole S2-16 suite passes
+      unmodified.
+- [ ] Negative control: revert the change, watch the new Cyrillic-layout test fail, restore.
+- [ ] `make guard`, `make front-test`, `make check` green.
+
+**Commit:** `fix(frontend): match shortcut chords on the physical key (S3-27)`
+
+---
+
+## S3-28 — docs: `README.md` and the screenshots — BLOCKED on the user
+
+**`README.md` has been deliberately unwritten since Stage 0**, because every screenshot it
+needs required a screen. The board exists now, so it is finally writable.
+
+> **⚠️ BLOCKER the user must clear (sudo required), exactly as the Stage 0 blocker was:**
+>
+> ```sh
+> sudo apt install xvfb imagemagick
+> ```
+>
+> Without them there is **no way to capture a screenshot on this machine** — `xvfb-run`,
+> `scrot`, `import` and `grim` are all absent. **Until it is cleared, this ticket produces
+> the prose and leaves the image slots empty and marked as owed** — it does **not** ship a
+> README with invented screenshots or borrowed ones, and it does **not** claim a screen
+> nobody photographed.
+
+**Scope (may touch):** `README.md` (new), and a captured-images directory if the blocker is
+cleared. **No source file.**
+
+Requirements:
+
+- What Nexus is, **local-only and what that rules out**, the stack, how to build
+  (**`-tags webkit2_41`**, **E1**, and why), how to run the gates, and where the data lives.
+- Screenshots of the Kanban board and the habits strip, in **both palettes** and in **both
+  languages** — the four-way grid is the point, because it is the claim that has been hardest
+  to keep true.
+- **No claim that is not verified.** If a screenshot is missing, the README says it is
+  missing.
+
+**Acceptance criteria**
+- [ ] Every command in the README is run as written and works, from a clean checkout.
+- [ ] The local-only rule is stated as a rule, not as a feature.
+- [ ] If the blocker is uncleared: the image slots are explicitly marked as owed, and the
+      commit body says so. **Nothing is faked.**
+- [ ] `make check` green (the README changes no code, but the tree must still be clean).
+
+**Commit:** `docs: add the readme (S3-28)`
+
+---
+
+## Stage 3 — DONE criteria
+
+Stage 3 closes only once **all** of these hold, **verified by the Reviewer and not asserted
+by the PM**. Per `PLAN.md` §5 a stage cannot close without a **PASS**; criterion 20 is that
+PASS.
+
+**Block A has its own gate, earlier**: criteria 1–7 must hold **before S3-10 starts**, and
+S3-09 is where that is declared.
+
+1. [ ] **Block A is closed before block B began.** S3-01 … S3-09 all committed, in order,
+       and `make check` / `make cover` / `make front-test` / `make guard` all green at
+       S3-09, before the first block B commit. Checkable from the git history.
+2. [ ] **Every one of K6 – K12 is closed**, each by its named ticket, each with the
+       mechanical check that ticket promised — **and each with an explicit written statement
+       of what its mechanical check does NOT prove** (rule 17).
+3. [ ] **`make guard` is eight of eight**, with **`GUARD_ALLOW_RE` still empty**. Check 7
+       (one focus module) and check 8 (the blur allow-list) are both **exact greps**, both
+       demonstrated by negative control.
+4. [ ] **S3-09's hand pass is reported item by item, all ten items, pass or fail**, by a
+       human on real hardware. A silent item fails this criterion. **Any failure produced a
+       named follow-up ticket or a recorded user decision to proceed.**
+5. [ ] **The three D8 due-badge assertions have their two mechanical halves** (S3-09 part 1),
+       and the fake client was **not** taught D8. What remains hand-only is stated as
+       hand-only.
+6. [ ] **Russian does not clip at a real 1024×768, in Russian and in English**, confirmed by
+       eye — the check that came back **failed** from the user's pass.
+7. [ ] **The resize defect does not reproduce**, at more than one display scaling and in both
+       palettes — or **D19**'s escalation ladder was followed and the outcome recorded,
+       including escalation to the user if Aurora's blur must go.
+8. [ ] **The ACCEPT criterion is MET**: *every field round-trips through Go* — demonstrated
+       per field by asserting the exact Go call and then asserting the panel renders **Go's
+       answer**, not the typed value — and *reparent in the tree shows on Kanban instantly*,
+       demonstrated through `render(<App />)`, keyboard only.
+9. [ ] **All twenty-eight tickets are committed**, one conventional commit each, in order,
+       authored solely by `Ismat <mukhamejanov.ismat@gmail.com>`, with **no AI author, no
+       co-author trailer and no "Generated with" line** (**D7**).
+10. [ ] `make check` green — **all five gates, unchanged in number and definition**,
+        including `wails build -tags webkit2_41`.
+11. [ ] `make cover` green: `internal/domain` **and** `internal/service` both ≥90%, measured
+        per package after `go clean -testcache`.
+12. [ ] `make front-test` green, and the file/test count is recorded.
+13. [ ] **No rule has a second spelling.** The Stage 1 inventory is still one definition each;
+        the **new** Stage 3 candidates each have exactly one home — `preventScroll`, the blur
+        allow-list, the layout floor, the refusal-code table, the Cyrillic `unicode-range`,
+        the recurrence construction. **`make guard` passing is not the evidence; the Reviewer
+        reading the diff is** (**D17**, rule 16).
+14. [ ] `git grep -nE '#[0-9a-fA-F]{3,8}' frontend/src` returns nothing, and
+        `git diff -- design/` is empty. **`design/` was not edited to add a font** — that is
+        the constraint **D23** was shaped around.
+15. [ ] **Local-only holds.** `git grep -nE 'https?://' frontend/src` returns nothing; the new
+        font and Markdown packages are bundled from `node_modules`; no CDN, no fetch, no
+        telemetry. `CGO_ENABLED=0 go build ./...` succeeds and
+        `go list -deps ./... | grep -i mattn` prints nothing.
+16. [ ] **No raw HTML is rendered from the database.** `rehype-raw` is absent, and the inert
+        `<script>` fixture test is green.
+17. [ ] **C6 is closed (D26)**: every enum set is published by Go, no locale table is used as
+        a set, and **adding a value to a Go set turns something red** — six negative controls.
+18. [ ] **Every component Stage 3 built is reachable in the running app.** The orphan walk
+        reports an empty difference and every mounting ticket's `render(<App />)`
+        reachability test is green. **Neither half is sufficient alone** — Stage 2
+        demonstrated the walk's blind spot twice.
+19. [ ] **Nothing is claimed that was not verified.** Specifically: the Aurora drift is still
+        **gated and not drawn** (**D16**, **K5**), **K14** is still **deferred by the user**
+        and was not quietly implemented, and every jsdom-invisible claim in this stage names
+        the eye that checked it.
+20. [ ] **The Reviewer returns PASS.** Stage 1 closed on its fourth review and Stage 2 on its
+        second; a first-round FAIL here is a normal outcome, not a failure of the process.
+
+**Out of Stage 3 scope, and it must stay out**: the standalone frameless quick-add window
+and the NL parser, focus mode, the tray, autostart, D-Bus sleep/lock, backup, export, the
+PMP timelog screen, the calendar, stats, Gantt — **Aurora's background drift** (**D16**,
+**K5**; not to be invented) — and **making the palette selection more visibly indicated**
+(**K14**), which the user raised and then explicitly deferred.
