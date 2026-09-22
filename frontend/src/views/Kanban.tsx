@@ -9,6 +9,7 @@ import {
 import {
   closestCorners,
   DndContext,
+  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
@@ -22,8 +23,10 @@ import {
 import { hasSortableData } from '@dnd-kit/sortable';
 import { useTranslation } from 'react-i18next';
 
+import { Card } from '../components/Card';
 import { Column } from '../components/Column';
-import type { ColumnView } from '../lib/client';
+import { prefersReducedMotion } from '../lib/appearance';
+import type { ColumnView, NodeView } from '../lib/client';
 import { focusWithoutScrolling } from '../lib/focus';
 import { boardActionFor, KEYS, nextFocusId, rovingNodeId } from '../lib/keyboard';
 import type { DropTarget } from '../store/data';
@@ -99,6 +102,33 @@ import { useAppState, useAppStore } from '../store/context';
 // What a drop MEANS is not decided here. The handler reads the two ends of the
 // gesture off the event and hands them to the store; which call that becomes,
 // and what happens to the due date and the subtree, is store/data.ts and Go.
+//
+// # The DragOverlay (S3-05, K6, D18), and why it is not a nicety
+//
+// Until S3-05 there was no overlay, and THE CARD DISAPPEARED THE INSTANT IT WAS
+// GRABBED. @dnd-kit/sortable computes `useDragOverlay = Boolean(dragOverlay.rect
+// !== null)`, so with no overlay it was false, `shouldDisplaceDragSource` was
+// true, and the source <li> was translated in place — which produced two
+// independent failures at once:
+//
+//   * the next column's backdrop-filter is its own stacking context and painted
+//     OVER the card, and the `z-10` that used to sit on the <li> could only ever
+//     order siblings inside one column;
+//   * each column is its own SortableContext, so the moment the pointer crossed
+//     into another one `overIndex` went to -1 in the source context, the
+//     transform became null, and the card teleported home and stopped following
+//     the pointer.
+//
+// An overlay is not a workaround for either: it is the mode the library
+// documents for cross-container dragging, and it removes both causes instead of
+// fighting them. The card is drawn ONCE, by the SAME <Card> component the column
+// renders — a separate "drag preview" would be a second rendering of the card,
+// which is this project's defect class under another name, and it would drift
+// the first time a chip was added.
+//
+// Accepted consequence (D18): the dragged card is painted outside the column's
+// surface, so it is unblurred while in flight even under Aurora. That is what a
+// lifted object should look like.
 
 /**
  * How far a pointer must travel before a press becomes a drag.
@@ -127,6 +157,27 @@ function placeOf(board: ColumnView[], item: Active | Over): DropTarget | null {
   return column === undefined ? null : { status, index: column.nodes.length };
 }
 
+/**
+ * The view for the card currently in flight, or null when nothing is.
+ *
+ * A scan rather than an index: the board is five columns of a handful of cards
+ * each, this runs once per pointer move at most, and an index would be a second
+ * copy of the board that has to be kept in step with it.
+ */
+function draggedView(board: ColumnView[], nodeId: string | null): NodeView | null {
+  if (nodeId === null) {
+    return null;
+  }
+  for (const column of board) {
+    for (const view of column.nodes) {
+      if (view.node.id === nodeId) {
+        return view;
+      }
+    }
+  }
+  return null;
+}
+
 /** A string a drag event published about itself, or the id as a last resort. */
 function published(item: Active | Over | null, key: string): string {
   const value = item?.data.current?.[key];
@@ -138,6 +189,11 @@ export function Kanban() {
   const store = useAppStore();
   const board = useAppState((state) => state.board);
   const selectedNodeId = useAppState((state) => state.selectedNodeId);
+  // `draggingNodeId` has been written since S2-17 and read by NOTHING. This is
+  // its first and only consumer: a piece of state with no reader is a second
+  // spelling waiting for a caller, and D18 either uses it or deletes it.
+  const draggingNodeId = useAppState((state) => state.draggingNodeId);
+  const appWindow = useAppState((state) => state.view);
 
   const boardRef = useRef<HTMLDivElement>(null);
   const ownedFocus = useRef(false);
@@ -212,6 +268,10 @@ export function Kanban() {
   if (board.length === 0) {
     return <p className="min-w-0 break-words text-muted">{t('board.empty')}</p>;
   }
+
+  // The card in flight, looked up in the board Go last returned — so the overlay
+  // renders the same NodeView the column would have, not a copy of it.
+  const dragged = draggedView(board, draggingNodeId);
 
   /** The card an event came from, by the id the card publishes on itself. */
   const cardIdFrom = (target: EventTarget | null): string | null => {
@@ -339,6 +399,20 @@ export function Kanban() {
           <Column key={column.status} column={column} rovingNodeId={roving} />
         ))}
       </div>
+
+      {/* A DIRECT CHILD of DndContext, and outside the board's scroll container
+          on purpose: that is what puts the card above every column's stacking
+          context instead of inside one of them.
+
+          `dropAnimation={null}` under reduced motion, decided by the SAME
+          lib/appearance.ts helper components/Column.tsx asks for its transition.
+          Not a second media query — design/tokens.css already kills every CSS
+          transition under the preference, and dnd-kit's drop animation is not a
+          CSS transition, so it has to be asked for explicitly. `undefined`
+          rather than a value otherwise, which leaves the library its default. */}
+      <DragOverlay dropAnimation={prefersReducedMotion(appWindow) ? null : undefined}>
+        {dragged === null ? null : <Card view={dragged} />}
+      </DragOverlay>
     </DndContext>
   );
 }

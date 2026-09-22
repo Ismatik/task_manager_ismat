@@ -195,7 +195,24 @@ function box(x: number, y: number, width: number, height: number): DOMRect {
 function rectOf(element: Element): DOMRect {
   const section = element.closest('[data-column]');
   if (section === null) {
-    return box(0, 0, 0, 0);
+    // The DragOverlay (S3-05, D18) draws the active card OUTSIDE every column,
+    // which is the whole point of it — so it has no column to take a position
+    // from. A real browser measures it all the same, and what it measures is a
+    // box the size and place of the card that was lifted. dnd-kit uses that rect
+    // for collision detection from the moment the overlay mounts, so a fake that
+    // returned 0x0 here would put the drag at the origin and no column would
+    // ever be "over".
+    //
+    // This extends the GEOMETRY fake, which the note at the top of this file
+    // already names as the one piece of the environment these tests supply. No
+    // assertion in this file changed for S3-05.
+    const lifted = element.closest<HTMLElement>('[data-node-id]');
+    const source =
+      lifted === null
+        ? null
+        : document.querySelector(`[data-column] [data-node-id="${lifted.dataset.nodeId}"]`);
+
+    return source === null ? box(0, 0, 0, 0) : rectOf(source);
   }
 
   const columns = [...document.querySelectorAll('[data-column]')];
@@ -493,6 +510,70 @@ describe('what a screen reader is told', () => {
     await waitFor(() => expect(live).toHaveTextContent('a1'));
     expect(live).toHaveTextContent('Карточка');
     expect(live.textContent).not.toContain('was dropped over droppable area');
+  });
+});
+
+describe('the card in flight (S3-05, K6, D18)', () => {
+  /** Every element publishing `id`, split by whether it sits inside a column. */
+  function copiesOf(id: string) {
+    const all = [...document.querySelectorAll<HTMLElement>(`[data-node-id="${id}"]`)];
+    return {
+      seated: all.filter((element) => element.closest('[data-column]') !== null),
+      inFlight: all.filter((element) => element.closest('[data-column]') === null),
+    };
+  }
+
+  it('draws the lifted card once, outside every column', async () => {
+    const go = movingGo({ 0: [card('a1'), card('a2')] });
+    await showTheBoard(go);
+
+    // Before the lift there is one card and no overlay. Without this the
+    // assertion below could pass on a board that rendered the overlay always.
+    expect(copiesOf('a1').inFlight).toHaveLength(0);
+
+    pickUp('a1');
+
+    await waitFor(() => expect(copiesOf('a1').inFlight).toHaveLength(1));
+    // ONE copy in flight and ONE seat, not two of either: the overlay renders
+    // the same <Card> the column does, and a second preview component would
+    // show up here as a third.
+    expect(copiesOf('a1').seated).toHaveLength(1);
+
+    letGo(cardNamed('a1'));
+    await waitFor(() => expect(copiesOf('a1').inFlight).toHaveLength(0));
+  });
+
+  it('hides the seat the card came out of without closing the gap', async () => {
+    const go = movingGo({ 0: [card('a1'), card('a2')] });
+    await showTheBoard(go);
+
+    const seat = () => copiesOf('a1').seated[0].closest('li')!;
+    expect(seat().className, 'nothing is hidden before the lift').not.toContain('opacity-0');
+
+    pickUp('a1');
+
+    await waitFor(() => expect(seat().className).toContain('opacity-0'));
+    // Still in the list, and still a list item: `hidden` or an unmount would
+    // close the gap and make the column jump under the pointer on grab.
+    expect(seat()).toBeInTheDocument();
+    expect(seat().hasAttribute('hidden'), 'the seat gave up its space').toBe(false);
+    expect(within(columnNamed(COLUMNS[0])).queryAllByRole('listitem')).toHaveLength(2);
+
+    letGo(cardNamed('a1'));
+  });
+
+  it('left no z-index behind to explain what it never explained', async () => {
+    // The `z-10` on the dragged <li> only ever existed to fight the neighbouring
+    // column's stacking context, which z-index cannot cross. D18 deletes it, and
+    // a stale false explanation in the code is worse than none.
+    const go = movingGo({ 0: [card('a1'), card('a2')] });
+    await showTheBoard(go);
+
+    pickUp('a1');
+    await waitFor(() => expect(cardNamed('a1').closest('li')!.className).toContain('opacity-0'));
+    expect(cardNamed('a1').closest('li')!.className).not.toMatch(/(^|\s)z-\d/);
+
+    letGo(cardNamed('a1'));
   });
 });
 

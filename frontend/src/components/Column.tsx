@@ -130,8 +130,21 @@ function SortableCard({ view, identity, tabIndex }: SortableCardProps) {
       style={style}
       // `touch-none` because a pointer drag and a touch scroll are the same
       // gesture until one of them wins, and the browser wins by default.
-      // `z-10` lifts the card being dragged over the ones it passes.
-      className={`min-w-0 touch-none ${isDragging ? 'z-10' : ''}`}
+      //
+      // `opacity-0` while dragging, and deliberately NOT `hidden` (K6, D18): the
+      // card is drawn in views/Kanban.tsx's DragOverlay from the moment it is
+      // lifted, so two copies would otherwise be on screen at once. Opacity
+      // keeps the item's SPACE, so the list does not jump on grab and the gap
+      // the card came out of is the gap it drops back into.
+      //
+      // The z-index that used to sit here is gone, and the criterion is that a
+      // grep for it over this file finds nothing — hence no literal in this
+      // paragraph. It existed to lift the dragged card over the ones it passed,
+      // and it could never do that: z-index orders siblings within ONE stacking
+      // context, and the neighbouring column's backdrop-filter makes its own.
+      // Leaving it would be leaving a false explanation in the code. The overlay
+      // is what solves it, by painting outside every column.
+      className={`min-w-0 touch-none ${isDragging ? 'opacity-0' : ''}`}
       {...listeners}
     >
       <Card view={view} tabIndex={tabIndex} describedBy={attributes['aria-describedby']} />
