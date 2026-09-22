@@ -2244,3 +2244,228 @@ func TestRestoreWritesNoStatus(t *testing.T) {
 		t.Error("p reports IsLeaf = true although its child is back")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// S3-09 Part 1, Go's half: what Board() carries into the due badge
+
+// TestBoardCarriesTheDueDateTheBadgeReads is one half of the D8 due-badge
+// claim, and it is worth saying exactly which half.
+//
+// # The gap this closes
+//
+// Since Stage 2 three sentences about the badge have had no mechanical backing
+// anywhere: "the badge reads the upcoming Friday", "the badge reads today" and
+// "the date is cleared on the way back". They come from the ten-step hand
+// script, and the automated ACCEPT flow cannot make them because its fake
+// client does not model D8's due rewrite — and it must not be taught to. A fake
+// that implements the column-to-due rule is that rule with a second spelling,
+// which is the defect this project has paid for more than any other.
+//
+// So the claim is split in two, and each half is honest on its own. This is
+// Go's: THE DATE THE FRONTEND IS HANDED. The frontend's half is
+// frontend/src/components/DueBadge.test.tsx, which pins that the badge renders
+// the DTO's date and nothing else. What neither half touches, and what is still
+// owed to a human at a real keyboard, is that the two MEET across the Wails IPC
+// bridge in a real window.
+//
+// # Why through Board(), when TestMoveToColumnWritesTheDueDate exists
+//
+// That test asserts the node MoveToColumn returns. The badge never sees that
+// value: the frontend re-reads the board after every move and renders
+// NodeView.Node.Due off Board(). Board() derives a status, reads a snapshot and
+// rebuilds every card, so "the write happened" and "the card carries it" are
+// two different statements, and only the second is the one the badge depends on.
+//
+// # Why two clocks, and what PLAN.md §4 actually says
+//
+// §4: "→ This week: due = the upcoming Friday; if today is Friday, due = today."
+// The parenthesis after it — "Today, 2026-09-18, is a Friday — the edge case is
+// live on day one" — is the trap. testNow IS that Friday, so every existing
+// test of the week column runs on the one day of the week where "the upcoming
+// Friday" and "today" are THE SAME DATE. On that clock a service that ignored
+// the week rule entirely and stamped today would be green.
+//
+// This test therefore runs the whole sequence on two clocks: a Wednesday, where
+// the two answers differ by two days, and the Friday, where §4 says they must
+// coincide. Neither clock is the machine's — the fixture's Clock reads f.now,
+// which the test assigns — so the result does not depend on the day this is run.
+func TestBoardCarriesTheDueDateTheBadgeReads(t *testing.T) {
+	ctx := context.Background()
+
+	cases := []struct {
+		name string
+		now  time.Time
+
+		// today and week are the two dates §4 promises, written out rather
+		// than computed. Calling domain.UpcomingFriday to build the
+		// expectation would make this test agree with the rule by
+		// construction, which is no test at all.
+		today domain.Date
+		week  domain.Date
+
+		// wire is what each one looks like on the wire, and it is here
+		// because it is the literal the frontend half is fed. domain.Date
+		// marshals to "YYYY-MM-DD"; DueBadge.test.tsx renders strings of
+		// exactly this shape. The two halves share the format in writing,
+		// which is the most the join can be pinned without the bridge.
+		todayWire string
+		weekWire  string
+	}{
+		{
+			name:      "on a Wednesday the upcoming Friday is two days out",
+			now:       time.Date(2026, time.September, 16, 10, 30, 0, 0, time.UTC),
+			today:     domain.NewDate(2026, time.September, 16),
+			week:      domain.NewDate(2026, time.September, 18),
+			todayWire: "2026-09-16",
+			weekWire:  "2026-09-18",
+		},
+		{
+			// PLAN.md §4's edge case, stated the way §4 states it: not
+			// "a week later", the same day.
+			name:      "on a Friday the upcoming Friday IS today",
+			now:       testNow,
+			today:     domain.NewDate(2026, time.September, 18),
+			week:      domain.NewDate(2026, time.September, 18),
+			todayWire: "2026-09-18",
+			weekWire:  "2026-09-18",
+		},
+	}
+
+	// NON-VACUITY, at the fixtures, before a single node exists (D32).
+	//
+	// Every assertion below compares a date Go produced against one of the
+	// literals in the table, so a table that quietly said the same thing twice
+	// would leave the Friday edge case untested with two green subtests to show
+	// for it. Four properties make it impossible to write this table down
+	// wrongly and still be green:
+	//
+	//   - every `week` really is a Friday, so the literal is the day §4 names;
+	//   - the Wednesday row's two dates DIFFER, so that row can tell the week
+	//     rule and the today rule apart — the property testNow cannot have;
+	//   - the Friday row's two dates are EQUAL, which is the edge case itself;
+	//   - each row's clock falls on the weekday its name claims, so the name
+	//     and the instant cannot drift apart.
+	if cases[0].week.Equal(cases[0].today) {
+		t.Fatalf("the first row's week date %v is its today: this table cannot distinguish "+
+			"the week rule from the today rule at all", cases[0].week)
+	}
+	if !cases[1].week.Equal(cases[1].today) {
+		t.Fatalf("the second row's week date %v is not its today %v: that row is supposed to "+
+			"BE PLAN.md §4's Friday edge case", cases[1].week, cases[1].today)
+	}
+	for _, c := range cases {
+		if got := c.week.Weekday(); got != time.Friday {
+			t.Fatalf("%s: the week date %v falls on a %s, not a Friday", c.name, c.week, got)
+		}
+		if got := domain.DateOf(c.now); !got.Equal(c.today) {
+			t.Fatalf("%s: the clock reads %v, but the row calls today %v", c.name, got, c.today)
+		}
+		if c.today.String() != c.todayWire || c.week.String() != c.weekWire {
+			t.Fatalf("%s: the wire literals %q/%q do not spell the dates %v/%v",
+				c.name, c.todayWire, c.weekWire, c.today, c.week)
+		}
+	}
+	if cases[0].now.Weekday() != time.Wednesday || cases[1].now.Weekday() != time.Friday {
+		t.Fatalf("the two clocks fall on %s and %s, want a Wednesday and a Friday",
+			cases[0].now.Weekday(), cases[1].now.Weekday())
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newFixture(t)
+			f.now = c.now
+			n := f.create(draft("x", domain.NodeTypeTask, nil))
+
+			// A date the user typed, so that the two overwrites below are
+			// overwrites of something. Without it "the badge reads the
+			// upcoming Friday" would also be satisfied by a card that had
+			// never carried a date at all, and D8 is precisely the rule that
+			// the column move beats a hand-typed date.
+			typed := domain.NewDate(2026, time.December, 24)
+			if _, err := f.tasks.SetDue(ctx, n.ID, &typed); err != nil {
+				t.Fatalf("SetDue: %v", err)
+			}
+			if got := dueOnTheBoard(ctx, t, f, n.ID); got == nil || !got.Equal(typed) {
+				t.Fatalf("the board carries %v before the first move, want the typed %v — "+
+					"the overwrites below would prove nothing", got, typed)
+			}
+
+			// 1. Dragged to This week. §4: the upcoming Friday.
+			moveOnTheBoard(ctx, t, f, n.ID, domain.StatusWeek)
+			assertBoardDue(ctx, t, f, n.ID, &c.week, c.weekWire, domain.DueSourceAuto)
+
+			// 2. Dragged to Today. §4: today.
+			moveOnTheBoard(ctx, t, f, n.ID, domain.StatusToday)
+			assertBoardDue(ctx, t, f, n.ID, &c.today, c.todayWire, domain.DueSourceAuto)
+
+			// 3. Dragged back to Backlog. §4 and D1: an AUTO date is cleared,
+			// and the provenance goes back to manual because there is no
+			// longer a date for it to describe. The badge renders nothing.
+			moveOnTheBoard(ctx, t, f, n.ID, domain.StatusBacklog)
+			assertBoardDue(ctx, t, f, n.ID, nil, "", domain.DueSourceManual)
+		})
+	}
+}
+
+// dueOnTheBoard returns the due date the card for id carries on the board, and
+// fails the test if the card is not on the board at all.
+//
+// Going through Board() rather than through the repository is the point of the
+// helper: it is the read the frontend actually performs, and a card missing
+// from it would otherwise turn every assertion below into a comparison against
+// a nil that nobody looked at.
+func dueOnTheBoard(ctx context.Context, t *testing.T, f *fixture, id string) *domain.Date {
+	t.Helper()
+
+	v := find(boardOf(ctx, t, f), id)
+	if v == nil {
+		t.Fatalf("node %q is not on the board at all", id)
+	}
+	return v.Node.Due
+}
+
+// moveOnTheBoard drags a card to a column and fails the test if the move is
+// refused.
+func moveOnTheBoard(ctx context.Context, t *testing.T, f *fixture, id string, target domain.Status) {
+	t.Helper()
+
+	if _, err := f.tasks.MoveToColumn(ctx, id, target); err != nil {
+		t.Fatalf("MoveToColumn(%q, %s): %v", id, target, err)
+	}
+}
+
+// assertBoardDue checks the due date, its wire spelling and its provenance as
+// the board reports them. A nil want means the badge must render nothing.
+func assertBoardDue(
+	ctx context.Context,
+	t *testing.T,
+	f *fixture,
+	id string,
+	want *domain.Date,
+	wantWire string,
+	wantSource domain.DueSource,
+) {
+	t.Helper()
+
+	v := find(boardOf(ctx, t, f), id)
+	if v == nil {
+		t.Fatalf("node %q is not on the board at all", id)
+	}
+
+	switch {
+	case want == nil && v.Node.Due != nil:
+		t.Errorf("the board carries due = %v, want it cleared", v.Node.Due)
+	case want != nil && v.Node.Due == nil:
+		t.Errorf("the board carries no due date, want %v", want)
+	case want != nil && !v.Node.Due.Equal(*want):
+		t.Errorf("the board carries due = %v, want %v", v.Node.Due, want)
+	case want != nil && v.Node.Due.String() != wantWire:
+		// The string is what crosses to the badge; Equal alone would not
+		// notice a representation change.
+		t.Errorf("the board sends %q over the wire, want %q", v.Node.Due.String(), wantWire)
+	}
+
+	if v.Node.DueSource != wantSource {
+		t.Errorf("the board carries due_source = %q, want %q", v.Node.DueSource, wantSource)
+	}
+}
