@@ -282,6 +282,24 @@ GUARD_FOCUS_FILE = frontend/src/lib/focus.ts
 #
 # The three losers keep their bg-surface / bg-elevated tokens, so Aurora is still
 # translucent — the TOKEN is what lets the background through, not the filter.
+#
+# IT HAS TWO HALVES, AND THE SECOND ONE WAS MISSING UNTIL S3-04 WAS RE-OPENED.
+# "Not outside the list" is not the rule; the rule is "on the list, and nowhere
+# else". With only the negative half, DELETING the blur from Column.tsx outright
+# was green across all five gates, `make guard` and the whole vitest suite —
+# Aurora quietly losing the effect that distinguishes it, with nothing to say so.
+# So check 8b asserts the class is PRESENT in each of the three allow-listed
+# files. It is the same grep, pointed the other way — and it drops WHOLE-LINE
+# COMMENTS first, using the same filter checks 4b and 4c use. That is not a
+# nicety: Column.tsx's own header explains the class twice, so a plain presence
+# grep stayed green with the blur deleted from every className in the file. The
+# negative control for this check is exactly that edit.
+#
+# Note what shapes both halves: check 8a excludes NO file, so any other file that
+# so much as names the string fails it — a test asserting the presence of the
+# class would itself be the violation. That is why this lives in the Makefile and
+# why the three losing components' comments describe the class without spelling
+# it. Same precedent as check 6, and it is deliberate, not an oversight.
 GUARD_BLUR_FILES = frontend/src/components/Column.tsx frontend/src/components/QuickAdd.tsx frontend/src/components/CommandPalette.tsx
 GUARD_ACCEPT_FILE = frontend/src/App.accept.test.tsx
 
@@ -319,8 +337,12 @@ guard: ## The mechanical rules greps over frontend/src (not a gate)
 		out=$$(git grep -n --untracked -E "\.focus\(|\[[\"']focus[\"']\]|autoFocus" -- frontend/src ':!$(GUARD_FOCUS_FILE)' ':!*.test.ts' ':!*.test.tsx' | keep); \
 		[ -z "$$out" ] || { fail "check 7, a focus move outside $(GUARD_FOCUS_FILE). D22: no focus move may scroll its ancestors, and that rule has ONE spelling - focusWithoutScrolling() in $(GUARD_FOCUS_FILE), which passes { preventScroll: true }. Call it instead; it accepts null, so a ref or a querySelector result needs no ?. of its own. React's autoFocus is the same defect wearing a JSX prop: it calls focus() with no options. Drop the prop and call the helper from an effect." "$$out"; }; \
 	fi; \
+	for f in $(GUARD_BLUR_FILES); do \
+		git grep -n --untracked -E 'backdrop-blur-glass' -- $$f 2>/dev/null | grep -qvE '^[^:]*:[0-9]+:[[:space:]]*(//|\*|/\*)' || \
+			fail "check 8b, the blur is GONE from a file D19 puts it on. The allow-list is exhaustive in both directions: these three surfaces - the five columns and the two full-screen overlay scrims - are where Aurora's backdrop-filter lives, and a file that has lost it has lost the effect that makes Aurora Aurora with nothing else in the project to notice. Put backdrop-blur-glass back, or change D19 and this list together." "$$f"; \
+	done; \
 	out=$$(git grep -n --untracked -E 'backdrop-blur-glass' -- frontend/src $(addprefix ':!',$(GUARD_BLUR_FILES)) | keep); \
-	[ -z "$$out" ] || { fail "check 8, backdrop-blur-glass outside D19's allow-list. backdrop-filter creates a compositing layer EVEN AT blur(0px); ~50 of them at once is what made a resize break the layout until the app was restarted (K7). The class belongs to the column and the two overlay scrims only: $(GUARD_BLUR_FILES). Keep the bg-surface / bg-elevated token - that is what makes a surface translucent under Aurora - and drop the filter." "$$out"; }; \
+	[ -z "$$out" ] || { fail "check 8a, backdrop-blur-glass outside D19's allow-list. backdrop-filter creates a compositing layer EVEN AT blur(0px); ~50 of them at once is what made a resize break the layout until the app was restarted (K7). The class belongs to the column and the two overlay scrims only: $(GUARD_BLUR_FILES). Keep the bg-surface / bg-elevated token - that is what makes a surface translucent under Aurora - and drop the filter." "$$out"; }; \
 	echo; \
 	if [ $$status -ne 0 ]; then \
 		echo "make guard FAILED: see the FAIL block(s) above."; \
@@ -328,7 +350,7 @@ guard: ## The mechanical rules greps over frontend/src (not a gate)
 		echo "commented entry to GUARD_ALLOW_RE in the Makefile — never an inline suppression."; \
 		exit 1; \
 	fi; \
-	echo "make guard: all eight mechanical rules checks passed over frontend/src."
+	echo "make guard: all eight mechanical rules checks passed over frontend/src (8 is two-directional)."
 
 .PHONY: dev
 dev: ## Run the app in live-development mode (needs GTK/WebKit)

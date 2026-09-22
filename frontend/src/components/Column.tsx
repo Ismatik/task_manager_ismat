@@ -46,7 +46,11 @@ import { Card } from './Card';
 // the habit chip and the toast lost it because there is one per card, one per
 // habit and one per toast, which is how ~50 compositing layers came to exist at
 // once and how a resize came to break the layout until the app was restarted.
-// `make guard` check 8 is an exact grep over that allow-list.
+// `make guard` check 8 is an exact grep over that allow-list, in BOTH
+// directions: 8a fails if the class appears anywhere else, and 8b fails if it
+// stops appearing here. Only the first half existed until S3-04 was re-opened,
+// and with only that half, deleting the blur from this file was green
+// everywhere — all five gates, the guard and the whole vitest suite.
 //
 // # The drag half (S2-17), and the two places it deliberately stops
 //
