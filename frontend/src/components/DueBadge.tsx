@@ -40,7 +40,17 @@ export function DueBadge({ due, overdue }: DueBadgeProps) {
   return (
     <span
       aria-label={t(overdue ? 'card.due.overdue' : 'card.due.label', { date: shown })}
-      className={`shrink-0 font-mono ${overdue ? 'text-danger' : 'text-muted'}`}
+      // `min-w-0 break-words`, and NOT `shrink-0` (K8, D20). This badge is the
+      // defect's own example: `html { font-size: 13px }` makes every Tailwind
+      // rem 13/16 of nominal, so a column at `min-w-36` is 117px and the card
+      // interior is about 87px — against a max-content date of roughly 94px in
+      // English and 125px in Russian. `shrink-0` held it at max-content, so it
+      // ran past the card edge IN ENGLISH TOO, which is why the Russian audit
+      // was green on it. `break-words` matters as much as `min-w-0` here: a
+      // formatted date has no space to wrap at, so without it the box shrinks
+      // and the text overflows anyway. A date on two lines is ugly; a date
+      // sliced off at the column edge is unreadable.
+      className={`min-w-0 break-words font-mono ${overdue ? 'text-danger' : 'text-muted'}`}
     >
       {shown}
     </span>

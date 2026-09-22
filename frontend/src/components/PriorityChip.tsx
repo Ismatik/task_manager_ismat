@@ -31,7 +31,17 @@ export function PriorityChip({ priority }: PriorityChipProps) {
       // The chip reads its designator; the accessible name reads it back as a
       // sentence, in the language the card is rendered in.
       aria-label={t('card.priority.label', { chip: chip.label })}
-      className={`shrink-0 rounded-sm border px-1.5 font-mono ${chip.className}`}
+      // THE RULING ON BOUNDED ASCII, stated rather than left to be re-derived
+      // (D20). The designator lib/priority.ts hands back is two ASCII
+      // characters, is not localised and cannot wrap, so `shrink-0` and the
+      // default `min-width: auto` size this box IDENTICALLY — for a single
+      // unbreakable token, min-content and max-content are the same width. The
+      // class therefore bought nothing, and dropping it is what lets the audit
+      // in test/shrink.ts ask ONE unconditional question of every element that
+      // carries text. An audit with an exception list is an audit whose
+      // exception list grows; this one has none, and that is worth more than a
+      // class that did nothing.
+      className={`rounded-sm border px-1.5 font-mono ${chip.className}`}
     >
       {chip.label}
     </span>

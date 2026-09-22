@@ -224,7 +224,7 @@ function CommandPalettePanel() {
                   // font-mono for every shortcut hint (PLAN.md §3), and the
                   // string itself comes from lib/keyboard.ts.
                   <span
-                    className={`shrink-0 font-mono ${
+                    className={`font-mono ${
                       index === activeRow ? 'text-on-accent' : 'text-muted'
                     }`}
                   >

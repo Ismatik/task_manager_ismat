@@ -91,7 +91,11 @@ export function ProgressBar({ progress, isLeaf }: ProgressBarProps) {
           style={{ width: `${progress.percent}%` }}
         />
       </div>
-      <span className="shrink-0 font-mono text-muted">{ratio}</span>
+      {/* `min-w-0 break-words` (K8, D20). `ratio` is i18n output — "3 of 5",
+          "3 из 5" — so it is a localised string and may not be held at
+          max-content. It is NOT in S3-02's enumerated list of four; the rewritten
+          audit found it, which is the point of changing the audit's shape. */}
+      <span className="min-w-0 break-words font-mono text-muted">{ratio}</span>
     </div>
   );
 }

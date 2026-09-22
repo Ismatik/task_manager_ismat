@@ -172,7 +172,13 @@ export function Column({ column, rovingNodeId }: ColumnProps) {
           of the shell is the page header, and there is exactly one of it. */}
       <div className="flex min-w-0 items-baseline justify-between gap-2">
         <h2 className="min-w-0 break-words text-ink">{heading}</h2>
-        <span className="shrink-0 font-mono text-muted">
+        {/* `min-w-0 break-words`, never `shrink-0` (K8, D20). This span is what
+            the user photographed: "0 карточек" is about 86px at max-content, and
+            holding it there starved the heading beside it down to roughly 16px,
+            so "Бэклог" wrapped ONE CHARACTER PER LINE. Both children may shrink
+            now, and the heading — which is the more important of the two — keeps
+            its `break-words` so it wraps on word boundaries first. */}
+        <span className="min-w-0 break-words font-mono text-muted">
           {t('board.column.cardCount', { count: column.nodes.length })}
         </span>
       </div>

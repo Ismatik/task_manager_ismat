@@ -32,15 +32,34 @@ import { TypeIcon } from './TypeIcon';
 // `view.status`, the derived one. K2 is the standing reminder of what a stale
 // stored status does when something trusts it.
 //
-// # Layout, and Russian
+// # Layout, and Russian — and the paragraph that used to be here was WRONG
 //
-// Russian runs about 30% wider than English, so nothing on this card has a fixed
-// width and nothing is `whitespace-nowrap`. The title wraps on word boundaries
-// (`break-words`), the chip row wraps (`flex-wrap`), every flex child that could
-// be squeezed carries `min-w-0` so it may actually shrink instead of forcing the
-// column wider, and the short mono fragments — the chip, the date, the estimate
-// — are `shrink-0` so they never break mid-designator. A layout that only works
-// in English is a broken layout.
+// It said: "nothing on this card has a fixed width and nothing is
+// `whitespace-nowrap` ... the short mono fragments — the chip, the date, the
+// estimate — are `shrink-0` so they never break mid-designator." Every clause of
+// that was TRUE, and the card clipped anyway. `shrink-0` on a max-content
+// localised string clips exactly as `whitespace-nowrap` does: it holds the box
+// at the width of the longest line the string can produce and lets it run past
+// the card edge. `html { font-size: 13px }` makes every Tailwind rem 13/16 of
+// nominal, so the card interior at the column floor is about 87px against a due
+// badge of roughly 94px in English — IT OVERFLOWED IN ENGLISH, under a comment
+// saying it could not, and under a Russian audit that was green on it. That is
+// K8, and it is D17 arriving a second time in a second tool.
+//
+// A comment that is confidently wrong is how a defect survives a review, so this
+// one states the RULE rather than a list of the mechanisms somebody happened to
+// check: an element whose text comes from i18n, from `formatDate` or from
+// `formatNumber` may not refuse to shrink (D20). The title wraps on word
+// boundaries (`break-words`), the chip row wraps (`flex-wrap`), every flex child
+// carries `min-w-0`, and the mono fragments — the due date and the estimate —
+// wrap too rather than being held at max-content. `shrink-0` survives on this
+// card only where the box is a FIXED SIZE and holds NO TEXT: TypeIcon and
+// TimerDot, whose `h-4 w-4` and `h-2 w-2` are numbers and not strings.
+//
+// It is checked by a walk over the rendered Russian DOM (src/test/shrink.ts) and
+// not by a list of forbidden words, because a list only ever knows about the
+// mechanisms somebody already thought of. A layout that only works in English is
+// a broken layout — and so is an audit that only knows the utilities we listed.
 //
 // Surfaces come from the tokens and there is no palette conditional anywhere:
 // `bg-surface` + `backdrop-blur-glass` is translucent under Aurora, and under
@@ -104,7 +123,7 @@ export function Card({ view, tabIndex, describedBy }: CardProps) {
             aria-label={t('card.estimate.label', {
               value: t('card.estimate.value', { minutes: formatNumber(estimate, i18n.language) }),
             })}
-            className="shrink-0 font-mono text-muted"
+            className="min-w-0 break-words font-mono text-muted"
           >
             {t('card.estimate.value', { minutes: formatNumber(estimate, i18n.language) })}
           </span>

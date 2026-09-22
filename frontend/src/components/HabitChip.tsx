@@ -66,13 +66,21 @@ export function HabitChip({ habit, tabIndex, onToggle }: HabitChipProps) {
       aria-checked={habit.checkedToday}
       tabIndex={tabIndex}
       onClick={() => onToggle(habit.node.id)}
-      className={`flex min-w-0 shrink-0 items-center gap-2 rounded-md border border-line bg-surface px-2 py-1 shadow-sm backdrop-blur-glass transition-colors duration-fast ${
+      // No `shrink-0` on the chip (K8, D20). Its width is the width of a
+      // habit's TITLE, which is localised, so holding it at max-content is the
+      // same defect as the due badge's one level up: in Russian the strip's
+      // chips would each demand their full title and push the row past the
+      // window. `min-w-0` lets a chip give ground, and the strip's `flex-wrap`
+      // means it moves to a new line before it ever has to.
+      className={`flex min-w-0 items-center gap-2 rounded-md border border-line bg-surface px-2 py-1 shadow-sm backdrop-blur-glass transition-colors duration-fast ${
         habit.scheduledToday ? 'text-ink' : 'text-muted'
       }`}
     >
+      {/* Both icons keep `shrink-0`, and D20 says why: a fixed-size, NON-TEXT
+          box has a width that is a number rather than a string, so it cannot
+          change with the locale. 8px grid — a 16px box is two steps. */}
       <Check
         aria-hidden
-        // 8px grid: a 16px box is two steps.
         className={`h-4 w-4 shrink-0 ${habit.checkedToday ? 'text-success' : 'text-muted'}`}
       />
 
@@ -90,7 +98,7 @@ export function HabitChip({ habit, tabIndex, onToggle }: HabitChipProps) {
         aria-label={t('habits.streak.label', {
           value: formatNumber(habit.streak, i18n.language),
         })}
-        className="shrink-0 font-mono"
+        className="min-w-0 break-words font-mono"
       >
         {formatNumber(habit.streak, i18n.language)}
       </span>

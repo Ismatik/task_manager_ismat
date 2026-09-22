@@ -63,6 +63,12 @@ export function TypeIcon({ type }: TypeIconProps) {
       // a type this build has no name for, rather than reading the raw enum out
       // loud. i18next takes the first key that resolves.
       aria-label={t([`card.type.${type}`, 'card.type.unknown'])}
+      // `shrink-0` SURVIVES here, and D20 says why: this is a FIXED-SIZE,
+      // NON-TEXT box. Its `h-4 w-4` is a decision about the 8px grid, not
+      // about a string, so its width cannot change with the locale and holding
+      // it is holding nothing hostage. That is the whole distinction: a box
+      // whose size depends on WORDS may not refuse to shrink; a box whose size
+      // is a number may.
       // 8px grid: 16px box, which is two steps.
       className={`h-4 w-4 shrink-0 ${glyph.className}`}
     />

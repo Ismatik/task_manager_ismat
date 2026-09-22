@@ -5,8 +5,18 @@ import userEvent from '@testing-library/user-event';
 import App from './App';
 import type { Client, ColumnView, NewNode, Node, NodeView } from './lib/client';
 import { createAppStore, type AppStore } from './store';
-import { columnView, createFakeClient, habitView, node, nodeView, settingsView } from './test/fakeClient';
+import {
+  columnView,
+  createFakeClient,
+  habitView,
+  node,
+  nodeView,
+  settingsView,
+  tag,
+  undefinedProgress,
+} from './test/fakeClient';
 import { BOTH_LANGUAGES, renderIn, tabUntil } from './test/render';
+import { describeRefusals, shrinkRefusals } from './test/shrink';
 
 // Nexus — Stage 2's ACCEPT criterion, as something a machine checks.
 //
@@ -77,9 +87,14 @@ const READS = new Set(['Board', 'HabitStrip', 'Settings', 'TimerCurrent', 'Tree'
  * has to reflect: the timer that opens on the way into Doing and closes on the
  * way out (C1, D13).
  */
-function acceptGo(habits: ReturnType<typeof habitView>[] = []) {
+function acceptGo(habits: ReturnType<typeof habitView>[] = [], seed: NodeView[] = []) {
   const base = createFakeClient();
-  let board: ColumnView[] = COLUMNS.map((status) => columnView(status));
+  // `seed` goes in the FIRST column, which is also where a quick add lands, so
+  // a flow test that seeds nothing sees exactly the board it saw before. The
+  // Russian audit is the one caller that needs a card with every chip on it.
+  let board: ColumnView[] = COLUMNS.map((status, index) =>
+    columnView(status, index === 0 ? seed : []),
+  );
   const calls: Call[] = [];
   let created = 0;
 
@@ -345,18 +360,58 @@ describe('the ACCEPT criterion, driven by keys alone', () => {
 // test in this project can assert "it does not clip at 1024x768". That half is
 // the hand pass.
 //
-// What IS mechanical is the two ways a layout clips: text held to one line, and
-// a box that cannot shrink. So every screen is rendered IN RUSSIAN and checked
-// for the mechanisms that prevent both — flex-wrap on every strip, min-w-0 on
-// every flex child that could be squeezed, break-words on every label — and for
-// the absence of the two utilities that guarantee clipping, `truncate` and
-// `whitespace-nowrap`. Plus the thing that actually goes wrong most often: a
-// raw i18n key on screen because ru.json was not updated.
+// What IS mechanical is whether anything on the screen REFUSES TO SHRINK. So
+// every screen is rendered IN RUSSIAN and walked, element by element, by
+// src/test/shrink.ts. Plus the thing that actually goes wrong most often: a raw
+// i18n key on screen because ru.json was not updated.
+//
+// # THIS AUDIT USED TO BE GREEN ON A REAL CLIPPING BUG (K8, D20)
+//
+// Until S3-02 it looked for `truncate` and `nowrap` and nothing else. Both were
+// genuinely absent, and the card clipped anyway — IN ENGLISH — because
+// `shrink-0` on a max-content localised string holds the box at the width of its
+// longest line just as surely. So the fix was not to add a fifth word to the
+// list. **The audit changed shape**: it now asks, of every element carrying
+// text, whether every class it wears that could decide the question is on a
+// short PERMITTED list. A utility nobody has used yet is caught the day it is
+// first used, because the default answer is "no", and permitting one is an edit
+// to a list in src/test/shrink.ts that a reviewer reads.
+//
+// An enumeration of mechanisms is a guess about the future. An allow-list is not.
 
 describe('the Russian audit', () => {
   /** The whole assembled screen, in Russian, with every region non-empty. */
+  /**
+   * A card wearing EVERY chip the board can put on one.
+   *
+   * The audit is only as good as the elements it has to look at, and the flow
+   * tests above render a bare card: no due date, no estimate, priority 4 (which
+   * has no chip at all), a leaf with undefined progress. Walking that screen
+   * would have been green over `DueBadge`, the estimate and the progress ratio
+   * because NONE OF THEM WAS ON IT — a silently empty audit, which is the exact
+   * shape of failure K8 already cost this project once.
+   */
+  const loadedCard = () =>
+    nodeView({
+      node: node({
+        id: 'loaded-1',
+        title: 'Подготовить ежеквартальный отчёт по проекту',
+        due: '2026-12-31',
+        estimateMin: 120,
+        priority: 1,
+      }),
+      status: COLUMNS[0],
+      overdue: true,
+      isLeaf: false,
+      progress: { ...undefinedProgress, defined: true, done: 3, total: 5, percent: 60 },
+      tags: [tag({ id: 't-1', name: 'дом' }), tag({ id: 't-2', name: 'работа' })],
+    });
+
   async function everyScreenInRussian() {
-    const go = acceptGo([habitView({ node: node({ id: 'h-1', title: 'Читать по вечерам' }) })]);
+    const go = acceptGo(
+      [habitView({ node: node({ id: 'h-1', title: 'Читать по вечерам' }) })],
+      [loadedCard()],
+    );
     const store = storeOver(go.client);
     const user = await openTheApp(store, 'ru');
 
@@ -393,19 +448,45 @@ describe('the Russian audit', () => {
     expect(palette.textContent).not.toContain('board.column.');
   });
 
-  it('holds nothing to one line and lets every box shrink', async () => {
+  it('lets every element carrying Russian text shrink', async () => {
     const { user } = await everyScreenInRussian();
 
-    // `getAttribute` and not `.className`: on an SVG element — every type icon
-    // is one — `className` is an SVGAnimatedString and has no `includes`.
-    const clipping = (root: ParentNode) =>
-      [...root.querySelectorAll<HTMLElement>('[class]')]
-        .map((element) => element.getAttribute('class') ?? '')
-        .filter((classes) => classes.includes('truncate') || classes.includes('nowrap'));
+    // The walk, over the whole assembled screen at once: header, habits strip,
+    // board, cards and a toast are all mounted here. A failure names the class,
+    // the element and the text it was holding hostage, so the report is enough
+    // to find it without re-deriving anything.
+    const survey = (root: ParentNode, what: string) => {
+      const refusals = shrinkRefusals(root);
+      expect(refusals.length, `${what}: ${describeRefusals(refusals).join(' | ')}`).toBe(0);
+    };
 
-    expect(clipping(document.body), 'the launch screen clips somewhere').toEqual([]);
+    // Non-vacuity first. A walk over a screen that never rendered would report
+    // nothing wrong, and it was the SILENTLY EMPTY audit that let K8 through.
+    expect(
+      [...document.body.querySelectorAll('*')].filter((element) => element.className !== '').length,
+      'nothing was walked',
+    ).toBeGreaterThan(20);
 
-    // The strips that have to wrap, named one by one so a failure says which.
+    survey(document.body, 'the launch screen');
+
+    await user.keyboard(QUICK_ADD);
+    const quickAdd = await screen.findByRole('dialog');
+    survey(quickAdd, 'the quick add');
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    await user.keyboard(PALETTE);
+    const palette = await screen.findByRole('dialog');
+    survey(palette, 'the command palette');
+  });
+
+  it('gives the containers of that text somewhere to wrap to', async () => {
+    const { user } = await everyScreenInRussian();
+
+    // The walk judges the elements that HOLD text. This judges the rows those
+    // elements sit in: a child that may shrink still has nowhere to go if its
+    // parent row will not wrap. The two halves are separate assertions because
+    // they fail for different reasons and a reader should be told which.
     expect(screen.getByRole('banner'), 'the header').toHaveClass('flex-wrap');
     expect(screen.getByRole('group', { name: 'Привычки' }), 'the strip').toHaveClass('flex-wrap');
     expect(screen.getByRole('alert').firstElementChild, 'the toast').toHaveClass('flex-col');
@@ -421,15 +502,13 @@ describe('the Russian audit', () => {
     }
 
     await user.keyboard(QUICK_ADD);
-    const quickAdd = await screen.findByRole('dialog');
-    expect(clipping(quickAdd), 'the quick add clips').toEqual([]);
+    await screen.findByRole('dialog');
     expect(screen.getByRole('radiogroup')).toHaveClass('flex-wrap');
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     await user.keyboard(PALETTE);
-    const palette = await screen.findByRole('dialog');
-    expect(clipping(palette), 'the palette clips').toEqual([]);
+    await screen.findByRole('dialog');
     for (const row of screen.getAllByRole('option')) {
       expect(row).toHaveClass('flex-wrap');
     }
