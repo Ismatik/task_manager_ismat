@@ -137,6 +137,15 @@ func main() {
 		Title:  "nexus",
 		Width:  1024,
 		Height: 768,
+		// K9, closed by D21. Without these Wails calls SetMinSize(0, 0) and GTK
+		// lets the window be dragged far below the layout's own floor — the user
+		// changes display scaling often, so 1024x768 above is not reliably 1024
+		// CSS px either. Both numbers are DERIVED in layout.go from the unit
+		// counts the frontend actually declares and from domain.Statuses(); a
+		// literal here would be the CSS floor written down a second time, which
+		// is the same refusal D12 made about a colour.
+		MinWidth:  minWindowWidth(),
+		MinHeight: minWindowHeight(),
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
