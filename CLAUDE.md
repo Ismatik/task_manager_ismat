@@ -58,10 +58,24 @@ fixed at the source, never allow-listed.
   `convert` are installed; the claim that they were absent was wrong and it sent three
   stages of checks into the hand-owed pile without cause. Two things must be known before
   trying:
-  - **WebKitGTK will not paint under Xvfb** until `WEBKIT_DISABLE_DMABUF_RENDERER=1` and
-    `WEBKIT_DISABLE_COMPOSITING_MODE=1` are exported. Without them the window is present
-    in the X tree at the right size and the capture is **one flat colour** — which reads
-    exactly like "the app is broken" and is not.
+  - **`GDK_BACKEND=x11` is the whole trick**, and nothing else is needed. This shell has
+    `WAYLAND_DISPLAY=wayland-0` set, so GTK prefers the Wayland backend and the window
+    opens on the **real compositor** — leaving `:99` with no window at all while the
+    process runs healthily. The capture is then **one flat colour**, which reads exactly
+    like "the app is broken" and is not. Measured three ways:
+
+    | | windows on `:99` | colours |
+    |---|---|---|
+    | `WEBKIT_DISABLE_*` only | **0** | **1** |
+    | `GDK_BACKEND=x11` only | 2 | 961 |
+    | both | 2 | 961 |
+
+    So the `WEBKIT_DISABLE_DMABUF_RENDERER` / `WEBKIT_DISABLE_COMPOSITING_MODE` pair that
+    an earlier version of this note named as the requirement **does nothing here**. That
+    claim was wrong because several variables were changed at once and the win was
+    attributed to the wrong one — the same defect this project keeps catching in comments.
+    Check `xwininfo -root -children | grep nexus` before believing a capture; it is
+    cheaper and more specific than counting colours.
   - **Input cannot be driven.** `xdotool`, `xte`, `wmctrl` and python-Xlib are all absent
     and installing them needs `sudo`. So static states can be photographed; keystrokes,
     clicks, drags and window resizes cannot be sent. There is also no window manager, so
