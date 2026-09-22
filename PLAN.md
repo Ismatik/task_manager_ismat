@@ -18,6 +18,13 @@ user's condition for proceeding. This is **D17's lesson arriving in a second pla
 Russian anti-clipping audit was green *on a real clipping bug*, because it asserts the
 absence of `truncate` and `whitespace-nowrap` and `shrink-0` was not on the list.
 
+**The two questions Stage 3's planning left open have since been answered by the user and
+are closed.** **OQ1 → Inter** (which face to vendor; **D23** now names it and **S3-06** is
+unblocked) and **OQ2 → the middle option** (`COUNT` and `UNTIL` enter the recurrence
+language; **D27**, the user's, with **D28** ruling on what an ended series means for
+**D5**). OQ2's answer added a ticket: Stage 3 is now **twenty-nine** tickets, because
+**S3-19** widens `internal/domain` before **S3-23** can offer an end condition.
+
 ---
 
 ## 1. What we are building
@@ -175,6 +182,10 @@ generate the most edge-case tests:
   weekly habit checked four weeks running has a streak of 4. Today's still-pending
   occurrence does not break a live streak. See §7 D5. Habits **never** appear in
   Kanban columns.
+- **A recurrence may end.** Since **D27** the rule may carry `COUNT` or `UNTIL`, and past
+  that bound the series has **no further scheduled occurrences**. By D5 nothing can then
+  break the streak, so it **freezes** at its final value; the habit stays in the strip,
+  marked ended by a Go-computed field, until it is archived. See §7 **D28**.
 
 ### Behaviour by type
 
@@ -200,7 +211,7 @@ and stop for your "next".
 | 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) — **CLOSED, PASS** | `make check` green, empty window opens, second launch focuses the first |
 | 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **CLOSED, PASS** (PASS on the **fourth** review, at `a1f09b7`; it failed the first three — the history is kept below) | **≥90% coverage** on `internal/domain` + `internal/service` — **MET: 100.0% / 92.9%** |
 | 2 | **Kanban + Habits strip** (launch screen) — **CLOSED, PASS** (PASS on the **second** review, at `8818db4`; round 1 returned FAIL on two blocking issues, fixed by `ae6befd` and `4b1af9c` — the history is kept below). S2-01 … S2-22 all committed, plus the gap-closing `7af4d1d` — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — **MET**: `frontend/src/App.accept.test.tsx` drives the assembled `<App />` with an exact asserted call sequence (one `CreateNode`, then `MoveToColumn` with each of the four statuses Go supplied, in order), and **`make guard` check 6 fails if a mouse event ever enters that file** — **and moving a card to Doing itself opens a `time_entry`** (§4 coupling, **D13**; ticket S2-03), asserted from the UI. The **ten-step hand run on the real binary is still owed** and is carried into Stage 3 |
-| 3 | **Defect remediation, then Detail + Tree + Search/Archive** — **PLANNED**, S3-01 … S3-28. **Opens with a blocking block, S3-01 … S3-09**, closing the nine defects the user's hand pass found (**K6–K14**, ruled by **D18–D26**): the height chain, the `shrink-0` overflow, the window minimum size, the blur policy, the missing `DragOverlay`, the Cyrillic UI font, the toast flood and the refusal channel — then the hand pass that confirms them. **No feature ticket starts until that block is green.** Then: slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | **Two halves.** Block A: every defect in **K6–K14** is closed, each with a named mechanical check *or* an honest statement that only an eye can see it, plus the hand pass of **S3-09**. Block B: **every field round-trips through Go; reparent in tree shows on Kanban instantly** |
+| 3 | **Defect remediation, then Detail + Tree + Search/Archive** — **PLANNED**, S3-01 … S3-29. **Opens with a blocking block, S3-01 … S3-09**, closing the nine defects the user's hand pass found (**K6–K14**, ruled by **D18–D26**): the height chain, the `shrink-0` overflow, the window minimum size, the blur policy, the missing `DragOverlay`, the Cyrillic UI font, the toast flood and the refusal channel — then the hand pass that confirms them. **No feature ticket starts until that block is green.** Then: slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor including the `COUNT`/`UNTIL` end conditions the user's **D27** added, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | **Two halves.** Block A: every defect in **K6–K14** is closed, each with a named mechanical check *or* an honest statement that only an eye can see it, plus the hand pass of **S3-09**. Block B: **every field round-trips through Go; reparent in tree shows on Kanban instantly** |
 | 4 | **Quick-add + Focus mode** — frameless standalone window, Go-side NL parser (date, `!priority`, `#tag`, `>Project` fuzzy, `~estimate`, `@type`), live preview chips, Enter creates & closes, Esc closes; Focus mode (one card, large timer, Esc exits); sleep/lock timer handling | `deploy KA Avto fri 15:00 !high #work >KA Avto ~2h` parses correctly in tests **and** in the UI |
 | 5 | **Platform integration** — tray via `energye/systray`, badge = overdue + due today, menu (Open / Quick add / Start-Stop timer / Quit); `.desktop` + `install.sh` → autostart, GNOME `gsettings` shortcut Super+Space → `nexus --quick`, warn if AppIndicator missing | Reboot → app opens; Super+Space → quick-add |
 | 6 | **Backup, export, PMP timelog** — nightly JSON export of all tables to `~/Nexus/backups/YYYY-MM-DD.json`, keep 30; Restore-from-file with confirmation; Markdown export of a subtree; day timelog screen grouping `time_entries` by node with editable minutes, output in PMP KIT format with Copy | **Restore reproduces an identical Kanban** |
@@ -674,7 +685,7 @@ actually verified.**
 
 ### Stage 3 — PLANNED, not started
 
-**Twenty-eight tickets, S3-01 … S3-28, in `TASKS.md`, in two blocks.** The split is not
+**Twenty-nine tickets, S3-01 … S3-29, in `TASKS.md`, in two blocks.** The split is not
 cosmetic: the user ran the app on real hardware after Stage 2 closed, found nine defects,
 and said *"if these details are resolved in the next steps, we are good to go."* That is a
 precondition, so it is a block and not a backlog.
@@ -702,20 +713,27 @@ because S3-05's overlay has to work whatever the blur policy turned out to be, a
 other way round. S3-06 through S3-08 touch none of those files. S3-09 is a human at a real
 keyboard and is the gate into block B.
 
-**Block B — S3-10 … S3-28, the feature stage.** Go first (S3-10 … S3-18: the detail read,
+**Block B — S3-10 … S3-29, the feature stage.** Go first (S3-10 … S3-19: the detail read,
 the field writers, the type switcher, tags, attachments, the editable time log, search
-filters, the archive list, and the enum-set publication that closes **C6**), then the
-frontend (S3-19 … S3-27: the slide-over, the field editors, inline subtasks, the
+filters, the archive list, the enum-set publication that closes **C6**, and **S3-19, the
+`COUNT`/`UNTIL` widening of the recurrence parser** that the user's **OQ2** answer
+requires), then the
+frontend (S3-20 … S3-28: the slide-over, the field editors, inline subtasks, the
 recurrence editor, attachments and the time log with the running clock, the tree view, the
 search screen, the archive view, and the latent non-Latin-keyboard defect **K13**).
-**S3-28 is `README.md`**, and it is **blocked on the user running
+**S3-29 is `README.md`**, and it is **blocked on the user running
 `sudo apt install xvfb imagemagick`** — the board exists now, so it is finally writable,
 but nothing on this machine can take a screenshot.
 
-**Two questions are open and are the user's to answer**, not the PM's — they are stated in
-full at the end of §7: **OQ1**, which Cyrillic face to vendor, and **OQ2**, what *"custom
-RRULE"* is allowed to mean given that Stage 1's parser rejects `COUNT`, `UNTIL`,
-`BYSETPOS`, `BYMONTH` and ordinal weekdays at parse time.
+**Both open questions have been answered by the user and are CLOSED.** They are kept in
+full at the end of §7, marked closed with the answer, because the reasoning is worth
+keeping. **OQ1 → Inter**, one face under both family names, which unblocks **S3-06** and
+fixes **D23**'s open half. **OQ2 → option B**, the middle option and *not* the
+recommendation: the parser gains **`COUNT`** and **`UNTIL`**, so the editor may offer
+"repeat N times" and "repeat until date". That is **D27** (the user's) and **D28** (the PM
+ruling that spells out its consequences), and it is why block B gained a ticket: **S3-19**
+does the domain widening and **S3-23 is blocked on it**. `BYSETPOS`, `BYMONTH` and ordinal
+weekdays stay **rejected at parse time**.
 
 ## 6. How we work
 
@@ -734,10 +752,12 @@ I am the **orchestrator**. Three sub-agents, delegated explicitly:
 
 ## 7. Resolved decisions
 
-Referenced as **D1–D26** and **E1–E3** from tickets in `TASKS.md`. Every question that
-has been asked is closed; **two questions have not been asked yet and are recorded at the
-end of this section as OQ1 and OQ2**, because a PM who answers them silently is the defect
-this project keeps finding.
+Referenced as **D1–D28** and **E1–E3** from tickets in `TASKS.md`. **Every question is
+closed.** The two that were open — **OQ1** and **OQ2** — were put to the user rather than
+answered silently, because a PM who answers them silently is the defect this project keeps
+finding; they are **kept at the end of this section, marked CLOSED with the answer**, not
+deleted, because the reasoning is worth keeping and a decision without its rejected
+alternatives is half a record.
 
 **D1–D12 were given by the user and are authoritative** — they override anything
 earlier in this document that contradicts them. **D1–D7** were settled before Stage 0.
@@ -750,12 +770,21 @@ the user while Stage 2 was being planned and closes **K1**.
 **D23 was given by the user** during the Stage 3 planning pass, after they ran the app by
 hand: vendor a Cyrillic-capable face and register it under the **same two family names**
 via `unicode-range`, so `design/` is not edited and Latin keeps its designed typeface. It
-carries the same authority as D1–D12. The user also supplied the **discriminating
+carries the same authority as D1–D12. **Its one open half — *which* face — is now also the
+user's and is Inter** (OQ1, closed). The user also supplied the **discriminating
 experiment** behind **K7** — switching to Studio, whose `--blur` is `0px`, repaired a
 stuck layout live with no restart — which is evidence, not a decision, and is recorded
-under K7.
+under K7. **D19 was put back to the user for confirmation and the user confirmed it as
+written.**
 
-**D13, D14, D15, D16, D17 and D18–D22, D24, D25, D26 are PM rulings.** D13, D14 and D15
+**D27 was given by the user**, answering **OQ2**, and it carries the same authority as
+D1–D12: the recurrence language gains **`COUNT`** and **`UNTIL`**. The user chose the
+**middle** option over the PM's recommendation, which was to keep the editor inside the
+existing subset. **D28 is the PM ruling that spells out what that costs** — the parse
+boundary, the purity constraint, and the **D5** interaction for a series that has ended —
+and it is overturnable in the ordinary way, while **D27 itself is not the PM's to revisit**.
+
+**D13, D14, D15, D16, D17 and D18–D22, D24, D25, D26, D28 are PM rulings.** D13, D14 and D15
 were made during Stage 2
 planning because `TASKS.md` **C1**, **C4** and **C5** demanded a decision and the user's
 brief did not contain one; **D16** was made *during* Stage 2, when the Dev asked what
@@ -1347,7 +1376,20 @@ hidden while `isDragging`.**
   outside its surface, so it is *unblurred* while in flight even under Aurora. That is what
   a lifted object should look like, and it is a change a user will notice.
 
-### D19 — blur the few large surfaces, not every small one (PM ruling, Stage 3 planning; closes K7)
+### D19 — blur the few large surfaces, not every small one (PM ruling, Stage 3 planning; **CONFIRMED BY THE USER**; closes K7)
+
+> **The user was asked to confirm this one and did, as written.** Blur stays on the five
+> columns and the two overlay scrims; the card, the habit chip and the toast lose it.
+> Nothing in the ruling changed — the confirmation is recorded because the ruling gives
+> away a documented property of a read-only design handoff, and a PM ruling was the wrong
+> authority to do that on alone.
+>
+> **The escalation ladder below survives the confirmation and is not shortened by it.** If
+> S3-09's hand pass still reproduces the stuck layout at seven blurred layers, step 2 (drop
+> the blur from the columns too, leaving the two overlays) is still a PM step — but **step
+> 3, that Aurora's `--blur` is unusable on this WebKitGTK, remains a USER decision**,
+> because at that point the palette's specified appearance is what is being given up.
+> Confirming step 1 did not pre-authorise step 3.
 
 **`backdrop-blur-glass` is applied to the five column surfaces and the two overlay
 scrims — and to nothing else.** It is removed from the card, the habit chip and the toast.
@@ -1500,7 +1542,7 @@ who owns the scroll.**
   qualifies; every later region — the detail slide-over, the tree, the archive list — must
   say which one it is.
 
-### D23 — vendor a Cyrillic face under the same two family names (THE USER'S, Stage 3 planning; closes K11)
+### D23 — vendor **Inter** under the same two family names (THE USER'S, Stage 3 planning; closes K11)
 
 **A Cyrillic-capable face is vendored and registered under the *same two family names* the
 palettes already use, scoped with `unicode-range`, so Latin keeps its designed typeface and
@@ -1528,9 +1570,18 @@ U+2116`.
 - **Pair it with a mechanical check, or this recurs on the next locale.** A test asserting
   that **every codepoint used in `ru.json` is covered by some bundled `unicode-range` for
   `--font-ui`** — over the ranges actually bundled, not a range retyped into the test.
-- **Which face is NOT decided here — see OQ1.** Manrope and Inter were both named as
-  candidates. Choosing silently would be inventing a design decision and attributing it to
-  the handoff, which is what **D6 as amended** forbids.
+- **The face is Inter, and that is the user's choice too** (**OQ1**, closed). This bullet
+  used to read *"which face is not decided here"*, and it was right not to decide it: the
+  candidates were Inter and Manrope, and choosing silently would have been inventing a
+  design decision and attributing it to the handoff, which is what **D6 as amended**
+  forbids. **One** face, under **both** family names — so one `unicode-range` block and
+  one coverage test, and Studio does not get a worse match than Aurora or the reverse.
+- **The name is not the evidence.** Inter's reputation for wide Cyrillic coverage is not a
+  substitute for reading `node_modules/@fontsource/inter/unicode.json`, which is exactly
+  how Space Grotesk and Figtree were found to have none. The Dev verifies the real
+  coverage — **including `U+2116` (№) and the combining acute `U+0301`** — before
+  committing, and if a codepoint `ru.json` uses is not covered, **stops and reports**
+  rather than narrowing the test to match the font.
 - **Related and confirmed, and settled by the same ruling.** `frontend/index.html` hard-codes
   `<html lang="en">` and **nothing ever updates it** — grepped, zero writers. `lib/appearance.ts`
   already receives the whole `SettingsView`, already runs once at boot and once per settings
@@ -1621,10 +1672,132 @@ enumerates what Go enumerates and the locale file is reduced to labels.**
 - **This is the same shape as D25's refusal codes**, deliberately. One mechanism, used
   twice, rather than two.
 
-### OQ1 — which Cyrillic face? OPEN, for the user
+### D27 — `COUNT` and `UNTIL` enter the recurrence language (THE USER'S, closes OQ2)
 
-**D23 fixes the approach and leaves the face open.** Manrope and Inter were both named as
-candidates and neither was chosen.
+**The recurrence parser is widened to accept `COUNT` and `UNTIL`, so the editor may offer
+"repeat N times" and "repeat until date". `BYSETPOS`, `BYMONTH` and ordinal weekdays such
+as "the 2nd Monday" stay rejected at parse time with `ErrUnsupportedRecurrence`.**
+
+This is **OQ2's option B**, the middle one. **The PM recommended option A** — an editor
+confined to the subset the parser already accepts — and **the user chose otherwise.** That
+is recorded plainly because the recommendation is still in this document a few screens
+below, and a reader who finds it must not mistake it for the decision.
+
+- **What it buys.** *"Every weekday until 31 December"* and *"ten times and then stop"* are
+  the two shapes a real habit reaches for and the two the brief's *"custom RRULE"* most
+  plainly promises. Both **terminate a series**, which is why they were named together in
+  OQ2 as the pair that carries real user value.
+- **What it does not buy, and the boundary has exactly one spelling.** `BYSETPOS`,
+  `BYMONTH`, `BYWEEKNO`, `BYYEARDAY`, `BYHOUR` and ordinal `BYDAY` remain **rejected at
+  parse time**, in `ParseRecurrence`, refused at the point the rule is written rather than
+  approximated at the point it is read — the reasoning `recurrence.go` already gives for
+  `ErrUnsupportedRecurrence` being deliberately loud. The rejection boundary is asserted in
+  **one place**, `TestParseRecurrenceRejectsWhatItCannotExpand`, and it narrows by exactly
+  two rows.
+- **Still no RRULE library** (OQ2's option C, unchanged). Two bounded fields are not a
+  reason to put a dependency into the one package that is pure and at 100% coverage, and
+  `recurrence.go`'s header already records why no maintained pure-Go expander is usable
+  here: a hidden clock read when `DTSTART` is unset, and expansion to zoned instants when
+  `habit_checks` is keyed by a date.
+- **`ErrUnsupportedRecurrence` stays unreachable from the UI.** The editor offers what Go
+  accepts and cannot compose what Go rejects — that criterion survives the widening intact,
+  it simply now has two more fields inside it.
+- **This is a domain change and it gets a domain ticket.** **S3-19** widens
+  `internal/domain`; **S3-23**, the recurrence editor, is **blocked on it** and may not
+  widen the parser itself. A domain change smuggled into a UI ticket is the thing the split
+  exists to prevent.
+
+### D28 — a bounded recurrence ends, and an ended series freezes the streak (PM ruling, implementing D27 against D5)
+
+**D27 says which parts are accepted. This says what they mean, because a terminating series
+changes what "a scheduled occurrence passed unchecked" refers to, and D5 is a rule that
+must not acquire a second spelling.**
+
+**1. The bound lives in the rule, never in the clock.**
+`internal/domain` is pure: no `time.Now()`, and anything time-dependent takes an injected
+`now func() time.Time`. `COUNT` is positional and `UNTIL` is an absolute date, so **both
+are decidable from the rule and the candidate date alone**. `Matches`, `Expand`, `Next` and
+`Previous` each respect the bound with no reference to today. **`UNTIL` is compared against
+the occurrence being tested, never against the current date** — that comparison is what
+`Today(now)` is for, and it belongs to the callers that already take a clock.
+
+**2. `COUNT=n` means the first `n` occurrences from `DTSTART` inclusive**, with `n` in
+`1..1000`. The cap exists for the same reason `maxWindowDays` and `maxSearchDays` do: a
+positional bound has to be walked, so something must stop the walk. `COUNT=0` and a
+non-numeric `COUNT` stay unsupported.
+
+**3. `UNTIL` is accepted only in the `YYYYMMDD` DATE form, and is inclusive.** The
+`DATE-TIME` form (`UNTIL=20261231T000000Z`) **stays rejected**. Nexus has no time of day
+anywhere — `habit_checks` is keyed by a `Date`, `domain.Date` is a calendar day, and D17
+already settled that the calendar day is Go's to name. Accepting a `Z` instant would
+require a timezone rule this project does not have, and silently truncating one would be a
+second, invisible rule about what a habit's day is. Pleasingly, the existing rejection test
+row for `UNTIL` is already the `DATE-TIME` form, so **it keeps passing unchanged**.
+
+**4. `COUNT` and `UNTIL` may not both appear.** RFC 5545 forbids it, and two bounds on one
+series is two spellings of one rule. Rejected at parse time, and the editor cannot compose
+it.
+
+**5. The D5 consequence, and it is a derivation rather than a new rule.** **D5 is not
+amended.** A streak is consecutive **scheduled** occurrences that were checked, and it
+**breaks when a scheduled occurrence passes unchecked**. After the bound there are **no
+scheduled occurrences at all**, therefore none can pass unchecked, therefore **nothing can
+break the streak: it freezes at its final value and stays there.**
+
+- A series whose **final** occurrence was checked keeps that streak forever. It is a
+  finished habit with a finished streak, and that is the honest reading of D5.
+- A series whose **final** occurrence passed unchecked has a streak of **0**, by the same
+  sentence of D5 and with no special case.
+- **It must fall out of bounding `Previous` and `Matches`, not out of new code in
+  `streak.go`.** The backwards walk already starts above today and steps through
+  `Previous`; once `Previous` respects the bound the walk is correct with no further
+  change. **If an implementation needs a second code path for "the series ended", the bound
+  is in the wrong place** — that is the review signal, and it is the same signal this
+  project has now paid for five times.
+
+**6. "Scheduled today" needs no new rule; "ended" needs one field.** `ScheduledToday`
+already goes `false` past the bound, so the due-today flag is correct for free and is
+**not** duplicated. But *"not today, Tuesday"* and *"never again"* are different facts, and
+a strip that had to tell them apart would have to compare `UNTIL` to today **in
+TypeScript** — which is `wireDate` (**D17**) with a different name and behind the same
+permanently green guard. So **`HabitView` gains exactly one Go-computed field, `Ended`**,
+and the strip renders a localised marker from it. This is **D15**'s shape: where a value is
+in a terminal or undefined state, Go says so and the UI names it, rather than drawing
+something misleading.
+
+**7. A finished habit stays in the strip**, marked finished, still showing the streak it
+ended on. It leaves by being **archived**, which already exists and is reversible. Hiding
+it automatically was rejected for **D15**'s reason: a row that silently disappears is
+indistinguishable from data loss, and the accumulation is at least visible and undoable.
+
+**8. No new error sentinel, and D25's table does not grow.** A check written on a date the
+rule does not schedule is **already** specified as harmless — `streak.go` says so in its
+own doc comment: it is stored, contributes nothing to the streak and repairs no break. An
+ended series is simply *"every later date is unscheduled"*, so `Check`/`CheckToday` keep
+their behaviour unchanged.
+
+- **Rejected alternative: a new `ErrRecurrenceEnded` refusal.** It would be one more
+  sentinel in **D25**'s exhaustive-or-red table, and it would contradict a semantics
+  `streak.go` has already written down. Whether the strip *offers* the tick on a finished
+  habit is **presentation**, which `HabitView`'s own doc comment already assigns to the
+  strip.
+- **Rejected alternative: zero the streak when the series ends.** It reads as punishment for
+  finishing, it is not what D5 says, and it would delete the one number that records the
+  habit succeeded.
+- **Rejected alternative: drop ended habits from `Strip()`.** See point 7.
+
+### OQ1 — which Cyrillic face? **CLOSED — the user answered: Inter**
+
+> **ANSWERED.** **Inter**, one face vendored under **both** family names via
+> `unicode-range` — the recommended option below. **D23** now names it, **S3-06 is
+> unblocked**, and the dependency is `@fontsource/inter`, which S3-06's commit body must
+> call out as a new dependency. The Dev still verifies real coverage from the package's own
+> `unicode.json`, and the file is loaded **from disk** — no CDN, no `<link>`, no runtime
+> fetch, which is a hard project rule and not a preference. The table below is kept because
+> the runner-up and the reason it lost are worth keeping.
+
+**As asked:** D23 fixed the approach and left the face open. Manrope and Inter were both
+named as candidates and neither had been chosen.
 
 | Option | For | Against |
 |---|---|---|
@@ -1637,7 +1810,21 @@ block and one coverage test. **The Dev must verify the chosen package's real cov
 its `unicode.json` before committing** — including `U+2116` (№) and the combining acute
 `U+0301` — rather than trusting this table.
 
-### OQ2 — what may "custom RRULE" mean? OPEN, for the user
+### OQ2 — what may "custom RRULE" mean? **CLOSED — the user answered: option B**
+
+> **ANSWERED, and NOT with the recommendation.** The user chose **B**, the middle option:
+> the parser is widened to accept **`COUNT`** and **`UNTIL`**, so the editor offers *"repeat
+> N times"* and *"repeat until date"*. `BYSETPOS`, `BYMONTH` and ordinal weekdays stay
+> **rejected at parse time**.
+>
+> That answer is **D27**, and the consequences the option's own "Cost" column predicted —
+> new domain work, and the **D5** streak question a terminating series raises — are ruled on
+> in **D28**. It added one ticket: **S3-19** widens `internal/domain`, and **S3-23**, the
+> recurrence editor, is **blocked on it**.
+>
+> **The recommendation below is kept, and it is the recommendation, not the decision.** A
+> reader who finds "A — *recommended*" three paragraphs down and stops reading has read the
+> wrong thing.
 
 The brief promises a *"recurrence editor (daily/weekly/custom RRULE)"* in the detail panel.
 **Stage 1's hand-rolled parser does not support "custom RRULE" in the general sense.**
@@ -1654,12 +1841,14 @@ So the promise and the implementation disagree, and somebody has to say which on
 | **B — widen the parser first.** Add `COUNT` and `UNTIL` (the two that carry real user value), leave `BYSETPOS`/`BYMONTH`/ordinal weekdays rejected | Covers most real habits. Bounded: two fields, both of which terminate a series | New domain work in a stage that already opens with nine defects, and **streaks (D5) count scheduled occurrences** — a terminating series changes what "a scheduled occurrence passed unchecked" means at the end of the series, which is a rule that needs its own decision |
 | **C — adopt an RRULE library.** | Full RFC 5545 | A dependency in the one package that is **pure and has 100% coverage**, to serve an editor whose UI cannot express most of what it would then accept |
 
-**Recommendation: A for Stage 3, with B carried as a named follow-up** if the user wants
-end dates. Under A, **S3-22's acceptance criterion is that the editor cannot compose a rule
-Go would reject** — which is a checkable claim, and a better one than a free-text RRULE box
-with an error message under it.
+**Recommendation was: A for Stage 3, with B carried as a named follow-up** if the user
+wanted end dates. **The user took B directly** (**D27**). The criterion A was recommended
+for survives the change and is not weakened by it: **S3-23's acceptance criterion is still
+that the editor cannot compose a rule Go would reject** — a checkable claim, and a better
+one than a free-text RRULE box with an error message under it. The reachable space the
+editor must round-trip is simply larger by two fields.
 
-Whichever is chosen, one rule holds: **the editor does not parse, validate or expand an
+Whichever was chosen, one rule holds: **the editor does not parse, validate or expand an
 RRULE in TypeScript.** It collects structured choices, Go builds and validates the rule and
 returns the structure back, and the frontend renders that structure through i18n. A
 human-readable sentence **is not returned from Go** — that is D15's rejected option (c), and
@@ -1943,7 +2132,7 @@ in that screenshot.** Whatever ships, the user must end up able to tell — that
 criterion on S3-08, not a wish.
 
 **K13 — keyboard shortcuts match the character, so a Cyrillic layout would kill Ctrl+N and
-Ctrl+K. LATENT, NOT the reported bug; ticket S3-27, deliberately ranked low.**
+Ctrl+K. LATENT, NOT the reported bug; ticket S3-28, deliberately ranked low.**
 `lib/keyboard.ts:107-115` matches on `event.key`, and `event.code` is used **nowhere** in
 `frontend/src`. Under a Cyrillic keyboard layout the N key emits `т` and K emits `л`, so
 both chords would silently stop working. **The user has confirmed they keep a Latin
@@ -1991,7 +2180,7 @@ and **nothing draws a drift**, which no document may imply otherwise.
 **A green `make guard` is NOT proof that the frontend computes nothing**: checks 3a/3b
 are name-based heuristics, `wireDate` sat behind a green guard for an entire stage, and
 **D17** says so — reading the diff is still the check.
-**Stage 3 is PLANNED and not started** — twenty-eight tickets, **S3-01 … S3-28**, in
+**Stage 3 is PLANNED and not started** — twenty-nine tickets, **S3-01 … S3-29**, in
 `TASKS.md`, in two blocks. **The user has since run the app by hand on real hardware and
 found nine defects**, recorded as **K6 – K14** and ruled as **D18 – D26**: eight of the
 nine are invisible to every gate here, because jsdom has no layout engine and no font
@@ -2001,11 +2190,15 @@ user's** (vendor a Cyrillic face under the same two family names via `unicode-ra
 is the discriminating Studio experiment behind **K7**; **D18–D22 and D24–D26 are PM
 rulings and the user may overturn any of them**. **D26 closes C6** by publishing the enum
 sets from Go — noting the honest correction that current locale parity is **clean**, so C6
-is a drift risk and not a present defect. **Two questions are open and are the user's:
-OQ1**, which Cyrillic face (recommendation: Inter), and **OQ2**, what *"custom RRULE"* may
-mean given that Stage 1's parser rejects `COUNT`, `UNTIL`, `BYSETPOS`, `BYMONTH` and
-ordinal weekdays at parse time (recommendation: custom *within the supported subset*, with
-a widening carried as a named follow-up). **K13** (shortcuts match the character, not the
+is a drift risk and not a present defect. **Both open questions have since been answered
+by the user and are CLOSED. OQ1 → Inter**, one face under both family names, which fixes
+**D23**'s one open half and unblocks S3-06. **OQ2 → the middle option, not the PM's
+recommendation**: `COUNT` and `UNTIL` enter the recurrence language (**D27**, the
+user's), while `BYSETPOS`, `BYMONTH` and ordinal weekdays stay rejected at parse time.
+**D28** is the PM ruling that spells out the consequences — an ended series has no further
+scheduled occurrences, so by **D5** nothing can break the streak and it **freezes** — and
+that answer added one ticket: **S3-19** widens `internal/domain`, and **S3-23**, the
+recurrence editor, is blocked on it. **K13** (shortcuts match the character, not the
 key) is latent and ranked low; **K14** (the palette selection is not visibly indicated) is
 **deferred by the user**. The **three D8 due-badge assertions still have no mechanical
 backing**, and S3-09 is where that is fixed and the rest is looked at by eye.

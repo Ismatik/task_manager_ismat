@@ -35,20 +35,21 @@
   the out-of-scope line contradicted the brief on *set priority* (see
   [The plan correction](#the-plan-correction--set-priority-from-the-palette-is-stage-2)).
 - **[Stage 3 — Defect remediation, then Detail + Tree + Search/Archive](#stage-3--defect-remediation-then-detail--tree--searcharchive):
-  PLANNED, not started.** Twenty-eight tickets, **S3-01 … S3-28**, in **two blocks**.
+  PLANNED, not started.** Twenty-nine tickets, **S3-01 … S3-29**, in **two blocks**.
   **Block A, [S3-01 … S3-09](#block-a--the-blocking-defect-block-s3-01--s3-09), is
   blocking**: the user ran the app by hand on real hardware after Stage 2 closed and found
   **nine defects** — recorded as **K6 – K14** in [`PLAN.md` §7](./PLAN.md) and ruled as
   **D18 – D26** — and their condition for proceeding was *"if these details are resolved in
   the next steps, we are good to go."* **No feature ticket starts until block A is green.**
-  Block B, S3-10 … S3-28, is the feature stage: the detail slide-over, the tree view,
+  Block B, S3-10 … S3-29, is the feature stage: the detail slide-over, the tree view,
   search and archive, plus **C6** (closed by **D26**) and `README.md`. What Stage 3
   inherits is listed under [Carried into Stage 3](#carried-into-stage-3) — every item there
-  is now absorbed into a named ticket or an explicit refusal. **Two questions are open and
-  are the user's**: **OQ1** (which Cyrillic face) and **OQ2** (what *"custom RRULE"* may
-  mean) — both in [`PLAN.md` §7](./PLAN.md).
+  is now absorbed into a named ticket or an explicit refusal. **Both open questions have
+  been answered by the user and are CLOSED**: **OQ1 → Inter** (unblocking S3-06) and
+  **OQ2 → the middle option**, which puts `COUNT` and `UNTIL` into the recurrence language
+  (**D27**, **D28**) and adds **S3-19** — both in [`PLAN.md` §7](./PLAN.md).
 
-Decisions referenced as **D1–D26 / E1–E3** and known issues **K1–K14** live in
+Decisions referenced as **D1–D28 / E1–E3** and known issues **K1–K14** live in
 [`PLAN.md` §7](./PLAN.md). Four decisions were confirmed by the user *during* Stage 1
 and are recorded there — **D8** (a column move always overwrites the due date),
 **D9** (type beats leaf-ness — a project is never timeable), **D10** (a node with no
@@ -73,9 +74,14 @@ scrolls, the document does not; focus never scrolls), **D23** — **the user's**
 Cyrillic face under the same two family names via `unicode-range`), **D24** (toasts are
 capped, de-duplicated and self-dismissing), **D25** (a refusal is not a failure, and every
 toast says what failed) and **D26** (Go publishes every enum set — this is what closes
-**C6**). **Every known issue now has a decision; none is open.** **Two *questions* are
-open and are the user's to answer: OQ1** (which Cyrillic face) and **OQ2** (what *"custom
-RRULE"* may mean) — both stated in full in `PLAN.md` §7.
+**C6**). **Every known issue now has a decision; none is open.** **Both *questions* have
+now been answered by the user and are CLOSED**, and the answers are **D27** — **the
+user's** — (`COUNT` and `UNTIL` enter the recurrence language, everything else stays
+rejected at parse time; this is **OQ2**'s middle option and **not** the PM's
+recommendation) and **D28** (the PM ruling that spells out what a terminated series means
+for **D5** streaks, the habit strip and *"scheduled today"*). **OQ1** was answered
+**Inter**, which fixes **D23**'s one open half and unblocks **S3-06**. Both questions are
+kept in `PLAN.md` §7, marked closed with their answers rather than deleted.
 
 **Do not implement anything that is not on a ticket**, and do not add tickets here —
 the PM writes them.
@@ -4485,7 +4491,7 @@ with a checkable criterion, or state explicitly why not.** Same contract as
 > | **K1/D12**, **K2/D14**, **K3/D15** | Implemented in Stage 2 and unchanged. K1's no-flash half is hand-pass check 2, above |
 > | **D16 / K5** — the drift gate with nothing behind it | **Explicitly refused again.** No drift specification exists, so no ticket. Not to be invented |
 > | **C6** — enum membership spelled twice | [**S3-18**](#s3-18--featservice-publish-every-enum-set-c6-d26), taking the first of the two recorded options (**D26**). With an honest correction: current locale parity is **clean**, so C6 is a **drift risk**, not a present defect |
-> | Draw the running timer clock | [**S3-23**](#s3-23--featfrontend-attachments-the-editable-time-log-and-the-running-clock), which adds **exactly what it renders** |
+> | Draw the running timer clock | [**S3-24**](#s3-24--featfrontend-attachments-the-editable-time-log-and-the-running-clock), which adds **exactly what it renders** |
 > | Aurora's background drift | Refused, as above |
 
 ### ⚠️ Read this first — a green `make guard` is NOT a proof
@@ -4592,7 +4598,7 @@ red** until the frontend offers it.
 
 ## Stage 3 — Defect remediation, then Detail + Tree + Search/Archive
 
-**Status: PLANNED, not started.** Twenty-eight tickets, **S3-01 … S3-28**, one
+**Status: PLANNED, not started.** Twenty-nine tickets, **S3-01 … S3-29**, one
 conventional commit each, in **two blocks**.
 
 **Block A — [S3-01 … S3-09](#block-a--the-blocking-defect-block-s3-01--s3-09) — is
@@ -4602,7 +4608,7 @@ until every ticket in block A is committed and `make check`, `make cover`,
 condition, in their words: *"if these details are resolved in the next steps, we are good
 to go."*
 
-**Block B — S3-10 … S3-28 — is the feature stage** from `PLAN.md` §5: the task detail
+**Block B — S3-10 … S3-29 — is the feature stage** from `PLAN.md` §5: the task detail
 panel, the tree view, search and archive, plus **C6** and `README.md`.
 
 ### What the user's hand pass found — and why no gate here could have found it
@@ -4625,7 +4631,7 @@ read-only investigation, each ruled on as **D18 – D26**:
 | **K10** | No height chain, so the **document** scrolls; `overflow-x: auto` silently promotes `overflow-y`; every `.focus()` scrolls its ancestors | **D22** | [S3-01](#s3-01--fixfrontend-one-height-chain-the-board-owns-the-scroll-and-focus-never-scrolls-k10-d22) |
 | **K11** | Neither UI font has a single Cyrillic glyph, so Russian drops the whole UI to the system `sans-serif`; `<html lang>` is frozen at `en` | **D23** — **the user's** | [S3-06](#s3-06--featfrontend-a-cyrillic-face-under-the-same-family-names-and-html-lang-k11-d23) |
 | **K12** | Toasts stack without limit, and a domain *refusal* is rendered as "something went wrong" with no clue which action failed | **D24**, **D25** | [S3-07](#s3-07--fixfrontend-toasts-are-capped-de-duplicated-and-self-dismissing-k12-d24), [S3-08](#s3-08--feat-a-refusal-is-not-a-failure-and-every-toast-says-what-failed-k12-d25) |
-| **K13** | Shortcuts match `event.key`, so a Cyrillic keyboard layout would kill Ctrl+N / Ctrl+K. **Latent** — the user keeps a Latin layout | ranked low, on purpose | [S3-27](#s3-27--fixfrontend-shortcuts-match-the-key-not-the-character-k13) |
+| **K13** | Shortcuts match `event.key`, so a Cyrillic keyboard layout would kill Ctrl+N / Ctrl+K. **Latent** — the user keeps a Latin layout | ranked low, on purpose | [S3-28](#s3-28--fixfrontend-shortcuts-match-the-key-not-the-character-k13) |
 | **K14** | The palette **selection** is not visibly indicated | **DEFERRED BY THE USER** | none — and that is the user's call |
 
 **⚠️ The generalisable lesson, and it is D17 arriving in a second place.** `Card.tsx:36-43`
@@ -4663,6 +4669,9 @@ refresh. Plus S3-09's successor hand pass at the end of the stage.
 - **The detail slide-over**: Markdown editor and preview, inline subtasks, tags, due,
   priority, estimate, activity, the recurrence editor, attachments copied into the app
   data dir, the editable time log, the type switcher.
+- **`COUNT` and `UNTIL` in the recurrence language** (**D27**, the user's answer to
+  **OQ2**; **D28**, its consequences for **D5**). S3-19 is the domain half and S3-23 the
+  editor half, in that order.
 - **The tree view**: collapsible, inline rename, drag-to-reparent, arrow/Enter/Tab
   keyboard navigation.
 - **Search** with tag/type/status/date filters, over the backend S1-04 chose.
@@ -4670,7 +4679,7 @@ refresh. Plus S3-09's successor hand pass at the end of the stage.
 - **C6**, closed by **D26**: Go publishes every enum set.
 - **`README.md`**, which has been deliberately unwritten since Stage 0 because it needed a
   screen to photograph. It has one now — but automated capture is **blocked on the user
-  installing `xvfb` and `imagemagick`** (see S3-28).
+  installing `xvfb` and `imagemagick`** (see S3-29).
 
 ### What Stage 3 must NOT do
 
@@ -4712,7 +4721,10 @@ full**, unchanged. These are added:
 19. **A rule still gets exactly one spelling, and block A is full of new candidates**:
     `preventScroll`, the blur allow-list, the layout floor, the refusal-code table, the
     Cyrillic `unicode-range`. Each of those is a rule. Each gets one home, named in its
-    ticket.
+    ticket. **Block B adds two more**: the **recurrence bound** (`COUNT`/`UNTIL` — it lives
+    in `Matches`/`Previous`, not in `streak.go` and not in the editor) and **"has this
+    series ended"** (`HabitView.Ended`, computed in Go and compared to nothing in
+    TypeScript). See **D27** and **D28**.
 
 ### New dependencies, and why each one is justified
 
@@ -4722,11 +4734,16 @@ ticket that adds it, not a hope.
 
 | Package | Ticket | Why it, and not hand-rolled |
 |---|---|---|
-| `@fontsource/<face chosen by OQ1>` | S3-06 | **K11**: neither UI face has a Cyrillic glyph, so 81 of `ru.json`'s 82 leaves render in the system `sans-serif`. Vendored exactly as the three existing faces are — **woff2 files from `node_modules`, fingerprinted into `dist/assets`, no CDN, no `<link>`**. **Which face is OQ1 and is the user's to answer**; the Dev must verify the chosen package's real coverage from its `unicode.json` before committing. |
-| `react-markdown` + `remark-gfm` | S3-19 | The brief specifies a Markdown editor **and preview**. A hand-rolled renderer is a security surface and a correctness sink. **`react-markdown` does not render raw HTML by default, and `rehype-raw` must NOT be added** — a local-only app rendering arbitrary HTML from its own database is a needless hole. Both are pure-JS, bundled, no network. |
+| `@fontsource/inter` | S3-06 | **K11**: neither UI face has a Cyrillic glyph, so 81 of `ru.json`'s 82 leaves render in the system `sans-serif`. **Inter is the user's choice (OQ1, closed)**, one face registered under **both** family names. Vendored exactly as the three existing faces are — **woff2 files from `node_modules`, fingerprinted into `dist/assets`, no CDN, no `<link>`, no runtime fetch**, and that is an acceptance criterion and not a hope. **This is a new dependency and S3-06's commit body must say so explicitly.** The Dev verifies Inter's real coverage from the package's own `unicode.json` before committing — the name is not the evidence. |
+| `react-markdown` + `remark-gfm` | S3-20 | The brief specifies a Markdown editor **and preview**. A hand-rolled renderer is a security surface and a correctness sink. **`react-markdown` does not render raw HTML by default, and `rehype-raw` must NOT be added** — a local-only app rendering arbitrary HTML from its own database is a needless hole. Both are pure-JS, bundled, no network. |
 
-**Nothing else.** In particular: **no RRULE library** — see **OQ2**, option C, and the
-reason it is not recommended; **no e2e browser runner**, rejected in Stage 2 for reasons
+**Nothing else, and OQ2's answer does not change that.** In particular: **no RRULE
+library.** **OQ2** came back as its middle option, not option C — `COUNT` and `UNTIL` are
+added to the hand-rolled parser by **S3-19**, which is two bounded fields, while a library
+would put a dependency into the one package that is **pure and at 100% coverage** in order
+to accept a grammar the editor cannot express. `recurrence.go`'s own header comment already
+records why no maintained pure-Go expander is usable here — a hidden clock read and zoned
+instants — and that reasoning is now load-bearing twice. Also: **no e2e browser runner**, rejected in Stage 2 for reasons
 that have not changed; **no date library**, because dates are Go's and `Intl` formats them.
 
 ### The gate commands, and the two non-gate targets
@@ -4771,16 +4788,17 @@ fixed at the source, and no Stage 3 ticket may be the first to allow-list one.
 | [S3-16](#s3-16--featservice-search-with-tagtypestatusdate-filters) | Search with tag/type/status/date filters | `feat:` |
 | [S3-17](#s3-17--featservice-the-archive-list-and-restore) | The archive list and restore | `feat:` |
 | [S3-18](#s3-18--featservice-publish-every-enum-set-c6-d26) | Publish every enum set (**C6**, **D26**) | `feat:` |
-| [S3-19](#s3-19--featfrontend-the-detail-slide-over--shell-keyboard-markdown) | **The detail slide-over** — shell, keyboard, Markdown | `feat:` |
-| [S3-20](#s3-20--featfrontend-the-panels-field-editors) | The panel's field editors | `feat:` |
-| [S3-21](#s3-21--featfrontend-inline-subtasks) | Inline subtasks | `feat:` |
-| [S3-22](#s3-22--featfrontend-the-recurrence-editor-oq2) | The recurrence editor (**OQ2**) | `feat:` |
-| [S3-23](#s3-23--featfrontend-attachments-the-editable-time-log-and-the-running-clock) | Attachments, the editable time log, and the running clock | `feat:` |
-| [S3-24](#s3-24--featfrontend-the-tree-view) | **The tree view** | `feat:` |
-| [S3-25](#s3-25--featfrontend-the-search-screen) | **The search screen** | `feat:` |
-| [S3-26](#s3-26--featfrontend-the-archive-view) | **The archive view** | `feat:` |
-| [S3-27](#s3-27--fixfrontend-shortcuts-match-the-key-not-the-character-k13) | Shortcuts match the key, not the character (**K13**) | `fix:` |
-| [S3-28](#s3-28--docs-readmemd-and-the-screenshots--blocked-on-the-user) | `README.md` and the screenshots — **BLOCKED on the user** | `docs:` |
+| [S3-19](#s3-19--featdomain-count-and-until-enter-the-recurrence-language-d27-d28) | **`COUNT` and `UNTIL` enter the recurrence language** (**D27**, **D28**) — **S3-23 is blocked on it** | `feat:` |
+| [S3-20](#s3-20--featfrontend-the-detail-slide-over--shell-keyboard-markdown) | **The detail slide-over** — shell, keyboard, Markdown | `feat:` |
+| [S3-21](#s3-21--featfrontend-the-panels-field-editors) | The panel's field editors | `feat:` |
+| [S3-22](#s3-22--featfrontend-inline-subtasks) | Inline subtasks | `feat:` |
+| [S3-23](#s3-23--featfrontend-the-recurrence-editor-d27-d28) | The recurrence editor (**D27**, **D28**) — **blocked on S3-19** | `feat:` |
+| [S3-24](#s3-24--featfrontend-attachments-the-editable-time-log-and-the-running-clock) | Attachments, the editable time log, and the running clock | `feat:` |
+| [S3-25](#s3-25--featfrontend-the-tree-view) | **The tree view** | `feat:` |
+| [S3-26](#s3-26--featfrontend-the-search-screen) | **The search screen** | `feat:` |
+| [S3-27](#s3-27--featfrontend-the-archive-view) | **The archive view** | `feat:` |
+| [S3-28](#s3-28--fixfrontend-shortcuts-match-the-key-not-the-character-k13) | Shortcuts match the key, not the character (**K13**) | `fix:` |
+| [S3-29](#s3-29--docs-readmemd-and-the-screenshots--blocked-on-the-user) | `README.md` and the screenshots — **BLOCKED on the user** | `docs:` |
 
 **Sequencing, and the three constraints that are real.**
 
@@ -4796,9 +4814,17 @@ fixed at the source, and no Stage 3 ticket may be the first to allow-list one.
 - **S3-06, S3-07 and S3-08 touch none of those files** and could in principle move, but
   they are kept after the layout work so the hand pass in S3-09 sees one settled screen.
 - **Inside block B: every Go ticket before the frontend ticket that calls it.**
-  S3-10 … S3-18 are Go and touch no `frontend/src` file except the regenerated
-  `frontend/wailsjs`. **S3-19 before S3-20 … S3-23**, which fill the panel it creates.
-  **S3-24 introduces the view switch** and therefore precedes S3-25 and S3-26.
+  S3-10 … S3-19 are Go and touch no `frontend/src` file except the regenerated
+  `frontend/wailsjs`. **S3-20 before S3-21 … S3-24**, which fill the panel it creates.
+  **S3-25 introduces the view switch** and therefore precedes S3-26 and S3-27.
+- **S3-19 before S3-23, and that dependency is hard.** The user's **OQ2** answer put
+  `COUNT` and `UNTIL` into the recurrence language (**D27**, **D28**), so the recurrence
+  editor cannot offer *"repeat N times"* or *"repeat until date"* until `internal/domain`
+  accepts them. **S3-19 is the domain half and S3-23 is blocked on it**; S3-23 may not
+  widen the parser itself, which is the split the recurrence-editor ticket already demanded
+  if OQ2 came back B. **Note the renumber**: inserting S3-19 shifted every frontend ticket
+  up by one, so the recurrence editor that used to be S3-22 is now **S3-23**, and
+  `README.md` is **S3-29**.
 
 ### Composition — who mounts what, in Stage 3
 
@@ -4815,25 +4841,25 @@ blind spot twice in Stage 2.
 
 | Region in `App.tsx` | Filled by | Mounted in |
 |---|---|---|
-| detail slide-over layer (a new region, beside the overlay layer) | `components/DetailPanel.tsx` | **S3-19** |
-| region 3 becomes a **view switch** on a new `activeView` in `store/ui.ts` | `views/Tree.tsx` | **S3-24** |
-| region 3 — the search screen | `views/Search.tsx` | **S3-25** |
-| region 3 — the archive view | `views/Archive.tsx` | **S3-26** |
+| detail slide-over layer (a new region, beside the overlay layer) | `components/DetailPanel.tsx` | **S3-20** |
+| region 3 becomes a **view switch** on a new `activeView` in `store/ui.ts` | `views/Tree.tsx` | **S3-25** |
+| region 3 — the search screen | `views/Search.tsx` | **S3-26** |
+| region 3 — the archive view | `views/Archive.tsx` | **S3-27** |
 
-Everything else is mounted by its parent: the field editors of S3-20, the subtask list of
-S3-21, the recurrence editor of S3-22 and the attachment/time-log sections of S3-23 are all
-children of S3-19's panel and become reachable when it opens.
+Everything else is mounted by its parent: the field editors of S3-21, the subtask list of
+S3-22, the recurrence editor of S3-23 and the attachment/time-log sections of S3-24 are all
+children of S3-20's panel and become reachable when it opens.
 
 **Two consequences worth stating before they are discovered.**
 
-1. **S3-24 owns the view switch, not just the tree.** Today `views/Kanban.tsx` is region 3
-   and nothing else can be. S3-24 introduces `activeView`, the switch in `App.tsx`, and
+1. **S3-25 owns the view switch, not just the tree.** Today `views/Kanban.tsx` is region 3
+   and nothing else can be. S3-25 introduces `activeView`, the switch in `App.tsx`, and
    flips the command palette's `view:tree` row from *unavailable, coming in stage N* to
-   available. S3-25 and S3-26 then each add one view and one palette row, and **no row may
+   available. S3-26 and S3-27 then each add one view and one palette row, and **no row may
    be left silently doing nothing** — the Stage 2 standard.
 2. **The detail panel and the overlays must not be open at once by accident.**
    `store/ui.ts` holds **one** overlay, which is what makes that impossible today. The
-   panel is not an overlay — it is a slide-over beside the board — so S3-19 must say
+   panel is not an overlay — it is a slide-over beside the board — so S3-20 must say
    explicitly what happens when `Ctrl+K` is pressed with the panel open, and test it.
 
 ---
@@ -5165,10 +5191,16 @@ whole UI into the system `sans-serif` while numbers stay in JetBrains Mono — t
 in one header, different metrics, and a `flex-wrap` header very plausibly gaining a row.
 **This is the user's reported "theme and colour buttons break when I switch language".**
 
-> **⚠️ BLOCKED on OQ1 until the user answers it.** **Which face** is the user's decision.
-> `PLAN.md` §7 OQ1 recommends **Inter**, one face under both family names, with Manrope as
-> the runner-up. **Do not start this ticket with the face unchosen**, and do not choose it
-> in a commit message.
+> **✅ UNBLOCKED — OQ1 is answered. The face is Inter, and that is the user's choice.**
+> **One** face, vendored under **both** family names via `unicode-range`, so `design/` is
+> not edited and Latin keeps its designed typeface. One face means one `unicode-range`
+> block and one coverage test.
+>
+> **The name is not the evidence.** Before committing, the Dev **verifies Inter's real
+> coverage from the `@fontsource` package's own `unicode.json`** — including `U+2116` (№)
+> and the combining acute `U+0301` — rather than trusting the face's reputation or the
+> suggested range below. If the package does not in fact cover a codepoint `ru.json` uses,
+> **stop and report**; do not narrow the test to match the font.
 
 **Scope (may touch):** `frontend/src/style.css`, `frontend/src/lib/appearance.ts` and its
 test, `frontend/index.html` (comment only), `frontend/package.json` and the lockfile, a new
@@ -5177,13 +5209,16 @@ is NOT edited** — that constraint is the whole reason D23 has the shape it has
 
 Requirements:
 
-- **`@font-face` blocks in `frontend/src/style.css` registering the chosen face under BOTH
+- **`@font-face` blocks in `frontend/src/style.css` registering Inter under BOTH
   existing family names** — the same strings `design/tokens.css` names — scoped with
   `unicode-range`. Suggested range, to be confirmed against the package's real coverage:
   `U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116`.
-- **Vendored and local.** `@fontsource`, bundled from `node_modules`, fingerprinted into
-  `dist/assets` like the three existing faces. **No CDN, no `<link>`, no runtime fetch** —
-  rule 11, and it is a hard project rule, not a preference.
+- **Vendored and local.** `@fontsource/inter`, bundled from `node_modules`, fingerprinted
+  into `dist/assets` like the three existing faces, **loaded from disk**. **No CDN, no
+  `<link>`, no runtime fetch** — rule 11, and it is a hard project rule, not a preference.
+- **A new dependency, and it is declared as one.** `@fontsource/inter` is the stage's first
+  new package; the commit body **names it explicitly** as a new dependency, with the
+  bundle-size delta, per the dependency table above.
 - **A coverage test**: every codepoint used in `ru.json` is covered by some **bundled**
   `unicode-range` for `--font-ui`. Read the ranges from what is actually bundled; a range
   retyped into the test proves the test agrees with itself.
@@ -5205,9 +5240,13 @@ Requirements:
       one writer** in `frontend/src` (`git grep -n '\.lang *=' frontend/src`).
 - [ ] `git diff -- design/` is empty, and `--font-ui` is **not** redefined anywhere in
       `frontend/src`.
-- [ ] `git grep -nE 'https?://' frontend/src` still returns nothing, and the new package's
-      files resolve from `node_modules` — the bundle is inspected and the commit body names
-      the emitted woff2 files.
+- [ ] `git grep -nE 'https?://' frontend/src` still returns nothing, and
+      `@fontsource/inter`'s files resolve from `node_modules` — the bundle is inspected and
+      the commit body names the emitted woff2 files. **No network fetch at runtime**, which
+      is the acceptance criterion the dependency table demands and not a hope.
+- [ ] **Inter's real coverage was read from
+      `node_modules/@fontsource/inter/unicode.json`** — not assumed from the face's name —
+      and the commit body quotes the subsets it found, including `U+2116` and `U+0301`.
 - [ ] `make front-test`, `make check` green; the build output size delta is recorded in the
       commit body.
 - [ ] **Stated honestly:** jsdom has **no font engine**. Nothing here proves the Cyrillic UI
@@ -5394,20 +5433,27 @@ make build && ./build/bin/nexus
 
 ---
 
-### Block B — the feature stage (S3-10 … S3-28)
+### Block B — the feature stage (S3-10 … S3-29)
 
 **Do not start any of these until [block A](#block-a--the-blocking-defect-block-s3-01--s3-09)
 is closed by S3-09.**
 
-**S3-10 … S3-18 are Go** and touch no file under `frontend/src`; each commits the
+**S3-10 … S3-19 are Go** and touch no file under `frontend/src`; each commits the
 regenerated `frontend/wailsjs` if it changes a bound signature (rule 12), and each lands
 with its tests in the same commit (rule 14 — `make cover` has no headroom to spend).
-**S3-19 … S3-27 are the screens.** **S3-28 is the README.**
+**S3-20 … S3-28 are the screens.** **S3-29 is the README.**
+
+**S3-19 is new, and it is why block B has nineteen numbers where it had eighteen.** The
+user answered **OQ2** with the middle option, so `COUNT` and `UNTIL` enter the recurrence
+language and `internal/domain/recurrence.go` has to accept them before
+[S3-23](#s3-23--featfrontend-the-recurrence-editor-d27-d28) can offer them.
 
 **The prime directive has not moved.** The frontend renders what Go returns and computes
-nothing — and block B adds three new places that will be tempted: the Markdown preview
+nothing — and block B adds four new places that will be tempted: the Markdown preview
 (rendering, not deriving), the recurrence editor (**it must not parse, validate or expand an
-RRULE in TypeScript** — see **OQ2**), and the running timer clock (it renders Go's
+RRULE in TypeScript** — **D27**), **whether a bounded recurrence has ended** (that is Go's
+`HabitView.Ended`, **D28**; a frontend that compares `UNTIL` to today is `wireDate` again),
+and the running timer clock (it renders Go's
 `elapsedSeconds`, and Stage 2 deleted the wall-clock helpers that sat on top of it for
 exactly this reason).
 
@@ -5677,7 +5723,120 @@ Requirements:
 
 ---
 
-## S3-19 — feat(frontend): the detail slide-over — shell, keyboard, Markdown
+## S3-19 — feat(domain): `COUNT` and `UNTIL` enter the recurrence language (D27, D28)
+
+**This ticket exists because the user answered OQ2 with the middle option**, not with the
+PM's recommendation. **D27 is the user's ruling** and is not re-litigated by the Dev: the
+editor will offer *"repeat N times"* and *"repeat until date"*, so
+`internal/domain/recurrence.go` must **accept** `COUNT` and `UNTIL` instead of rejecting
+them. **D28** is the PM ruling that spells out the mechanics and the **D5** interaction;
+read both before starting.
+
+**[S3-23](#s3-23--featfrontend-the-recurrence-editor-d27-d28) is blocked on this ticket**
+and may not widen the parser itself. This is the split the old recurrence-editor ticket
+already demanded if OQ2 came back B: *"the domain half comes first."*
+
+**Scope (may touch):** `internal/domain/recurrence.go`, `internal/domain/streak.go` **only
+if a bound actually forces it**, `internal/domain/recurrence_test.go`,
+`internal/domain/streak_test.go`, `internal/domain/sweep_test.go` or a sibling sweep file,
+`internal/service/habit.go` and `internal/service/dto.go` for the `Ended` field, their
+tests, `app.go`, `frontend/wailsjs/**`, and the locale files **for the one new strip
+label only**.
+
+Requirements:
+
+- **`COUNT=n` is accepted**, `n` in `1..1000`. It bounds the series positionally: the
+  series is the first `n` occurrences counting from `DTSTART` inclusive. The upper bound
+  is there for the same reason `maxWindowDays` and `maxSearchDays` are — a positional
+  bound is walked, so something has to stop the walk. `COUNT=0` and a non-numeric `COUNT`
+  stay `ErrUnsupportedRecurrence`.
+- **`UNTIL=YYYYMMDD` is accepted** and is an **inclusive calendar-day** upper bound.
+  **The `DATE-TIME` form (`UNTIL=20261231T000000Z`) stays rejected at parse time** —
+  Nexus has no time of day anywhere, `habit_checks` is keyed by a `Date`, and accepting a
+  `Z` instant would need a timezone rule this project does not have. **The existing
+  rejection-table row for `UNTIL` is the `DATE-TIME` form and therefore keeps passing
+  unchanged**; it is relabelled to say *why* it is rejected, not deleted.
+- **`COUNT` and `UNTIL` together are rejected.** RFC 5545 says they must not both appear,
+  and two bounds on one series is two spellings of one rule.
+- **The bound is part of the rule, not part of the clock.** `Matches`, `Expand`, `Next`
+  and `Previous` all respect it with no reference to today; `internal/domain` stays pure
+  and **no `time.Now()` appears** (rule: anything time-dependent takes an injected
+  `now func() time.Time`). **`UNTIL` is a date bound, and it is compared against the
+  candidate occurrence date, never against the current date.**
+- **`BYSETPOS`, `BYMONTH`, `BYWEEKNO`, `BYYEARDAY`, `BYHOUR` and ordinal weekdays
+  (`BYDAY=2MO`, `BYDAY=-1FR`) stay rejected at parse time.** That boundary has exactly one
+  spelling — `TestParseRecurrenceRejectsWhatItCannotExpand` — and this ticket narrows it
+  by exactly two rows and not one more.
+- **The rejection assertions MOVE, they are not deleted.** `{"COUNT",
+  "FREQ=DAILY;COUNT=10"}` moves from the rejection table into
+  `TestParseRecurrenceAcceptsTheSupportedSubset` with its parsed value asserted; the
+  `UNTIL` row stays where it is (it is the `DATE-TIME` form) and a new
+  `UNTIL=YYYYMMDD` case joins the accept table. **A rejection case that simply disappears
+  from the diff is a review failure.**
+- **D28's D5 consequence is implemented by the bound and by nothing else.** Once the
+  series has ended there are **no further scheduled occurrences**, so by **D5** no
+  occurrence can pass unchecked and **the streak cannot break: it freezes at its final
+  value**. `Streak`/`StreakOf` walk backwards through `Previous`, so this must fall out of
+  bounding `Previous` and `Matches` — **if it needs a second code path in `streak.go`,
+  that is the signal that the bound is in the wrong place.** D5 is **not amended** and no
+  new streak rule is written down.
+- **`HabitView` gains exactly one new Go-computed field** — `Ended bool` — and the strip
+  renders a localised marker from it. `ScheduledToday` already goes `false` after the end
+  and **is not duplicated**; `Ended` exists only because *"not today"* and *"never again"*
+  are different facts and the strip would otherwise have to tell them apart in TypeScript.
+  **The frontend compares no dates and reads no `COUNT`** — that is `wireDate` (**D17**)
+  and `make guard` would not see it.
+- **A finished habit stays in the strip**, marked finished, still showing the streak it
+  ended on. It is removed by archiving, which already exists. A habit that silently
+  vanishes is indistinguishable from data loss — the same argument **D15** made for the
+  empty-project marker.
+- **No new error sentinel.** A check written on a date the rule does not schedule is
+  already specified as harmless — `streak.go` says so in its own doc comment: it is stored,
+  contributes nothing and repairs nothing. An ended series is just *"every later date is
+  unscheduled"*, so `Check`/`CheckToday` keep their current behaviour and **D25**'s
+  refusal-code table does not grow. Offering or withholding the tick on a finished habit is
+  presentation, which `HabitView`'s doc comment already assigns to the strip.
+- **No RRULE library.** Unchanged, and the reasoning in `recurrence.go`'s own header
+  comment still holds — it is now load-bearing for two decisions rather than one.
+
+**Acceptance criteria**
+- [ ] `COUNT` truncation, asserted through all four entry points — `Occurrences`,
+      `NextOccurrence`, `PreviousOccurrence` and `Matches` — including the boundary pair
+      (the `n`-th occurrence matches, the `n+1`-th does not) and `COUNT=1`.
+- [ ] `UNTIL` inclusivity, asserted on the bound day itself and the day after, on all
+      three frequencies, and with `INTERVAL` set so the bound falls between two
+      occurrences.
+- [ ] **Negative control**, recorded in the commit body: break the bound (make `UNTIL`
+      exclusive, then let `COUNT` off by one), confirm the **named** test fails each time,
+      restore. Two demonstrations.
+- [ ] **A property sweep with an independent reference implementation**, in the shape of
+      [`internal/domain/sweep_test.go`](./internal/domain/sweep_test.go) — random bounded
+      rules × random windows, expanded by a reference that **shares no code** with
+      `Recurrence.Expand` and derives the bound its own way (the reference counts, the
+      implementation walks). That habit caught what four rounds of example-based tests
+      missed in Stage 1; it is required here, not suggested.
+- [ ] **Purity holds**: `internal/domain` still has no `time.Now()`, no `database/sql`, no
+      `os`, no `net` — the existing purity test passes unmodified.
+- [ ] The streak of an ended series is asserted to be **stable across three different
+      injected `now` values**, months after the end — frozen, not decayed and not zeroed.
+      And a series whose **final** occurrence went unchecked is asserted to be `0`, because
+      that occurrence did pass unchecked.
+- [ ] `HabitView.Ended` is asserted true past the bound and false before it, and
+      `git grep -nE 'COUNT|UNTIL' frontend/src` finds no bound logic — only the label.
+- [ ] `TestParseRecurrenceRejectsWhatItCannotExpand` still rejects `BYSETPOS`, `BYMONTH`,
+      `BYWEEKNO`, `BYYEARDAY`, `BYHOUR`, ordinal `BYDAY`, the `DATE-TIME` `UNTIL`, and
+      `COUNT`+`UNTIL` together. The diff shows **two rows moved**, none removed.
+- [ ] `make cover` green with `internal/domain` still at **100.0%** — the bar it has held
+      since Stage 1 — and `internal/service` still ≥ 90%. `make check` green.
+- [ ] **Stated honestly in the commit body:** `make guard` cannot see any of this. The
+      new field is a derivation with a name none of its heuristics match (**D17**), so the
+      check is the Reviewer reading the diff.
+
+**Commit:** `feat(domain): accept COUNT and UNTIL in the recurrence language (S3-19)`
+
+---
+
+## S3-20 — feat(frontend): the detail slide-over — shell, keyboard, Markdown
 
 **This ticket creates the panel region and mounts it** — see
 [Composition](#composition--who-mounts-what-in-stage-3). A panel that exists and is not in
@@ -5713,11 +5872,11 @@ Requirements:
 - [ ] The orphan check (`App.mount.test.tsx`) is green; `make guard`, `make front-test`,
       `make check` green.
 
-**Commit:** `feat(frontend): add the detail slide-over with markdown (S3-19)`
+**Commit:** `feat(frontend): add the detail slide-over with markdown (S3-20)`
 
 ---
 
-## S3-20 — feat(frontend): the panel's field editors
+## S3-21 — feat(frontend): the panel's field editors
 
 **Scope (may touch):** `frontend/src/components/DetailPanel.tsx` and new child components
 under `frontend/src/components/`, `frontend/src/store/**`, the locale files, tests beside
@@ -5746,11 +5905,11 @@ Requirements:
 - [ ] Every editor is keyboard-reachable and operable, mouse untouched.
 - [ ] `make front-test`, `make check` green.
 
-**Commit:** `feat(frontend): add the detail panel field editors (S3-20)`
+**Commit:** `feat(frontend): add the detail panel field editors (S3-21)`
 
 ---
 
-## S3-21 — feat(frontend): inline subtasks
+## S3-22 — feat(frontend): inline subtasks
 
 **Scope (may touch):** `frontend/src/components/DetailPanel.tsx` and a new subtask list
 component, `frontend/src/store/**`, the locale files, tests beside them.
@@ -5772,24 +5931,22 @@ Requirements:
 - [ ] The S2-16 keyboard suite passes unmodified.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
-**Commit:** `feat(frontend): add inline subtasks to the detail panel (S3-21)`
+**Commit:** `feat(frontend): add inline subtasks to the detail panel (S3-22)`
 
 ---
 
-## S3-22 — feat(frontend): the recurrence editor (OQ2)
+## S3-23 — feat(frontend): the recurrence editor (D27, D28)
 
-> **⚠️ BLOCKED on OQ2 until the user answers it.** The brief promises *"daily/weekly/custom
-> RRULE"*; Stage 1's parser accepts `FREQ=DAILY`, `FREQ=WEEKLY` with `BYDAY`, and
-> `FREQ=MONTHLY` with `BYMONTHDAY`, plus `INTERVAL` and `WKST=MO`, and **rejects `COUNT`,
-> `UNTIL`, `BYSETPOS`, `BYMONTH` and ordinal weekdays at parse time**. `PLAN.md` §7 **OQ2**
-> states three options and recommends **A** — custom *within the supported subset*. **Do not
-> start this ticket with OQ2 unanswered**, and do not widen `internal/domain/recurrence.go`
-> under this ticket without the user's answer: that would be a domain change smuggled into a
-> UI ticket.
+> **⚠️ BLOCKED on [S3-19](#s3-19--featdomain-count-and-until-enter-the-recurrence-language-d27-d28).**
+> **OQ2 is answered and closed**: the user took the middle option, so the editor offers an
+> **end condition** — *"repeat N times"* (`COUNT`) and *"repeat until date"* (`UNTIL`) —
+> and `internal/domain` gains them in S3-19. **Do not start this ticket until S3-19 is
+> committed, and do not touch `internal/domain/recurrence.go` here**: a domain change
+> smuggled into a UI ticket is exactly what the split exists to prevent.
 
 **Scope (may touch):** a new recurrence editor component under `frontend/src/components/`,
-`frontend/src/store/**`, the locale files, tests beside them. **`internal/domain` only if
-OQ2 is answered B, in which case this ticket is split and the domain half comes first.**
+`frontend/src/store/**`, the locale files, tests beside them. **`internal/domain` is NOT in
+scope — S3-19 owns it.**
 
 Requirements:
 
@@ -5798,25 +5955,38 @@ Requirements:
   structure Go returns **through i18n**.
 - **No human-readable sentence is returned from Go** — that is **D15**'s rejected option (c)
   and it cannot be translated.
-- Under option A, **the editor cannot compose a rule Go would reject**, which makes
+- **The editor cannot compose a rule Go would reject**, which makes
   `ErrUnsupportedRecurrence` unreachable from the UI. That is the criterion, and it is a
-  better one than a free-text box with an error under it.
+  better one than a free-text box with an error under it. It still holds with the language
+  widened — the editor offers `COUNT` **or** `UNTIL` **or** neither, never both (**D27**),
+  the `COUNT` field is bounded to `1..1000`, and the date field can only emit the
+  `YYYYMMDD` form (**D28**).
+- **The end condition is offered, not typed.** Three mutually exclusive choices — *forever*,
+  *N times*, *until a date* — because `COUNT`+`UNTIL` together is rejected by Go and an
+  editor that can express a refusal is an editor with a bug in it.
+- **Nothing here knows whether a series has ended.** That is Go's `HabitView.Ended` field
+  (S3-19); the editor does not compare the bound to today, and neither does anything else
+  in `frontend/src`.
 - A habit requires a recurrence (`ErrNoRecurrence`); that rule is Go's and is not restated.
 
 **Acceptance criteria**
 - [ ] Every combination the editor can produce is accepted by Go — asserted by generating
-      the editor's whole reachable space and round-tripping each one.
-- [ ] `git grep -niE 'FREQ=|BYDAY|RRULE' frontend/src` finds **no parsing and no
-      construction** of a rule string outside the one call that hands the structure to Go.
+      the editor's whole reachable space, **including both end conditions and neither**, and
+      round-tripping each one.
+- [ ] The editor cannot emit `COUNT` and `UNTIL` in the same rule — asserted over the same
+      generated space, not by inspection.
+- [ ] `git grep -niE 'FREQ=|BYDAY|RRULE|COUNT=|UNTIL=' frontend/src` finds **no parsing and
+      no construction** of a rule string outside the one call that hands the structure to Go.
 - [ ] The described rule renders correctly in **both** languages, from i18n keys and not
-      from a Go string.
+      from a Go string — including the two end conditions, with Russian's plural forms for
+      *"N times"*.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
-**Commit:** `feat(frontend): add the recurrence editor (S3-22)`
+**Commit:** `feat(frontend): add the recurrence editor (S3-23)`
 
 ---
 
-## S3-23 — feat(frontend): attachments, the editable time log, and the running clock
+## S3-24 — feat(frontend): attachments, the editable time log, and the running clock
 
 **Scope (may touch):** new components under `frontend/src/components/`,
 `frontend/src/components/DetailPanel.tsx`, `frontend/src/lib/format.ts`,
@@ -5847,11 +6017,11 @@ Requirements:
 - [ ] Every helper added to `lib/format.ts` has a caller in this commit.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
-**Commit:** `feat(frontend): add attachments, the time log and the running clock (S3-23)`
+**Commit:** `feat(frontend): add attachments, the time log and the running clock (S3-24)`
 
 ---
 
-## S3-24 — feat(frontend): the tree view
+## S3-25 — feat(frontend): the tree view
 
 **This ticket introduces the view switch** — see
 [Composition](#composition--who-mounts-what-in-stage-3) — and mounts the first non-Kanban
@@ -5883,11 +6053,11 @@ Requirements:
 - [ ] The whole tree is navigable and operable by keyboard alone, mouse untouched.
 - [ ] The orphan check is green; `make guard`, `make front-test`, `make check` green.
 
-**Commit:** `feat(frontend): add the tree view with drag-to-reparent (S3-24)`
+**Commit:** `feat(frontend): add the tree view with drag-to-reparent (S3-25)`
 
 ---
 
-## S3-25 — feat(frontend): the search screen
+## S3-26 — feat(frontend): the search screen
 
 **Scope (may touch):** `frontend/src/views/Search.tsx` (new), `frontend/src/App.tsx`,
 `frontend/src/store/**`, `frontend/src/lib/commands.ts`, the locale files, tests beside them.
@@ -5908,11 +6078,11 @@ Requirements:
 - [ ] **Mounted and reachable**: the test imports `App` and not `Search`.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
-**Commit:** `feat(frontend): add the search screen (S3-25)`
+**Commit:** `feat(frontend): add the search screen (S3-26)`
 
 ---
 
-## S3-26 — feat(frontend): the archive view
+## S3-27 — feat(frontend): the archive view
 
 **Scope (may touch):** `frontend/src/views/Archive.tsx` (new), `frontend/src/App.tsx`,
 `frontend/src/store/**`, `frontend/src/lib/commands.ts`, the locale files, tests beside them.
@@ -5931,11 +6101,11 @@ Requirements:
 - [ ] **Mounted and reachable**: the test imports `App` and not `Archive`.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
-**Commit:** `feat(frontend): add the archive view (S3-26)`
+**Commit:** `feat(frontend): add the archive view (S3-27)`
 
 ---
 
-## S3-27 — fix(frontend): shortcuts match the key, not the character (K13)
+## S3-28 — fix(frontend): shortcuts match the key, not the character (K13)
 
 **This is K13, and it is ranked last on purpose.** `lib/keyboard.ts:107-115` matches on
 `event.key`, and `event.code` appears **nowhere** in `frontend/src`. Under a Cyrillic
@@ -5964,11 +6134,11 @@ Requirements:
 - [ ] Negative control: revert the change, watch the new Cyrillic-layout test fail, restore.
 - [ ] `make guard`, `make front-test`, `make check` green.
 
-**Commit:** `fix(frontend): match shortcut chords on the physical key (S3-27)`
+**Commit:** `fix(frontend): match shortcut chords on the physical key (S3-28)`
 
 ---
 
-## S3-28 — docs: `README.md` and the screenshots — BLOCKED on the user
+## S3-29 — docs: `README.md` and the screenshots — BLOCKED on the user
 
 **`README.md` has been deliberately unwritten since Stage 0**, because every screenshot it
 needs required a screen. The board exists now, so it is finally writable.
@@ -6005,14 +6175,14 @@ Requirements:
       commit body says so. **Nothing is faked.**
 - [ ] `make check` green (the README changes no code, but the tree must still be clean).
 
-**Commit:** `docs: add the readme (S3-28)`
+**Commit:** `docs: add the readme (S3-29)`
 
 ---
 
 ## Stage 3 — DONE criteria
 
 Stage 3 closes only once **all** of these hold, **verified by the Reviewer and not asserted
-by the PM**. Per `PLAN.md` §5 a stage cannot close without a **PASS**; criterion 20 is that
+by the PM**. Per `PLAN.md` §5 a stage cannot close without a **PASS**; criterion 21 is that
 PASS.
 
 **Block A has its own gate, earlier**: criteria 1–7 must hold **before S3-10 starts**, and
@@ -6042,7 +6212,7 @@ S3-09 is where that is declared.
        per field by asserting the exact Go call and then asserting the panel renders **Go's
        answer**, not the typed value — and *reparent in the tree shows on Kanban instantly*,
        demonstrated through `render(<App />)`, keyboard only.
-9. [ ] **All twenty-eight tickets are committed**, one conventional commit each, in order,
+9. [ ] **All twenty-nine tickets are committed**, one conventional commit each, in order,
        authored solely by `Ismat <mukhamejanov.ismat@gmail.com>`, with **no AI author, no
        co-author trailer and no "Generated with" line** (**D7**).
 10. [ ] `make check` green — **all five gates, unchanged in number and definition**,
@@ -6066,15 +6236,24 @@ S3-09 is where that is declared.
         `<script>` fixture test is green.
 17. [ ] **C6 is closed (D26)**: every enum set is published by Go, no locale table is used as
         a set, and **adding a value to a Go set turns something red** — six negative controls.
-18. [ ] **Every component Stage 3 built is reachable in the running app.** The orphan walk
+18. [ ] **The recurrence language is widened exactly as far as D27 says and no further.**
+        `COUNT` and `UNTIL=YYYYMMDD` are accepted; **`BYSETPOS`, `BYMONTH`, `BYWEEKNO`,
+        `BYYEARDAY`, `BYHOUR`, ordinal weekdays, the `DATE-TIME` `UNTIL` and
+        `COUNT`+`UNTIL` together are still rejected at parse time**, with the rejection
+        assertions **moved, not deleted**. `internal/domain` is still pure and still at
+        **100.0%**. The **D28** consequence holds: an ended series **freezes** the streak
+        rather than breaking or zeroing it, and that falls out of the bound rather than
+        out of a second code path in `streak.go`. Negative control and an independent
+        reference sweep both recorded.
+19. [ ] **Every component Stage 3 built is reachable in the running app.** The orphan walk
         reports an empty difference and every mounting ticket's `render(<App />)`
         reachability test is green. **Neither half is sufficient alone** — Stage 2
         demonstrated the walk's blind spot twice.
-19. [ ] **Nothing is claimed that was not verified.** Specifically: the Aurora drift is still
+20. [ ] **Nothing is claimed that was not verified.** Specifically: the Aurora drift is still
         **gated and not drawn** (**D16**, **K5**), **K14** is still **deferred by the user**
         and was not quietly implemented, and every jsdom-invisible claim in this stage names
         the eye that checked it.
-20. [ ] **The Reviewer returns PASS.** Stage 1 closed on its fourth review and Stage 2 on its
+21. [ ] **The Reviewer returns PASS.** Stage 1 closed on its fourth review and Stage 2 on its
         second; a first-round FAIL here is a normal outcome, not a failure of the process.
 
 **Out of Stage 3 scope, and it must stay out**: the standalone frameless quick-add window
