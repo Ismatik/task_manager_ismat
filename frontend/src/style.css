@@ -37,10 +37,34 @@
     font-size: 13px;
   }
 
+  /* ONE HEIGHT CHAIN — D22, and the three links are useless apart.
+   *
+   * Before S3-01 there was no `#root` rule at all and `body` had only
+   * `min-height: 100vh`, so the chain was broken twice: `#root` sized itself to
+   * its content, and `body`'s minimum was a FLOOR rather than a height, which
+   * let the shell grow past the viewport. The DOCUMENT then scrolled — the
+   * vertical scrollbar in the user's screenshot — and because no ancestor had a
+   * definite height, the board had nothing to scroll INSIDE and could not take
+   * the job over.
+   *
+   * `height: 100%` on all three is what gives App.tsx's shell a definite height
+   * to fill; the shell hands it to <main> through `flex-1` + `min-h-0`, and
+   * views/Kanban.tsx's board is the one element that scrolls. Removing any one
+   * of these three rules returns the scroll to the document.
+   *
+   * What is NOT here: `overflow: hidden` on body. D22 rejects it as the whole
+   * fix — it hides the scrollbar without giving anything a height to scroll
+   * inside, so the bottom of the board becomes unreachable instead of
+   * scrollable. The chain is the fix; hiding the symptom is not. */
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   body {
     @apply bg-bg font-ui text-ink;
     margin: 0;
-    min-height: 100vh;
     -webkit-font-smoothing: antialiased;
   }
 

@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { focusWithoutScrolling } from '../lib/focus';
 import { resources } from '../lib/i18n';
 import { boardActionFor } from '../lib/keyboard';
 import { useAppState, useAppStore } from '../store/context';
@@ -118,7 +119,7 @@ export function QuickAdd() {
 
     for (const card of document.querySelectorAll<HTMLElement>('[data-node-id]')) {
       if (card.dataset.nodeId === createdId) {
-        card.focus();
+        focusWithoutScrolling(card);
         return;
       }
     }
@@ -161,11 +162,11 @@ function QuickAddPanel({ restoreFocus, onCreated }: QuickAddPanelProps) {
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-    titleRef.current?.focus();
+    focusWithoutScrolling(titleRef.current);
 
     return () => {
       if (restoreFocus.current) {
-        opener?.focus();
+        focusWithoutScrolling(opener);
       }
       restoreFocus.current = true;
     };
@@ -198,7 +199,7 @@ function QuickAddPanel({ restoreFocus, onCreated }: QuickAddPanelProps) {
 
     const at = stops.indexOf(document.activeElement as HTMLElement);
     const step = event.shiftKey ? -1 : 1;
-    stops[(at + step + stops.length) % stops.length].focus();
+    focusWithoutScrolling(stops[(at + step + stops.length) % stops.length]);
   };
 
   /**
@@ -222,7 +223,7 @@ function QuickAddPanel({ restoreFocus, onCreated }: QuickAddPanelProps) {
     const next = OFFERED_TYPES[(at + step + OFFERED_TYPES.length) % OFFERED_TYPES.length];
 
     setNodeType(next);
-    event.currentTarget.querySelector<HTMLElement>(`[data-type="${next}"]`)?.focus();
+    focusWithoutScrolling(event.currentTarget.querySelector<HTMLElement>(`[data-type="${next}"]`));
   };
 
   return (

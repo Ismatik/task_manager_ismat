@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Column } from '../components/Column';
 import type { ColumnView } from '../lib/client';
+import { focusWithoutScrolling } from '../lib/focus';
 import { boardActionFor, KEYS, nextFocusId, rovingNodeId } from '../lib/keyboard';
 import type { DropTarget } from '../store/data';
 import { useAppState, useAppStore } from '../store/context';
@@ -149,7 +150,7 @@ export function Kanban() {
   const focusCard = useCallback((nodeId: string) => {
     for (const card of boardRef.current?.querySelectorAll<HTMLElement>('[data-node-id]') ?? []) {
       if (card.dataset.nodeId === nodeId) {
-        card.focus();
+        focusWithoutScrolling(card);
         return;
       }
     }
@@ -304,16 +305,35 @@ export function Kanban() {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      {/* `overflow-x-auto` on the board and nowhere else: when five columns will
-          not fit even at their floor width, the BOARD scrolls. A column never
-          scrolls sideways inside itself, which is what "no horizontal scroll
-          inside a column" means. */}
+      {/* THE BOARD IS THE SCROLLER, in BOTH axes, and both are stated (D22).
+          When five columns will not fit even at their floor width, the board
+          scrolls sideways; when a column is taller than the window, the board
+          scrolls down. A column never scrolls inside itself, which is what "no
+          horizontal scroll inside a column" means.
+
+          Until S3-01 this element said `overflow-x-auto` and nothing else, and
+          the comment here claimed the vertical axis was untouched. It was not:
+          per CSS Overflow 3 an `overflow-x` of `auto` against an `overflow-y` of
+          `visible` PROMOTES `overflow-y` to `auto`, so the board was already
+          clipping and scrolling vertically — silently, and contrary to its own
+          documentation. Both axes are written down now, so the next reader is
+          told the truth by the code rather than by a spec rule nobody reads.
+
+          `h-full` is what makes either axis able to scroll at all: without a
+          definite height the board is as tall as its tallest column and there is
+          no overflow to scroll. It is a real height because App.tsx's <main>
+          carries `min-h-0` over style.css's html/body/#root chain.
+
+          RULED OUT, so nobody rediscovers it (D22): the "latched scrollLeft"
+          theory. The columns are `flex-1 basis-0`, so `scrollWidth` tracks
+          `clientWidth` and the user agent clamps the offset on resize. There is
+          deliberately no scrollLeft/scrollTop handling here and none is wanted. */}
       <div
         ref={boardRef}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        className="flex min-w-0 items-start gap-2 overflow-x-auto"
+        className="flex h-full min-w-0 items-start gap-2 overflow-x-auto overflow-y-auto"
       >
         {board.map((column) => (
           <Column key={column.status} column={column} rovingNodeId={roving} />

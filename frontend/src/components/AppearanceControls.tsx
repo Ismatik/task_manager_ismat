@@ -1,6 +1,7 @@
 import { useId, useRef, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { focusWithoutScrolling } from '../lib/focus';
 import { changeLanguage, resources, type LanguagePort } from '../lib/i18n';
 import { boardActionFor } from '../lib/keyboard';
 import { useAppState, useAppStore } from '../store/context';
@@ -161,7 +162,7 @@ function Choice({ group, name, options, current, label, onChoose }: ChoiceProps)
     const step = action === 'nextColumn' ? 1 : -1;
 
     // Clamped, never wrapped — the same rule the board and the strip follow.
-    buttons[Math.min(Math.max(at + step, 0), buttons.length - 1)]?.focus();
+    focusWithoutScrolling(buttons[Math.min(Math.max(at + step, 0), buttons.length - 1)]);
   };
 
   return (

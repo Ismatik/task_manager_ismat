@@ -139,7 +139,11 @@ function Shell() {
   }, [store]);
 
   return (
-    <div className="flex min-h-screen min-w-0 flex-col gap-2 bg-bg p-2 text-ink">
+    // `h-full`, not `min-h-screen` (D22). A minimum is a floor the shell may
+    // grow past, and it did: <main> floored at its content's height, the shell
+    // grew with it, and the DOCUMENT scrolled. `h-full` is a height, and it is
+    // real because style.css gives html, body and #root one to inherit from.
+    <div className="flex h-full min-w-0 flex-col gap-2 bg-bg p-2 text-ink">
       {/* Region 1 — header. The LAST region to be filled; after S2-21 every
           component Stage 2 built is reachable from main.tsx. It is region 1, so
           it is also the first thing Tab reaches — which is what "reachable with
@@ -150,8 +154,17 @@ function Shell() {
       {/* Region 2 — habits strip. Renders nothing while there are no habits. */}
       <HabitStrip />
 
-      {/* Region 3 — board. */}
-      <main aria-label={t('board.label')} className="min-w-0 flex-1">
+      {/* Region 3 — board.
+
+          `min-h-0` and NOT `min-w-0` (D22). The shell is a COLUMN flex
+          container, so the main axis is the block axis: `min-height: auto` is
+          the automatic minimum that floors this element at its content, and
+          `min-width` was already 0 by its own initial value. The `min-w-0` that
+          stood here until S3-01 therefore did nothing at all while looking like
+          the thing that made the layout work — which is why it is gone rather
+          than kept "just in case". With `min-h-0` this element may shrink below
+          the board's content, which is what hands the overflow to the board. */}
+      <main aria-label={t('board.label')} className="min-h-0 flex-1">
         <Kanban />
       </main>
 

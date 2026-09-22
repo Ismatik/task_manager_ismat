@@ -8,6 +8,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { buildCommands, matchingCommands, type Command } from '../lib/commands';
+import { focusWithoutScrolling } from '../lib/focus';
 import { boardActionFor } from '../lib/keyboard';
 import { useAppState, useAppStore } from '../store/context';
 
@@ -90,9 +91,9 @@ function CommandPalettePanel() {
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-    filterRef.current?.focus();
+    focusWithoutScrolling(filterRef.current);
 
-    return () => opener?.focus();
+    return () => focusWithoutScrolling(opener);
   }, []);
 
   const commands = buildCommands({ board, selectedNodeId, settings, store, t, i18n });

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, type KeyboardEvent as ReactKeyboardEvent
 import { useTranslation } from 'react-i18next';
 
 import type { HabitView } from '../lib/client';
+import { focusWithoutScrolling } from '../lib/focus';
 import { boardActionFor, matches, KEYS, type BoardAction } from '../lib/keyboard';
 import { useAppState, useAppStore } from '../store/context';
 import { HabitChip } from './HabitChip';
@@ -82,7 +83,7 @@ export function HabitStrip() {
   const focusChip = useCallback((habitId: string) => {
     for (const chip of stripRef.current?.querySelectorAll<HTMLElement>('[data-habit-id]') ?? []) {
       if (chip.dataset.habitId === habitId) {
-        chip.focus();
+        focusWithoutScrolling(chip);
         return;
       }
     }

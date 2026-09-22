@@ -165,7 +165,7 @@ front-test: $(NODE_MODULES) ## Run the vitest suite in frontend/ (not a gate)
 # TypeScript, and the one defence that does not depend on a reviewer's attention
 # is a grep that runs every time. That is all this is.
 #
-# Six checks. Checks 1, 2, 5 and 6 are EXACT — they look for a literal that has
+# Seven checks. Checks 1, 2, 5, 6 and 7 are EXACT — they look for a literal that has
 # no legitimate reason to exist in frontend/src, so a hit is a defect and there
 # is nothing to argue about. "Exact" also means CASE-INSENSITIVE where the
 # literal has more than one spelling: check 2 was `-E` and so read 'backlog' as
@@ -222,6 +222,26 @@ GUARD_ALLOW_RE =
 # It is scoped to this one file on purpose. The rest of the suite is free to
 # use a pointer where a pointer is what is under test (S2-17's drag), and
 # saying so here is what keeps that from looking like an oversight.
+#
+# ---------------------------------------------------------------------------
+# CHECK 7 — the one focus module (S3-01, D22).
+#
+# "No `.focus()` call anywhere may scroll its ancestors" is a rule, and before
+# S3-01 it was applied by hand in eleven places and obeyed in none of them: every
+# call omitted `{ preventScroll: true }`. A rule applied eleven times by hand is a
+# rule that will be applied ten times after the next ticket, so it now has ONE
+# spelling — frontend/src/lib/focus.ts — and this check is what keeps it there.
+#
+# It is EXACT, not a heuristic: "does this line contain `.focus(`" has no
+# judgement in it, which is the standard D17 set for what may be a guard check at
+# all. A green guard is still not a proof of anything it does not literally grep.
+#
+# TEST FILES ARE EXCLUDED, deliberately. A test that asserts an element can take
+# focus has to call the DOM method itself — App.accept.test.tsx's a11y walk does
+# exactly that, and routing it through the helper would make it a test of the
+# helper instead of of the element. The rule is about the APPLICATION's focus
+# moves, and every one of those lives in a non-test module.
+GUARD_FOCUS_FILE = frontend/src/lib/focus.ts
 GUARD_ACCEPT_FILE = frontend/src/App.accept.test.tsx
 
 .PHONY: guard
@@ -252,6 +272,12 @@ guard: ## The mechanical rules greps over frontend/src (not a gate)
 		out=$$(git grep -n --untracked -iE '(click|pointer|mouse)' -- $(GUARD_ACCEPT_FILE) | keep); \
 		[ -z "$$out" ] || { fail "check 6, a pointing device in the keys-only ACCEPT test. Stage 2's ACCEPT criterion is 'create a task, move it across all five columns, and complete it - with no mouse', and $(GUARD_ACCEPT_FILE) is where that is demonstrated. It may use user-event's keyboard and tab and nothing else." "$$out"; }; \
 	fi; \
+	if [ ! -s $(GUARD_FOCUS_FILE) ]; then \
+		fail "check 7, the focus module is missing or empty. Deleting it must not be a way to pass this check." "$(GUARD_FOCUS_FILE)"; \
+	else \
+		out=$$(git grep -n --untracked -E '\.focus\(' -- frontend/src ':!$(GUARD_FOCUS_FILE)' ':!*.test.ts' ':!*.test.tsx' | keep); \
+		[ -z "$$out" ] || { fail "check 7, a .focus( call outside $(GUARD_FOCUS_FILE). D22: no focus move may scroll its ancestors, and that rule has ONE spelling - focusWithoutScrolling() in $(GUARD_FOCUS_FILE), which passes { preventScroll: true }. Call it instead; it accepts null, so a ref or a querySelector result needs no ?. of its own." "$$out"; }; \
+	fi; \
 	echo; \
 	if [ $$status -ne 0 ]; then \
 		echo "make guard FAILED: see the FAIL block(s) above."; \
@@ -259,7 +285,7 @@ guard: ## The mechanical rules greps over frontend/src (not a gate)
 		echo "commented entry to GUARD_ALLOW_RE in the Makefile — never an inline suppression."; \
 		exit 1; \
 	fi; \
-	echo "make guard: all six mechanical rules checks passed over frontend/src."
+	echo "make guard: all seven mechanical rules checks passed over frontend/src."
 
 .PHONY: dev
 dev: ## Run the app in live-development mode (needs GTK/WebKit)
