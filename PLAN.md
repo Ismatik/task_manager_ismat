@@ -11,8 +11,9 @@ they were missing is **D17**). **Stage 3 is PLANNED and not started.** See §5 a
 hardware — the thing no gate on this machine can do. It found nine defects.** They are
 recorded below as **K6 – K14**, each traced to an exact line by a read-only
 investigation, and each ruled on in §7 as **D18 – D26**. Eight of them are invisible to
-every gate this repository has, because jsdom has no layout engine and no font engine and
-this machine has no display. **Stage 3 therefore opens with a blocking remediation block,
+every gate this repository has, because jsdom has no layout engine and no font engine, and
+because **input cannot be driven here** (**E4** — capture can, and the belief that it could
+not is itself part of why these nine waited for the user's own laptop). **Stage 3 therefore opens with a blocking remediation block,
 S3-01 … S3-09, which must be green before a single feature ticket starts** — that was the
 user's condition for proceeding. This is **D17's lesson arriving in a second place**: the
 Russian anti-clipping audit was green *on a real clipping bug*, because it asserts the
@@ -22,8 +23,10 @@ absence of `truncate` and `whitespace-nowrap` and `shrink-0` was not on the list
 are closed.** **OQ1 → Inter** (which face to vendor; **D23** now names it and **S3-06** is
 unblocked) and **OQ2 → the middle option** (`COUNT` and `UNTIL` enter the recurrence
 language; **D27**, the user's, with **D28** ruling on what an ended series means for
-**D5**). OQ2's answer added a ticket: Stage 3 is now **twenty-nine** tickets, because
-**S3-19** widens `internal/domain` before **S3-23** can offer an end condition.
+**D5**). OQ2's answer added a ticket, and the block A review added five more: Stage 3 is
+now **thirty-four** tickets — **S3-19** widens `internal/domain` before **S3-23** can offer
+an end condition, and **S3-30 … S3-34** close **K15**, **K16** and **D32**'s four
+observations, and build the capture harness **D31** rules on.
 
 ---
 
@@ -211,7 +214,7 @@ and stop for your "next".
 | 0 | **Scaffold** — `wails init` react-ts, Tailwind, ESLint/Prettier, Go layout, embedded SQL migrations, `settings`, Makefile, `make check`, single-instance lock (`--quick` → quick-add on running instance; bare → focus main window) — **CLOSED, PASS** | `make check` green, empty window opens, second launch focuses the first |
 | 1 | **Domain + store**, Go only, no UI — repos, tree ops (create/move subtree/reorder/archive/restore), derived status + progress, column↔due rules, timer with single-active invariant, habit streaks, FTS5 spike then search. Table-driven tests incl. **parent→Done cascades to every unfinished descendant**, circular parent, overlapping timers, `due_source` transitions — **CLOSED, PASS** (PASS on the **fourth** review, at `a1f09b7`; it failed the first three — the history is kept below) | **≥90% coverage** on `internal/domain` + `internal/service` — **MET: 100.0% / 92.9%** |
 | 2 | **Kanban + Habits strip** (launch screen) — **CLOSED, PASS** (PASS on the **second** review, at `8818db4`; round 1 returned FAIL on two blocking issues, fixed by `ae6befd` and `4b1af9c` — the history is kept below). S2-01 … S2-22 all committed, plus the gap-closing `7af4d1d` — Wails bindings, Zustand hydrated from Go, 5 columns, dnd-kit drag of card+subtree, optimistic UI with rollback on error, full card chrome, habit strip w/ streaks, quick-add (Ctrl+N), command palette (Ctrl+K), theme/palette/accent in settings, EN/RU | **Create → move through every column → complete, keyboard only, no mouse** — **MET**: `frontend/src/App.accept.test.tsx` drives the assembled `<App />` with an exact asserted call sequence (one `CreateNode`, then `MoveToColumn` with each of the four statuses Go supplied, in order), and **`make guard` check 6 fails if a mouse event ever enters that file** — **and moving a card to Doing itself opens a `time_entry`** (§4 coupling, **D13**; ticket S2-03), asserted from the UI. The **ten-step hand run on the real binary is still owed** and is carried into Stage 3 |
-| 3 | **Defect remediation, then Detail + Tree + Search/Archive** — **PLANNED**, S3-01 … S3-29. **Opens with a blocking block, S3-01 … S3-09**, closing the nine defects the user's hand pass found (**K6–K14**, ruled by **D18–D26**): the height chain, the `shrink-0` overflow, the window minimum size, the blur policy, the missing `DragOverlay`, the Cyrillic UI font, the toast flood and the refusal channel — then the hand pass that confirms them. **No feature ticket starts until that block is green.** Then: slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor including the `COUNT`/`UNTIL` end conditions the user's **D27** added, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | **Two halves.** Block A: every defect in **K6–K14** is closed, each with a named mechanical check *or* an honest statement that only an eye can see it, plus the hand pass of **S3-09**. Block B: **every field round-trips through Go; reparent in tree shows on Kanban instantly** |
+| 3 | **Defect remediation, then Detail + Tree + Search/Archive** — **IN PROGRESS**, S3-01 … S3-34. **Opens with a blocking block, S3-01 … S3-09 plus S3-30 … S3-34**, closing the nine defects the user's hand pass found (**K6–K14**, ruled by **D18–D26**): the height chain, the `shrink-0` overflow, the window minimum size, the blur policy, the missing `DragOverlay`, the Cyrillic UI font, the toast flood and the refusal channel — then the five tickets added after the block A review (**K15**'s column height, **K16**'s hand-applied `refuse()`, the `make shots` capture harness, and **D32**'s audit corrections) and the hand pass that confirms them. **No feature ticket starts until that block is green.** Then: slide-over with Markdown editor/preview, inline subtasks, tags, due, priority, estimate, RRULE editor including the `COUNT`/`UNTIL` end conditions the user's **D27** added, attachments copied into app data dir, editable time log, type switcher; collapsible tree with inline rename, drag-to-reparent, arrow/Enter/Tab keyboard nav; archive view; FTS search with tag/type/status/date filters | **Two halves.** Block A: every defect in **K6–K14** is closed, each with a named mechanical check *or* an honest statement that only an eye can see it, plus the hand pass of **S3-09**. Block B: **every field round-trips through Go; reparent in tree shows on Kanban instantly** |
 | 4 | **Quick-add + Focus mode** — frameless standalone window, Go-side NL parser (date, `!priority`, `#tag`, `>Project` fuzzy, `~estimate`, `@type`), live preview chips, Enter creates & closes, Esc closes; Focus mode (one card, large timer, Esc exits); sleep/lock timer handling | `deploy KA Avto fri 15:00 !high #work >KA Avto ~2h` parses correctly in tests **and** in the UI |
 | 5 | **Platform integration** — tray via `energye/systray`, badge = overdue + due today, menu (Open / Quick add / Start-Stop timer / Quit); `.desktop` + `install.sh` → autostart, GNOME `gsettings` shortcut Super+Space → `nexus --quick`, warn if AppIndicator missing | Reboot → app opens; Super+Space → quick-add |
 | 6 | **Backup, export, PMP timelog** — nightly JSON export of all tables to `~/Nexus/backups/YYYY-MM-DD.json`, keep 30; Restore-from-file with confirmation; Markdown export of a subtree; day timelog screen grouping `time_entries` by node with editable minutes, output in PMP KIT format with Copy | **Restore reproduces an identical Kanban** |
@@ -629,6 +632,15 @@ whatsoever**; **no background flash on the first frame in either theme** (**D12*
 actually painted in both palettes**; and **S2-07's *"a window opens and the first
 `Board()` returns five columns"***. Stage 2's PASS did **not** cover any of them.
 
+> **AMENDED during Stage 3, and the amendment is a correction of this list's premise.**
+> *"None of them verifiable without a display"* was right; *"and there is no display"* was
+> **wrong** — `xvfb-run`, `import` and `convert` are installed and always were (**E4**).
+> Two of the five are now **discharged by capture**: **Russian not clipping at a real
+> 1024×768** (photographed; **K8** is fixed on real paint) and **S2-07's window-opens /
+> five-columns**. The other three need **input** or a **first frame** and are structurally
+> out of reach here, so they stay on **S3-09**. **D31** builds the capture target and
+> states the split; it is deliberately **not** written as closing the hand pass.
+
 **2. K1/D12, K2 and K3, carried through from Stage 1's handoff and unaffected by this
 stage.** Stage 2 implemented the decisions (S2-08, S2-06, S2-14), but K1's no-flash
 behaviour is item 1's second bullet and is still unwatched; K2 and K3 keep their entries
@@ -683,9 +695,9 @@ reboot checklist, executed and reported. `QA.md` with 25 manual scenarios coveri
 every rule in §4. Known gaps reported honestly — **nothing marked done that was not
 actually verified.**
 
-### Stage 3 — PLANNED, not started
+### Stage 3 — IN PROGRESS; block A open, block B not started
 
-**Twenty-nine tickets, S3-01 … S3-29, in `TASKS.md`, in two blocks.** The split is not
+**Thirty-four tickets, S3-01 … S3-34, in `TASKS.md`, in two blocks.** The split is not
 cosmetic: the user ran the app on real hardware after Stage 2 closed, found nine defects,
 and said *"if these details are resolved in the next steps, we are good to go."* That is a
 precondition, so it is a block and not a backlog.
@@ -703,15 +715,30 @@ has to reach outside its Scope:
 | S3-06 | Neither UI font contains a single Cyrillic glyph; `<html lang>` is frozen at `en` | **K11** / **D23** (the user's) |
 | S3-07 | Error toasts stack without limit and cover the board | **K12** / **D24** |
 | S3-08 | A domain *refusal* is rendered as "something went wrong", and nothing says **what** failed | **K12** / **D25** |
-| S3-09 | The hand pass that confirms all of the above, plus the four checks still owed from Stage 2 | — |
+| S3-30 | `refuse()` is applied by hand 27 times and nothing forces a 26th bound method to call it | **K16** / **D30** |
+| S3-31 | The columns hug their content, so an empty column is barely a drop target and nothing scrolls inside one | **K15** / **D29** |
+| S3-32 | Capture works and always did; make it a target, with a mandatory blankness check | **E4** / **D31** |
+| S3-33 | The shrink audit's own comments state three different, all wrong, corpus sizes, and its non-vacuity guard counts SVGs it cannot judge | **D32** |
+| S3-34 | The store sweep is not recursive, sweeps test files, and passes vacuously on an empty set | **D32** |
+| S3-09 | The hand pass that confirms all of the above, plus the checks still owed from Stage 2 | — |
+
+**Block A is OPEN.** The Reviewer returned **PASS on the code** for `c32a1c9..b53f1a4`
+(S3-01 … S3-05, S3-07, S3-08). What remains: **S3-06**, blocked on the user running
+`npm install @fontsource/inter`; the five tickets added after that PASS, **S3-30 … S3-34**
+above; and **S3-09**, the hand pass. **S3-30 and S3-34 are the two the Reviewer's PASS was
+conditional on** — block B adds bound methods and store surface, which is precisely what
+both of them stop decaying.
 
 **Why that order.** S3-01 fixes the vertical and the scroll axes; S3-02 then fixes the
 horizontal against a settled height chain; **S3-03 comes third because it derives the
 window's minimum size from the layout floor, and the floor is not final until S3-01 and
 S3-02 have both landed**. S3-04 and S3-05 both rewrite `Column.tsx`; blur goes first
 because S3-05's overlay has to work whatever the blur policy turned out to be, and not the
-other way round. S3-06 through S3-08 touch none of those files. S3-09 is a human at a real
-keyboard and is the gate into block B.
+other way round. S3-06 through S3-08 touch none of those files. **Then the five added
+tickets, in the order S3-30 → S3-31 → S3-32 → S3-33 → S3-34: S3-31 settles the screen
+before S3-32 photographs it, and everything else is independent.** S3-09 is a human
+at a real keyboard and is still the gate into block B — **S3-32 makes its list shorter, not
+empty** (**D31**).
 
 **Block B — S3-10 … S3-29, the feature stage.** Go first (S3-10 … S3-19: the detail read,
 the field writers, the type switcher, tags, attachments, the editable time log, search
@@ -721,9 +748,10 @@ requires), then the
 frontend (S3-20 … S3-28: the slide-over, the field editors, inline subtasks, the
 recurrence editor, attachments and the time log with the running clock, the tree view, the
 search screen, the archive view, and the latent non-Latin-keyboard defect **K13**).
-**S3-29 is `README.md`**, and it is **blocked on the user running
-`sudo apt install xvfb imagemagick`** — the board exists now, so it is finally writable,
-but nothing on this machine can take a screenshot.
+**S3-29 is `README.md`**, and it is **no longer blocked**: it was marked *blocked on the
+user running `sudo apt install xvfb imagemagick`*, and **both are installed and always
+were** (**E4**). Its four-way screenshot grid now comes out of **S3-32**'s `make shots`
+rather than out of a hand capture, and S3-29 is re-pointed at that target (**D31**).
 
 **Both open questions have been answered by the user and are CLOSED.** They are kept in
 full at the end of §7, marked closed with the answer, because the reasoning is worth
@@ -752,7 +780,7 @@ I am the **orchestrator**. Three sub-agents, delegated explicitly:
 
 ## 7. Resolved decisions
 
-Referenced as **D1–D28** and **E1–E3** from tickets in `TASKS.md`. **Every question is
+Referenced as **D1–D32** and **E1–E4** from tickets in `TASKS.md`. **Every question is
 closed.** The two that were open — **OQ1** and **OQ2** — were put to the user rather than
 answered silently, because a PM who answers them silently is the defect this project keeps
 finding; they are **kept at the end of this section, marked CLOSED with the answer**, not
@@ -1426,7 +1454,8 @@ The full allow-list, and it is meant to be exhaustive:
   reads "blur cards when there are fewer than N" is a rule nobody can see the boundary of.
 - **Accepted consequence, and the escalation ladder if it is not enough.** Seven blurred
   surfaces may still be too many for this WebKitGTK build. **This cannot be proven on this
-  machine** — there is no display, so S3-04's real check is S3-09's hand pass. If the hand
+  machine** — a resize cannot be performed here at all, because there is **no window
+manager** (**E4**), so S3-04's real check is S3-09's hand pass. If the hand
   pass still reproduces the stuck layout: step 2 is to drop the blur from the column as
   well, leaving it on the two overlays only; step 3 is that Aurora's `--blur` is unusable
   on this platform, which is a **user decision** and not a PM one, because at that point
@@ -1786,6 +1815,200 @@ their behaviour unchanged.
   habit succeeded.
 - **Rejected alternative: drop ended habits from `Strip()`.** See point 7.
 
+### D29 — a Kanban column is a full-height drop target, and it scrolls inside itself (PM ruling, after the block A review; closes K15)
+
+**The board's columns hug their content.** `views/Kanban.tsx:399` is
+`flex h-full min-w-0 items-start gap-2 overflow-x-auto overflow-y-auto`, and `items-start`
+overrides the default `stretch`, so each column is as tall as its cards. A 1024×768 capture
+of the running binary shows it plainly: four of the five columns are short boxes sitting at
+the top of a large empty area.
+
+**The Reviewer logged this as non-blocking observation 8 and called it "purely visual". It
+is not.** `components/Column.tsx`'s `useDroppable` exists precisely to catch a card dropped
+on an **empty column** or on the **padding below the last card**. A column that ends where
+its cards end has almost no such area — an empty column is a header-high strip, and the
+large region below it belongs to the board, not to any column. That is a **drag-and-drop
+defect wearing a layout bug's clothes**, and it lands on the surface **S3-05** just rebuilt.
+
+**The ruling, in four parts.**
+
+1. **Columns stretch to the board's height.** The board row goes back to the flex default
+   `stretch` (or an explicit `items-stretch`), so every column occupies the full height the
+   board has, empty or not. This is what makes `useDroppable`'s rectangle the whole column.
+
+2. **`items-start` was not load-bearing and is not to be replaced by a height literal.**
+   It is doing nothing that any ticket asked for — no decision in this file names it. It is
+   removed, not neutralised with a `min-h-[…]`; a typed height would be **D21**'s defect in
+   a second place (the layout floor is derived, never typed) and a second spelling of the
+   height chain.
+
+3. **The column owns its own vertical scroll; the board keeps the horizontal.** This is the
+   half **D22** left unfinished. Today nothing scrolls inside a column, so a column with
+   more cards than fit pushes against the board's `overflow-y-auto` — which **D22** only
+   tolerated because `overflow-x: auto` had silently promoted it. After this ruling the
+   **card list** inside each column is the `overflow-y-auto` element, with `min-h-0` on
+   every flex ancestor between it and the board so it can actually shrink; the board keeps
+   `overflow-x-auto` for the five columns and stops being the vertical scroller. **The
+   document still never scrolls** — that part of D22 is unchanged and its test must stay
+   green.
+
+4. **The column header does not scroll away.** The heading and the card count stay put
+   while the cards scroll under them, because a column whose heading scrolls out of view
+   makes a drag across five columns unnavigable.
+
+**Rejected alternative: leave it and make the board a drop target for "the empty area".**
+That invents a second answer to *"which column did this land in"* and puts a coordinate
+decision in TypeScript. `useDroppable` per column is already the single spelling; the fix
+is to give it the rectangle it was always supposed to have.
+
+**Rejected alternative: a fixed column height in `vh` or `px`.** See part 2. It reintroduces
+a typed floor, and it is wrong the moment the habits strip or the header changes height.
+
+**What is mechanical and what is not.** jsdom has no layout engine, so no test here can
+observe that a column is 600px tall or that a drop landed in the padding. The mechanical
+half is the **class contract** — the board is not `items-start`, the scroll container is
+the card list and not the board's vertical axis, the `min-h-0` chain is unbroken — asserted
+the way `App.keyboard.test.tsx` already asserts class contracts, plus **S3-32**'s captures,
+which show a real paint at a real size. The half that is still an eye is the drag itself:
+input cannot be driven here (**E4**).
+
+### D30 — no bound method may refuse without going through `refuse()` (PM ruling, after the block A review; closes K16)
+
+**S3-08 gave refusals their own code and named the failed operation, and it did so by hand:
+`refuse()` is applied 27 times across the 25 bound methods in `app.go`, and nothing
+mechanical forces a 26th method to call it.** The Reviewer verified the current coverage is
+complete and ruled the gap **not blocking for block A** — a miss degrades a message, it does
+not corrupt data — but ruled that it **must be a named ticket before S3-10 starts**. This is
+that ruling; the ticket is **S3-30**.
+
+**The argument is not hypothetical, and it is an internal inconsistency rather than a
+worry.** **S3-01**, in the same block, argued that an eleven-times-by-hand rule needed a
+guard and built **check 7** for it. **S3-08 then shipped a twenty-seven-times-by-hand rule
+without one.** Two tickets in one block reached opposite conclusions about the same shape.
+Block B is where new bound methods arrive — `NodeDetail`, six field writers, the type
+switcher, tags, attachments, the time log, search, the archive, the enum sets — which is
+exactly the condition under which a hand-applied rule decays.
+
+**The rule gets a mechanical enforcer, and the enforcer reads the source.** The existing
+shape is already in this repository twice: `layout_test.go:45` and `refusal_test.go:151`
+read files across the package boundary rather than trusting a convention. A Go test that
+parses `app.go`, enumerates every `func (a *App) …(…) (T, error)`, and asserts each body
+routes its error through `refuse(` is the same technique, in the same language, with no new
+dependency and no new tool.
+
+**It is a Go test, not a ninth `make guard` check.** `make guard` greps `frontend/src`; this
+is a Go file and belongs in `go test`, which is **gate 1** and therefore stronger than a
+non-gate target. It also keeps the guard's eight checks at eight, and **D17** applies: a
+name-based heuristic would not do — the assertion must be structural (every bound method,
+enumerated from the source) rather than a grep for a word.
+
+**The failure message must name the method.** A red test that says "some method does not
+refuse" costs more than it saves; it says which one, and what to add.
+
+### D31 — capture is a build target, and it discharges static paint only (PM ruling, after the block A review)
+
+**For three stages this project recorded every visual criterion as unverifiable, on a
+premise that was false.** `xvfb-run`, `import` and `convert` are installed and always were
+(**E4**). A 1024×768 capture of the running binary in Russian has now been taken and read,
+and it settled two open items and found one new defect (**K15**). That must stop being
+something an orchestrator improvises and become a target anyone can run.
+
+**1. There is a `make shots` target, and it is a non-gate target.** It joins `make cover`,
+`make front-test` and `make guard`. **`make check` is still exactly the five gates** —
+unchanged in number and definition, as it has been since S0-11.
+
+**2. A blankness check is mandatory, and it is the whole reason the target exists rather
+than a shell snippet in a report.** WebKitGTK will not paint under Xvfb until
+`WEBKIT_DISABLE_DMABUF_RENDERER=1` and `WEBKIT_DISABLE_COMPOSITING_MODE=1` are exported.
+Without them the window **is present in the X tree at the correct size** and the capture is
+**one flat colour** — a failure that looks exactly like a working capture of a broken app.
+`convert <png> -format "%k" info:` returning `1` means nothing painted, and the target
+**fails** on it. A harness without that check silently certifies blank images, which is the
+worst outcome available here: a green capture pipeline producing evidence of nothing.
+
+**3. States are selected by seeding settings, never by clicking.** Input cannot be driven
+(**E4**). The four palette/theme combinations and the two languages are persisted rows in
+SQLite, so the matrix is reachable by writing settings before launch.
+
+**4. The harness never touches the user's database.** `internal/store/db.go:41` already
+honours `XDG_DATA_HOME` when it is absolute — that is the single spelling of where the data
+lives, and the harness uses it rather than inventing a flag. `make shots` exports
+`XDG_DATA_HOME` to a **throwaway directory under `build/`**, seeds settings there, and
+`~/.local/share/nexus/nexus.db` is never opened. There is no `sqlite3` CLI on this machine,
+so the seeding goes through **this project's own pure-Go driver** — which is correct
+regardless, because a second writer to the schema would be a second spelling of it.
+
+**5. What this converts, stated exactly, because overclaiming it is the one failure that
+would make it worse than nothing.**
+
+- **It converts, from "owed to the user's hardware" to "observable here":** the static
+  paint at a real size, in every palette, theme and language — Russian not clipping, the
+  column headings not wrapping one character per line, the due badge and card count
+  readable, the habit chip fitting, the header not gaining a row, the UI rendering in the
+  designed family rather than the system `sans-serif`, and the columns filling the window
+  (**K15**). Anyone can now look, including the Reviewer, on this machine, from a committed
+  image — where before only the user could, on their own laptop.
+- **It does not convert "an eye" into "a machine".** The only *automated* assertions a PNG
+  supports here are that it is not blank and that its dimensions are right. *"Nothing
+  clips"* is still a judgement made by looking; what changed is **who can look and how
+  cheaply**, not that a computer decides it.
+- **It cannot touch anything needing input or a resize** (**E4**): the ten-step
+  keyboard-only run, the `:focus-visible` ring (jsdom evaluates `:focus-visible` as false
+  for programmatic focus, and a static capture has no focus to paint), the drag following
+  the pointer (**K6**), the empty-column drop (**K15**), the no-flash-of-wrong-background
+  first frame (**D12**, **K1** — a delayed capture cannot see the first frame), and
+  **K7, the resize defect the user actually reported**. Those stay on **S3-09**'s hand
+  script, and **S3-09 is still the gate into block B.**
+
+**6. It unblocks `README.md`.** **S3-29** has been marked *BLOCKED on the user running
+`sudo apt install xvfb imagemagick`* since Stage 0. Those packages are present; the blocker
+was never real. S3-29 is **unblocked**, and its four-way screenshot grid is produced by
+`make shots` rather than by hand.
+
+### D32 — a check that checks nothing must be red, not green (PM ruling, after the block A review)
+
+**Four of the block A review's non-blocking observations are one defect.** Recorded once,
+here, so they are not re-argued four times:
+
+- **Guard check 8b bypasses `GUARD_ALLOW_RE`, unlike every other check.** That asymmetry is
+  **correct and is hereby deliberate**: an allow-list exists to permit a *forbidden* thing
+  in a named place, and letting it also switch off a **presence** assertion would let one
+  entry delete the only proof that Aurora still has its blur. It is **undocumented**, which
+  is the actual finding, and the next ticket to touch the `guard:` recipe carries the
+  comment (**S3-32**).
+- **`new Set([]).size === 0` passes `"gives every operation a sentence of its own"`.** The
+  derivation is non-empty today and the sibling test that proves it fires was confirmed —
+  but a property that holds because a set is empty is a green that means nothing. The
+  non-emptiness assertion belongs **at the derivation**, one line from it, not one test
+  away.
+- **`import.meta.glob('../store/*.ts')` is not recursive and sweeps the store's own test
+  files.** Harmless today — the store is flat, and the five `*.test.ts` keys are a strict
+  subset of the real ones — but a future `src/store/slices/x.ts` would be missed **in both
+  directions of the comparison**, which is silence rather than a red. **Block B adds store
+  surface**, so the window in which this is harmless is closing.
+- **A non-vacuity guard that counts `element.className !== ''` counts SVG elements it
+  cannot judge**, because `className` on an `SVGElement` is an `SVGAnimatedString` and never
+  equals `''`. Every icon counts toward the `> 20`. Harmless today; weaker than it reads,
+  and the thing it guards is the audit that **K8** walked past.
+
+**The rule.** *An enumeration derived from source must fail when it derives nothing, must
+not silently under-match, and must count only what it can actually judge.* **Absence of
+evidence is a red.** This is **D17**'s lesson one level up: D17 says a green heuristic is
+not a proof; D32 says a green **vacuity** is not even a heuristic. Tickets **S3-33** and
+**S3-34** implement the parts that need code; the guard-8b half needs a comment and no
+behaviour change.
+
+**Not a defect, and deliberately not ticketed: the shrink audit's measured false-positive
+surface.** Inverting S3-02's audit to deny-by-default leaves **951 of 11,290** neutral
+Tailwind classes reportable — **8.4%**: negated spacing and z utilities, off-palette
+colours (which are *intentionally* refused, since rule 9 forbids them anyway), `columns-*`,
+`break-*`, `contain-*`, `inline-table`, `not-sr-only`. **Every one of them is loud and none
+is silent**, which is the direction D20 chose on purpose: an omission from `IRRELEVANT` is
+a false positive, where an omission from the old `DECIDES_*` families was a false negative.
+**`not-sr-only` is the one true misclassification** — it sets `width: auto`, which is a
+permission, not a refusal — and it gets a `PERMITTED` entry **the day it is first used**,
+at which point the audit says so itself. No ticket: the defect reports itself.
+
 ### OQ1 — which Cyrillic face? **CLOSED — the user answered: Inter**
 
 > **ANSWERED.** **Inter**, one face vendored under **both** family names via
@@ -1881,6 +2104,33 @@ shells**, so the Makefile must resolve it explicitly (e.g. via
 `pkg-config`, `libgtk-3-dev` and `libwebkit2gtk-4.1-dev` were **missing** when Stage 0
 was planned and have since been installed by the user, which is what unblocked gate 5
 and closed Stage 0. `pkg-config --exists gtk+-3.0 webkit2gtk-4.1` now succeeds.
+
+**E4 — screenshots ARE possible here; input is NOT.** This corrects a claim that stood
+unchallenged from Stage 0 to Stage 3 and sent three stages of visual checks into the
+hand-owed pile without cause. **Verified by running them:**
+
+| Present | Absent |
+|---|---|
+| `Xvfb`, `xvfb-run`, `import`, `convert` | `scrot`, `grim`, `xdotool`, `xte`, `wmctrl`, python-Xlib, `sqlite3`, **any window manager** |
+
+Four facts follow, and none of them is negotiable by a hopeful ticket:
+
+1. **WebKitGTK will not paint under Xvfb** until `WEBKIT_DISABLE_DMABUF_RENDERER=1` **and**
+   `WEBKIT_DISABLE_COMPOSITING_MODE=1` are exported. Without them the window is present in
+   the X tree at the correct size and the capture is **one flat colour**. That failure mode
+   reads exactly like a working capture of a broken app, and it cost real time to find.
+2. **A blankness check is therefore mandatory** in anything that captures:
+   `convert <png> -format "%k" info:` returning `1` means nothing painted.
+3. **Input cannot be driven.** No `xdotool`, no `xte`, no `wmctrl`, no python-Xlib, and
+   installing any of them needs `sudo`. Keystrokes, clicks and drags are out of reach.
+4. **The window cannot be resized**, because there is **no window manager** at all. So
+   **K7**, the resize defect the user reported, is structurally unreachable here no matter
+   what is installed short of one.
+
+State selection therefore happens by **seeding persisted settings** before launch, which is
+possible because the palette, theme and language are SQLite rows and `internal/store`
+honours `XDG_DATA_HOME`. **D31** turns all of this into `make shots` and states precisely
+what it does and does not discharge.
 
 ---
 
@@ -2149,7 +2399,49 @@ user asks for it.
 
 ---
 
-**Status: decisions locked — D1–D17, E1–E3. Stage 0 is CLOSED (PASS). Stage 1 is
+#### K15 – K16 — found after the block A review returned PASS
+
+**Both were found after `c32a1c9..b53f1a4` passed.** K15 came from the **first real
+screenshot this project has ever taken of its own binary** (**E4**); K16 came from the
+Reviewer's own non-blocking list and is the reason it named a condition on block B rather
+than simply closing.
+
+**K15 — the columns do not fill the window height, so an empty column is barely a drop
+target. DECIDED by D29; ticket S3-31. CONFIRMED BY SCREENSHOT.**
+`views/Kanban.tsx:399` is `flex h-full min-w-0 items-start gap-2 overflow-x-auto
+overflow-y-auto`. `items-start` overrides flex's default `stretch`, so each column is only
+as tall as its cards: in a 1024×768 capture of the running binary, **four of the five
+columns are short boxes at the top of a large empty area**. The Reviewer logged it as
+non-blocking observation 8 and called it *"purely visual"* — and on the pixels alone that
+was a fair reading. **It is not purely visual.** `components/Column.tsx`'s `useDroppable`
+exists to catch a card dropped on an **empty column** or on the **padding below the last
+card**; a column that ends where its cards end has almost none of either, and the large
+region below it belongs to the board rather than to any column. So this lands directly on
+**S3-05**'s drag work and on **D18**'s overlay. A second, separate fact from the same
+line: **nothing scrolls inside a column**, so a column with more cards than fit has nowhere
+to put them — the half **D22** left unfinished, tolerable until now only because
+`overflow-x: auto` had silently promoted the board's `overflow-y`.
+
+**The same capture discharged two long-standing items, and that is the other half of the
+news.** At a real 1024×768 in **Russian**: the due date `25 сент. 2026 г.` sits inside its
+card, the column headings wrap without overlapping, and **there is no document scrollbar**.
+So **K8 is confirmed fixed on real paint** and no longer owed to a hand pass, and Stage 2's
+*"a window opens and the first `Board()` returns five columns"* is **discharged** — the
+window opened and five columns were photographed.
+
+**K16 — `refuse()` is applied by hand 27 times across 25 bound methods, and nothing forces
+a 26th. LATENT, no symptom today. DECIDED by D30; ticket S3-30.**
+**S3-08**'s coverage was verified complete by the Reviewer, and a miss would degrade a
+message rather than corrupt data — which is why block A was not held for it. What makes it
+worth a number is the **internal inconsistency**: **S3-01, in the same block, argued that an
+eleven-times-by-hand rule needed a guard and built check 7 for it**, and **S3-08 then
+shipped a twenty-seven-times-by-hand rule without one**. Block B adds ten or more bound
+methods, which is exactly when a hand-applied rule decays. The Reviewer's condition —
+**a named ticket before S3-10 starts** — is met by **S3-30**.
+
+---
+
+**Status: decisions locked — D1–D32, E1–E4. Stage 0 is CLOSED (PASS). Stage 1 is
 CLOSED (PASS) — all twenty-two tickets, S1-01 … S1-22, ACCEPT met at 100.0% / 92.9%,
 PASS returned on the fourth review at `a1f09b7` after three FAILs whose history is kept
 in §5. **Stage 2 is CLOSED (PASS)** — twenty-two tickets, S2-01 … S2-22, in `TASKS.md`,
@@ -2180,7 +2472,7 @@ and **nothing draws a drift**, which no document may imply otherwise.
 **A green `make guard` is NOT proof that the frontend computes nothing**: checks 3a/3b
 are name-based heuristics, `wireDate` sat behind a green guard for an entire stage, and
 **D17** says so — reading the diff is still the check.
-**Stage 3 is PLANNED and not started** — twenty-nine tickets, **S3-01 … S3-29**, in
+**Stage 3 is IN PROGRESS, block A open** — thirty-four tickets, **S3-01 … S3-34**, in
 `TASKS.md`, in two blocks. **The user has since run the app by hand on real hardware and
 found nine defects**, recorded as **K6 – K14** and ruled as **D18 – D26**: eight of the
 nine are invisible to every gate here, because jsdom has no layout engine and no font
@@ -2202,5 +2494,21 @@ recurrence editor, is blocked on it. **K13** (shortcuts match the character, not
 key) is latent and ranked low; **K14** (the palette selection is not visibly indicated) is
 **deferred by the user**. The **three D8 due-badge assertions still have no mechanical
 backing**, and S3-09 is where that is fixed and the rest is looked at by eye.
-See §5, "Stage 2 — CLOSED, PASS", "Stage 3 — PLANNED, not started" and "Carried into
+**The block A review returned PASS on the code** for `c32a1c9..b53f1a4`, and block A stays
+**open** on **S3-06** (blocked on the user running `npm install @fontsource/inter`), on
+**S3-09**, and on **five tickets added after that PASS — S3-30 … S3-34**, ruled as
+**D29 – D32** and recorded as **K15 – K16**, all four **PM rulings**. **S3-30** and
+**S3-34** are the Reviewer's explicit conditions on starting block B: a hand-applied
+`refuse()` and a non-recursive store sweep both decay exactly when block B adds bound
+methods and store slices. **E4 is new and it is a correction, not a discovery**:
+`xvfb-run`, `import` and `convert` are installed and always were, so **capture is possible
+here** — it has now photographed the running binary, **confirmed K8 fixed on real paint**,
+**discharged** Stage 2's *"a window opens and `Board()` returns five columns"*, and found
+**K15**. **D31 makes it `make shots` and states its limits plainly**: it converts static
+paint from *owed to the user's hardware* to *observable here*, it does **not** turn an eye
+into a machine, and it **cannot** reach anything needing input or a resize — the
+keyboard run, the focus ring, the drag, the first-frame flash, and **K7, the defect the
+user actually reported**. **S3-09 is still the gate into block B**; capture shortens its
+list and does not close it. **S3-29 (`README.md`) is unblocked** and re-pointed at
+`make shots`. See §5, "Stage 2 — CLOSED, PASS", "Stage 3 — IN PROGRESS" and "Carried into
 Stage 3", and `TASKS.md`.**
