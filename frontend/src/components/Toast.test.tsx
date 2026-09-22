@@ -5,7 +5,9 @@ import { I18nextProvider } from 'react-i18next';
 
 import { ToastList } from './Toast';
 import { createI18n } from '../lib/i18n';
+import { createAppStore } from '../store';
 import { TOAST_DISMISS_MS } from '../store/toast';
+import { columnView, createFakeClient, habitView, nodeView } from '../test/fakeClient';
 import type { Toast } from '../store';
 
 async function renderToasts(
@@ -22,7 +24,13 @@ async function renderToasts(
   );
 }
 
-const failure: Toast = { id: 1, messageKey: 'toast.error.body', count: 1 };
+const failure: Toast = {
+  id: 1,
+  operationKey: 'toast.operation.move',
+  messageKey: 'toast.error.body',
+  kind: 'failure',
+  count: 1,
+};
 
 afterEach(() => {
   vi.useRealTimers();
@@ -51,7 +59,7 @@ describe('the toast', () => {
 
   it('never shows the raw Go error', async () => {
     const cause = new Error('node 7f3: a project can never be doing');
-    await renderToasts('en', [{ id: 1, messageKey: 'toast.error.body', cause, count: 1 }]);
+    await renderToasts('en', [{ ...failure, cause }]);
 
     expect(screen.getByRole('alert').textContent).not.toContain('7f3');
     expect(screen.getByRole('alert').textContent).not.toContain('project');
@@ -83,7 +91,7 @@ describe('the toast', () => {
     const user = userEvent.setup();
     await renderToasts(
       'en',
-      [failure, { id: 2, messageKey: 'toast.error.body', count: 1 }],
+      [failure, { ...failure, id: 2 }],
       onDismiss,
     );
 
@@ -121,7 +129,7 @@ describe('the toast', () => {
 
 // --- D24: the repeat count, and the self-dismissing timer (S3-07) -----------
 
-const repeated: Toast = { id: 1, messageKey: 'toast.error.body', count: 3 };
+const repeated: Toast = { ...failure, count: 3 };
 
 describe('the repeat count', () => {
   it('is not shown at all for a toast that happened once', async () => {
@@ -145,7 +153,7 @@ describe('the repeat count', () => {
   });
 
   it('takes the Russian _many form at 5, which a naive one/other table gets wrong', async () => {
-    await renderToasts('ru', [{ id: 1, messageKey: 'toast.error.body', count: 5 }]);
+    await renderToasts('ru', [{ ...failure, count: 5 }]);
 
     expect(screen.getByRole('alert')).toHaveTextContent('Произошло 5 раз');
   });
@@ -296,11 +304,200 @@ describe('the dismiss timer', () => {
 
   it('runs one independent timer per toast', async () => {
     const onDismiss = vi.fn();
-    await renderFaked([failure, { id: 2, messageKey: 'toast.error.body', count: 1 }], onDismiss);
+    await renderFaked([failure, { ...failure, id: 2 }], onDismiss);
 
     expect(vi.getTimerCount()).toBe(2);
 
     await vi.advanceTimersByTimeAsync(TOAST_DISMISS_MS);
     expect(onDismiss.mock.calls.map(([id]) => id)).toEqual([1, 2]);
+  });
+});
+
+// --- D25: a refusal is not a failure, and every toast says what failed -------
+
+type FakeGo = ReturnType<typeof createFakeClient>;
+type FakeStore = ReturnType<typeof createAppStore>;
+
+/** An error in no Go table: a failure, whichever action raised it. */
+const boom = new Error('store: database is locked');
+
+/** What each action's toast actually reads as. Filled by the sweep below. */
+const seen = new Map<string, string>();
+
+/**
+ * Exactly the string Go sends when D9 declines to put a project into doing.
+ *
+ * Produced by service.Refuse; the message in front of the token is prose that
+ * this side never reads. internal/service/refusal_test.go owns the other end of
+ * this contract — it fails if the marker in store/call.ts stops matching the
+ * one Go writes.
+ */
+const D9_REFUSAL = new Error(
+  'service: move node "p-1": domain: a project never enters doing [nexus-refusal:project-never-doing]',
+);
+
+/** Drives a real store action against a rejecting client and renders the result. */
+async function toastsFrom(
+  language: string,
+  arrange: (go: ReturnType<typeof createFakeClient>) => void,
+  drive: (store: ReturnType<typeof createAppStore>) => Promise<unknown>,
+) {
+  const go = createFakeClient();
+  arrange(go);
+  const store = createAppStore(go.client, { view: window });
+
+  await drive(store);
+
+  const view = await renderToasts(language, store.getState().toasts);
+  return { store, view };
+}
+
+describe('a refusal that crossed the boundary', () => {
+  it('reads as the rule it is, in English, and not as a malfunction', async () => {
+    const { store } = await toastsFrom(
+      'en',
+      (go) => go.reject('MoveToColumn', D9_REFUSAL),
+      (store) => store.getState().moveToColumn('p-1', 'doing-from-go'),
+    );
+
+    const panel = screen.getByRole('alert');
+    expect(panel).toHaveTextContent('A project never moves to Doing');
+    expect(panel).toHaveTextContent('Moving the card');
+    expect(panel).toHaveTextContent('A rule stopped this');
+    // The point of the ticket: NOT the generic failure sentence.
+    expect(panel.textContent).not.toContain('Nexus could not finish that');
+    expect(panel.textContent).not.toContain('Something went wrong');
+    expect(store.getState().toasts[0].messageKey).not.toBe('toast.error.body');
+  });
+
+  it('reads as the rule it is in Russian too, from the same stored toast', async () => {
+    await toastsFrom(
+      'ru',
+      (go) => go.reject('MoveToColumn', D9_REFUSAL),
+      (store) => store.getState().moveToColumn('p-1', 'doing-from-go'),
+    );
+
+    const panel = screen.getByRole('alert');
+    expect(panel).toHaveTextContent('Проект не переходит');
+    expect(panel).toHaveTextContent('Перемещение карточки');
+    expect(panel.textContent).not.toContain('Nexus не смог выполнить это действие');
+  });
+
+  it('is not styled as an error — danger is reserved for things that broke', async () => {
+    await toastsFrom(
+      'en',
+      (go) => go.reject('MoveToColumn', D9_REFUSAL),
+      (store) => store.getState().moveToColumn('p-1', 'doing-from-go'),
+    );
+
+    const panel = screen.getByRole('alert').firstElementChild as HTMLElement;
+    expect(panel.className).toContain('border-line');
+    expect(panel.className).not.toContain('border-danger');
+  });
+
+  it('leaves an unclassified error exactly as it was: one generic failure', async () => {
+    // S2's "every rejection reaches a toast" is not weakened, and a Go error in
+    // no table does not get to pose as a rule.
+    const { store } = await toastsFrom(
+      'en',
+      (go) => go.reject('MoveToColumn', new Error('store: database is locked')),
+      (store) => store.getState().moveToColumn('p-1', 'doing-from-go'),
+    );
+
+    expect(store.getState().toasts).toHaveLength(1);
+    expect(store.getState().toasts[0].kind).toBe('failure');
+    const panel = screen.getByRole('alert');
+    expect(panel).toHaveTextContent('Nexus could not finish that');
+    expect(panel).toHaveTextContent('Moving the card');
+    expect((panel.firstElementChild as HTMLElement).className).toContain('border-danger');
+  });
+
+  it('never renders Go’s own words, marker and all', async () => {
+    await toastsFrom(
+      'en',
+      (go) => go.reject('MoveToColumn', D9_REFUSAL),
+      (store) => store.getState().moveToColumn('p-1', 'doing-from-go'),
+    );
+
+    const text = screen.getByRole('alert').textContent ?? '';
+    expect(text).not.toContain('nexus-refusal');
+    expect(text).not.toContain('p-1');
+    expect(text).not.toContain('service:');
+  });
+});
+
+describe('every toast names the operation it came from', () => {
+  // One failure per store action. The assertion is that the RENDERED sentences
+  // are all different: a stack of three toasts is only legible if each says
+  // which of the three things the user did went wrong, and after K12's
+  // screenshot nobody could say which three they were.
+  const actions: [string, (go: FakeGo) => void, (store: FakeStore) => Promise<unknown>][] = [
+    ['loadBoard', (go) => go.reject('Board', boom), (s) => s.getState().loadBoard()],
+    ['loadHabits', (go) => go.reject('HabitStrip', boom), (s) => s.getState().loadHabits()],
+    ['loadTimer', (go) => go.reject('TimerCurrent', boom), (s) => s.getState().loadTimer()],
+    ['loadSettings', (go) => go.reject('Settings', boom), (s) => s.getState().loadSettings()],
+    [
+      'move',
+      (go) => go.reject('MoveToColumn', boom),
+      (s) => s.getState().moveToColumn('n-1', 'from-go'),
+    ],
+    [
+      'setPriority',
+      (go) => go.reject('SetPriority', boom),
+      (s) => s.getState().setPriority('n-1', 2),
+    ],
+    ['create', (go) => go.reject('CreateNode', boom), (s) => s.getState().createNode('t', 'task')],
+    ['startTimer', (go) => go.reject('TimerStart', boom), (s) => s.getState().startTimer('n-1')],
+    ['stopTimer', (go) => go.reject('TimerStop', boom), (s) => s.getState().stopTimer()],
+    ['setPalette', (go) => go.reject('SetPalette', boom), (s) => s.getState().setPalette('x')],
+    ['setTheme', (go) => go.reject('SetTheme', boom), (s) => s.getState().setTheme('x')],
+    ['setAccent', (go) => go.reject('SetAccent', boom), (s) => s.getState().setAccent('x')],
+    ['setLanguage', (go) => go.reject('SetLanguage', boom), (s) => s.getState().setLanguage('x')],
+    [
+      'checkHabit',
+      (go) => go.reject('CheckHabitToday', boom),
+      async (s) => {
+        await s.getState().loadHabits();
+        return s.getState().toggleHabit('habit-1');
+      },
+    ],
+    [
+      'reorder',
+      (go) => go.reject('MoveNode', boom),
+      async (s) => {
+        await s.getState().loadBoard();
+        const status = s.getState().board?.[0].status ?? '';
+        return s
+          .getState()
+          .dropCard('node-1', { status, index: 0 }, { status, index: 1 });
+      },
+    ],
+  ];
+
+  it.each(actions)('%s says what it was doing', async (name, arrange, drive) => {
+    const go = createFakeClient({
+      habits: [habitView()],
+      board: [columnView('first-from-go', [nodeView()]), columnView('second-from-go')],
+    });
+    arrange(go);
+    const store = createAppStore(go.client, { view: window });
+
+    await drive(store);
+
+    const raised = store.getState().toasts.filter((toast) => toast.cause === boom);
+    expect(raised.length, `${name} raised no toast`).toBeGreaterThan(0);
+    await renderToasts('en', [raised[0]]);
+
+    seen.set(name, screen.getByRole('alert').textContent ?? '');
+    expect(seen.get(name)).not.toContain('toast.operation.');
+  });
+
+  it('gave every action a sentence of its own', () => {
+    // Runs last, over what the sweep above recorded. Two actions sharing one
+    // operation key would be two toasts nobody can tell apart.
+    expect(seen.size).toBe(actions.length);
+    expect(new Set(seen.values()).size, `duplicate wording: ${[...seen.values()].join(' | ')}`).toBe(
+      actions.length,
+    );
   });
 });

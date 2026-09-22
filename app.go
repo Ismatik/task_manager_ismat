@@ -54,6 +54,17 @@ func NewApp(svc Services) *App {
 	return &App{svc: svc}
 }
 
+// refuse is the one line every bound method's error passes through.
+//
+// service.Refuse (D25) is what produces the wire code; this exists only so that
+// a method body stays a single delegation — `return refuse(a.svc.X.Y(ctx))` —
+// instead of growing a two-line branch twenty-two times over. It decides
+// nothing: which errors are refusals is internal/service/refusal.go's table and
+// nothing here reads it.
+func refuse[T any](value T, err error) (T, error) {
+	return value, service.Refuse(err)
+}
+
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
@@ -85,7 +96,7 @@ func (a *App) context() context.Context {
 
 // Board returns the five Kanban columns, in order, each with its cards.
 func (a *App) Board() ([]service.ColumnView, error) {
-	return a.svc.Tasks.Board(a.context())
+	return refuse(a.svc.Tasks.Board(a.context()))
 }
 
 // Tree returns the subtree rooted at rootID, or the whole forest when rootID is
@@ -96,14 +107,14 @@ func (a *App) Board() ([]service.ColumnView, error) {
 // TaskService.Tree's, unchanged.
 func (a *App) Tree(rootID string) ([]service.NodeView, error) {
 	if rootID == "" {
-		return a.svc.Tasks.Tree(a.context(), nil)
+		return refuse(a.svc.Tasks.Tree(a.context(), nil))
 	}
-	return a.svc.Tasks.Tree(a.context(), &rootID)
+	return refuse(a.svc.Tasks.Tree(a.context(), &rootID))
 }
 
 // Progress returns the done-over-total progress of a subtree.
 func (a *App) Progress(nodeID string) (service.ProgressView, error) {
-	return a.svc.Tasks.Progress(a.context(), nodeID)
+	return refuse(a.svc.Tasks.Progress(a.context(), nodeID))
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +122,7 @@ func (a *App) Progress(nodeID string) (service.ProgressView, error) {
 
 // CreateNode inserts a node and returns it as it was stored.
 func (a *App) CreateNode(draft service.NewNode) (domain.Node, error) {
-	return a.svc.Tasks.CreateNode(a.context(), draft)
+	return refuse(a.svc.Tasks.CreateNode(a.context(), draft))
 }
 
 // MoveToColumn drags a card to a Kanban column, named by its wire value —
@@ -139,7 +150,7 @@ func (a *App) CreateNode(draft service.NewNode) (domain.Node, error) {
 // domain.PlanCascade, which refuses an unknown one with the message naming it.
 // No rule moves up here.
 func (a *App) MoveToColumn(nodeID string, target string) (domain.Node, error) {
-	return a.svc.Tasks.MoveToColumn(a.context(), nodeID, domain.Status(target))
+	return refuse(a.svc.Tasks.MoveToColumn(a.context(), nodeID, domain.Status(target)))
 }
 
 // MoveNode re-parents a node, with its whole subtree, at a position among its
@@ -147,9 +158,9 @@ func (a *App) MoveToColumn(nodeID string, target string) (domain.Node, error) {
 // Tree uses.
 func (a *App) MoveNode(nodeID string, newParentID string, toIndex int) (domain.Node, error) {
 	if newParentID == "" {
-		return a.svc.Tasks.MoveNode(a.context(), nodeID, nil, toIndex)
+		return refuse(a.svc.Tasks.MoveNode(a.context(), nodeID, nil, toIndex))
 	}
-	return a.svc.Tasks.MoveNode(a.context(), nodeID, &newParentID, toIndex)
+	return refuse(a.svc.Tasks.MoveNode(a.context(), nodeID, &newParentID, toIndex))
 }
 
 // SetDue is the user editing a due date by hand (D1). An empty due CLEARS the
@@ -160,14 +171,14 @@ func (a *App) MoveNode(nodeID string, newParentID string, toIndex int) (domain.N
 // does not exist.
 func (a *App) SetDue(nodeID string, due string) (domain.Node, error) {
 	if due == "" {
-		return a.svc.Tasks.SetDue(a.context(), nodeID, nil)
+		return refuse(a.svc.Tasks.SetDue(a.context(), nodeID, nil))
 	}
 
 	parsed, err := domain.ParseDate(due)
 	if err != nil {
-		return domain.Node{}, err
+		return refuse(domain.Node{}, err)
 	}
-	return a.svc.Tasks.SetDue(a.context(), nodeID, &parsed)
+	return refuse(a.svc.Tasks.SetDue(a.context(), nodeID, &parsed))
 }
 
 // SetPriority is the user changing a card's priority — 1..4, lower is more
@@ -187,19 +198,19 @@ func (a *App) SetDue(nodeID string, due string) (domain.Node, error) {
 // TaskService.SetPriority, which refuses an out-of-range one with the message
 // naming it. No rule moves up here.
 func (a *App) SetPriority(nodeID string, priority int) (domain.Node, error) {
-	return a.svc.Tasks.SetPriority(a.context(), nodeID, domain.Priority(priority))
+	return refuse(a.svc.Tasks.SetPriority(a.context(), nodeID, domain.Priority(priority)))
 }
 
 // ArchiveNode hides a node and its subtree, and reports how many rows it
 // archived.
 func (a *App) ArchiveNode(nodeID string) (int, error) {
-	return a.svc.Tasks.ArchiveNode(a.context(), nodeID)
+	return refuse(a.svc.Tasks.ArchiveNode(a.context(), nodeID))
 }
 
 // RestoreNode brings a node and its subtree back, and reports how many rows it
 // restored.
 func (a *App) RestoreNode(nodeID string) (int, error) {
-	return a.svc.Tasks.RestoreNode(a.context(), nodeID)
+	return refuse(a.svc.Tasks.RestoreNode(a.context(), nodeID))
 }
 
 // ---------------------------------------------------------------------------
@@ -208,13 +219,13 @@ func (a *App) RestoreNode(nodeID string) (int, error) {
 // Search returns the cards whose title or description match, most relevant
 // first.
 func (a *App) Search(query string, opts service.SearchOptions) ([]service.NodeView, error) {
-	return a.svc.Search.Search(a.context(), query, opts)
+	return refuse(a.svc.Search.Search(a.context(), query, opts))
 }
 
 // HabitStrip returns every non-archived habit with its schedule, today's check
 // and its streak (D5).
 func (a *App) HabitStrip() ([]service.HabitView, error) {
-	return a.svc.Habits.Strip(a.context())
+	return refuse(a.svc.Habits.Strip(a.context()))
 }
 
 // CheckHabitToday ticks a habit for TODAY and returns the strip as it now is —
@@ -236,24 +247,24 @@ func (a *App) HabitStrip() ([]service.HabitView, error) {
 // worked out.
 func (a *App) CheckHabitToday(nodeID string) ([]service.HabitView, error) {
 	if err := a.svc.Habits.CheckToday(a.context(), nodeID); err != nil {
-		return nil, err
+		return refuse[[]service.HabitView](nil, err)
 	}
-	return a.svc.Habits.Strip(a.context())
+	return refuse(a.svc.Habits.Strip(a.context()))
 }
 
 // UncheckHabitToday removes today's tick and returns the strip as it now is.
 // Today is the clock's, for CheckHabitToday's reason.
 func (a *App) UncheckHabitToday(nodeID string) ([]service.HabitView, error) {
 	if err := a.svc.Habits.UncheckToday(a.context(), nodeID); err != nil {
-		return nil, err
+		return refuse[[]service.HabitView](nil, err)
 	}
-	return a.svc.Habits.Strip(a.context())
+	return refuse(a.svc.Habits.Strip(a.context()))
 }
 
 // TimerStart opens a timer on a node and reports it as the card renders it.
 func (a *App) TimerStart(nodeID string) (service.TimerView, error) {
 	if _, err := a.svc.Timers.Start(a.context(), nodeID); err != nil {
-		return service.TimerView{}, err
+		return refuse(service.TimerView{}, err)
 	}
 	return a.TimerCurrent()
 }
@@ -262,7 +273,7 @@ func (a *App) TimerStart(nodeID string) (service.TimerView, error) {
 // is — which is "not running". Stopping when nothing runs is not an error.
 func (a *App) TimerStop() (service.TimerView, error) {
 	if _, err := a.svc.Timers.Stop(a.context()); err != nil {
-		return service.TimerView{}, err
+		return refuse(service.TimerView{}, err)
 	}
 	return a.TimerCurrent()
 }
@@ -275,7 +286,7 @@ func (a *App) TimerStop() (service.TimerView, error) {
 func (a *App) TimerCurrent() (service.TimerView, error) {
 	running, err := a.svc.Timers.Current(a.context())
 	if err != nil {
-		return service.TimerView{}, err
+		return refuse(service.TimerView{}, err)
 	}
 	if running == nil {
 		return service.TimerView{}, nil
@@ -293,28 +304,28 @@ func (a *App) TimerCurrent() (service.TimerView, error) {
 
 // Settings returns the four persisted preferences (D6).
 func (a *App) Settings() (service.SettingsView, error) {
-	return a.svc.Settings.Settings(a.context())
+	return refuse(a.svc.Settings.Settings(a.context()))
 }
 
 // SetPalette stores the palette and returns the settings as they now are.
 func (a *App) SetPalette(value string) (service.SettingsView, error) {
-	return a.svc.Settings.SetPalette(a.context(), value)
+	return refuse(a.svc.Settings.SetPalette(a.context(), value))
 }
 
 // SetTheme stores the theme and returns the settings as they now are.
 func (a *App) SetTheme(value string) (service.SettingsView, error) {
-	return a.svc.Settings.SetTheme(a.context(), value)
+	return refuse(a.svc.Settings.SetTheme(a.context(), value))
 }
 
 // SetAccent stores the accent override — "" means "use the palette's own" — and
 // returns the settings as they now are.
 func (a *App) SetAccent(value string) (service.SettingsView, error) {
-	return a.svc.Settings.SetAccent(a.context(), value)
+	return refuse(a.svc.Settings.SetAccent(a.context(), value))
 }
 
 // SetLanguage stores the UI language and returns the settings as they now are.
 func (a *App) SetLanguage(value string) (service.SettingsView, error) {
-	return a.svc.Settings.SetLanguage(a.context(), value)
+	return refuse(a.svc.Settings.SetLanguage(a.context(), value))
 }
 
 // ---------------------------------------------------------------------------

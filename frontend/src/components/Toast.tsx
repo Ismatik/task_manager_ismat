@@ -62,6 +62,11 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
   const remaining = useRef(TOAST_DISMISS_MS);
   const { id, count } = toast;
 
+  // The one thing this component does with `kind`: choose a title and a border.
+  // It does not decide what a refusal IS — that verdict arrived on the toast,
+  // from the code Go sent (store/call.ts).
+  const refusal = toast.kind === 'refusal';
+
   // A repeat resets the clock: the toast just said something new (the count
   // went up), so the reader gets the whole interval again. This runs BEFORE the
   // timer effect below on the same render, and after that effect's cleanup has
@@ -101,9 +106,19 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
       onBlur={release}
       onMouseEnter={hold}
       onMouseLeave={release}
-      className="flex flex-col gap-2 rounded-md border border-danger bg-elevated p-3 text-ink shadow-sm"
+      className={`flex flex-col gap-2 rounded-md border bg-elevated p-3 text-ink shadow-sm ${
+        // `danger` is reserved for things that BROKE (D25). A rule declining an
+        // action is information — the app working — so it gets the ordinary
+        // `line` border every other surface has, and no alarm colour at all.
+        refusal ? 'border-line' : 'border-danger'
+      }`}
     >
-      <p className="text-danger">{t('toast.error.title')}</p>
+      <p className={refusal ? 'text-ink' : 'text-danger'}>
+        {t(refusal ? 'toast.refusal.title' : 'toast.error.title')}
+      </p>
+      {/* WHAT the user was doing, always — the diagnostic half of D25. Three
+          stacked toasts are legible only if each names its own operation. */}
+      <p className="text-muted">{t(toast.operationKey)}</p>
       {/* Russian runs ~30% wider than English, so the text wraps rather
           than sitting on one line, and the panel is width-capped against
           the viewport rather than given a fixed pixel width. */}

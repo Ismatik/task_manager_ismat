@@ -131,6 +131,40 @@
     }
   },
   "toast": {
+    "operation": {
+      "loadBoard": "Loading the board",
+      "loadHabits": "Loading the habits",
+      "loadTimer": "Reading the timer",
+      "loadSettings": "Loading the settings",
+      "move": "Moving the card",
+      "reorder": "Reordering the cards",
+      "setPriority": "Changing the priority",
+      "checkHabit": "Ticking the habit",
+      "create": "Creating the card",
+      "startTimer": "Starting the timer",
+      "stopTimer": "Stopping the timer",
+      "setPalette": "Changing the palette",
+      "setTheme": "Changing the theme",
+      "setAccent": "Changing the accent colour",
+      "setLanguage": "Changing the language"
+    },
+    "refusal": {
+      "title": "A rule stopped this",
+      "body": {
+        "project-never-doing": "A project never moves to Doing. Move one of its tasks instead.",
+        "type-has-no-column": "This kind of item does not live on the board.",
+        "type-has-no-due": "This kind of item has no due date.",
+        "type-has-no-children": "This kind of item cannot hold other items.",
+        "circular-parent": "An item cannot be moved inside itself.",
+        "no-recurrence": "A habit needs a repeat rule.",
+        "unsupported-recurrence": "That repeat rule is not supported.",
+        "timer-not-allowed": "A timer cannot run on this item.",
+        "node-archived": "This item is archived. Restore it first.",
+        "node-done": "This item is already done.",
+        "not-a-habit": "This item is not a habit.",
+        "invalid-setting": "That value is not one of the allowed ones."
+      }
+    },
     "error": {
       "title": "Something went wrong",
       "body": "Nexus could not finish that. Nothing was changed.",

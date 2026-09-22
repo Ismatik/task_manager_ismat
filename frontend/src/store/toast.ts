@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand';
 
+import type { ToastKind } from './call';
 import type { AppState } from './index';
 
 // Nexus — the toast slice.
@@ -10,6 +11,18 @@ import type { AppState } from './index';
 // render time in whatever language is current; a string captured here would be
 // frozen in the language that happened to be active when the error occurred.
 // The raw Go error rides along for the console and is never rendered.
+//
+// # And it says WHAT failed (D25, S3-08)
+//
+// Every toast carries an `operationKey` naming what the user was doing, beside
+// the `messageKey` saying how it turned out. Both are keys, for the reason
+// above. A stack of three toasts that all read "something went wrong" cannot be
+// told apart — the screenshot that opened K12 still cannot be explained — so
+// naming the operation is a requirement, not a nicety.
+//
+// `kind` separates a RULE refusing (information) from a malfunction (an error).
+// It is decided in store/call.ts from the code Go sent, never here and never in
+// the component: the store carries the verdict, it does not reach one.
 //
 // # The list is capped and de-duplicated (D24, S3-07)
 //
@@ -49,23 +62,33 @@ export const TOAST_CAP = 3;
  */
 export const TOAST_DISMISS_MS = 6000;
 
-export interface Toast {
-  /** Stable per toast, so a list can key on it and a dismiss can name one. */
-  id: number;
-  /** An i18n key. Never a sentence. */
+/** What a caller hands `pushToast`. Keys only — no sentence, ever. */
+export interface ToastDraft {
+  /** An i18n key naming the operation the user attempted. */
+  operationKey: string;
+  /** An i18n key naming the outcome. Never a sentence. */
   messageKey: string;
+  /** Whether a rule refused, or something broke. Failure when unsaid. */
+  kind?: ToastKind;
   /** The raw failure, for the console. Never rendered. */
   cause?: unknown;
+}
+
+export interface Toast extends ToastDraft {
+  /** Stable per toast, so a list can key on it and a dismiss can name one. */
+  id: number;
+  kind: ToastKind;
   /**
-   * How many times this same messageKey arrived in a row. 1 for a fresh toast.
-   * A number, so the component renders it in font-mono and pluralises it.
+   * How many times this same operation failed this same way in a row. 1 for a
+   * fresh toast. A number, so the component renders it in font-mono and
+   * pluralises it.
    */
   count: number;
 }
 
 export interface ToastSlice {
   toasts: readonly Toast[];
-  pushToast(messageKey: string, cause?: unknown): Toast;
+  pushToast(draft: ToastDraft): Toast;
   dismissToast(id: number): void;
   clearToasts(): void;
 }
@@ -73,7 +96,7 @@ export interface ToastSlice {
 export const createToastSlice: StateCreator<AppState, [], [], ToastSlice> = (set, get) => ({
   toasts: [],
 
-  pushToast(messageKey, cause) {
+  pushToast({ operationKey, messageKey, kind = 'failure', cause }) {
     const toasts = get().toasts;
     const newest = toasts[toasts.length - 1];
 
@@ -82,10 +105,17 @@ export const createToastSlice: StateCreator<AppState, [], [], ToastSlice> = (set
     // costs a line in the log. It is also never swallowed: something that
     // failed always leaves a trace somebody can read.
     if (cause !== undefined) {
-      console.error('[nexus]', messageKey, cause);
+      console.error('[nexus]', operationKey, messageKey, cause);
     }
 
-    if (newest !== undefined && newest.messageKey === messageKey) {
+    // The SAME operation failing the SAME way. A different operation with the
+    // same outcome is a different toast: collapsing those would hide which two
+    // things failed, which is the whole point of naming the operation.
+    if (
+      newest !== undefined &&
+      newest.messageKey === messageKey &&
+      newest.operationKey === operationKey
+    ) {
       // The same thing again: bump the count, keep the id (so React keeps the
       // element and the dismiss button the user may be pointing at), and carry
       // the newest cause. The new object is what tells the component to restart
@@ -95,7 +125,7 @@ export const createToastSlice: StateCreator<AppState, [], [], ToastSlice> = (set
       return repeated;
     }
 
-    const toast: Toast = { id: nextId, messageKey, cause, count: 1 };
+    const toast: Toast = { id: nextId, operationKey, messageKey, kind, cause, count: 1 };
     nextId += 1;
 
     // slice(-TOAST_CAP) rather than shift-while-too-long: one expression, and

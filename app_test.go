@@ -303,3 +303,56 @@ func TestBoardThroughTheBoundSurface(t *testing.T) {
 		}
 	})
 }
+
+// A real refusal, through the real bound method, carries its code on the wire
+// (D25, S3-08).
+//
+// This is the Go half of "a project may not enter doing renders as a rule
+// rather than as a malfunction". It builds a real database, a real service
+// stack and a real App, and looks at exactly what Wails would hand the
+// frontend: err.Error(). The frontend half —
+// frontend/src/components/Toast.test.tsx — asserts the same string turns into
+// the localised sentence, in both languages.
+//
+// No test anywhere may assert on the PROSE in front of the token. That is why
+// the assertion below is `Contains(code)` and not an equality against a
+// message: a Go error message is not an API.
+func TestARefusalCrossesTheBoundaryWithItsCode(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+
+	db, err := openStore(context.Background())
+	if err != nil {
+		t.Fatalf("openStore: %v", err)
+	}
+	defer db.Close() //nolint:errcheck // the test is over either way
+
+	app := NewApp(newServices(db))
+
+	project, err := app.CreateNode(service.NewNode{Type: domain.NodeTypeProject, Title: "Nexus"})
+	if err != nil {
+		t.Fatalf("CreateNode: %v", err)
+	}
+
+	_, err = app.MoveToColumn(project.ID, string(domain.StatusDoing))
+	if err == nil {
+		t.Fatal("MoveToColumn put a project into doing; D9 says it never enters doing")
+	}
+
+	want := "[" + service.RefusalMarker + "project-never-doing]"
+	if !strings.Contains(err.Error(), want) {
+		t.Errorf("MoveToColumn refused with %q, want it to carry %q so the frontend can name the rule", err, want)
+	}
+
+	t.Run("and an error that is no refusal carries nothing", func(t *testing.T) {
+		// A node that does not exist is a failure, not a rule declining. It
+		// must NOT be dressed up as one: the frontend would render a sentence
+		// explaining a rule that had nothing to do with it.
+		_, err := app.MoveToColumn("no-such-node", string(domain.StatusToday))
+		if err == nil {
+			t.Fatal("MoveToColumn accepted a node that does not exist")
+		}
+		if strings.Contains(err.Error(), service.RefusalMarker) {
+			t.Errorf("MoveToColumn tagged %q as a refusal; an error in no table is a failure", err)
+		}
+	})
+}

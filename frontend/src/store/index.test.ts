@@ -146,8 +146,16 @@ describe('a rejected call', () => {
 
     await store.getState().loadBoard();
 
-    expect(console.error).toHaveBeenCalledWith('[nexus]', GO_ERROR_KEY, cause);
+    // The operation rides along in the log too (D25): "which of these three
+    // failed" is a question the console has to answer as well as the screen.
+    expect(console.error).toHaveBeenCalledWith(
+      '[nexus]',
+      'toast.operation.loadBoard',
+      GO_ERROR_KEY,
+      cause,
+    );
     expect(store.getState().toasts[0].messageKey).toBe(GO_ERROR_KEY);
+    expect(store.getState().toasts[0].operationKey).toBe('toast.operation.loadBoard');
   });
 });
 

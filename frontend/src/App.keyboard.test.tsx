@@ -205,7 +205,7 @@ describe('navigating the board with the keyboard', () => {
     // is region 5, the board is region 3, and today those are the two regions
     // with anything in them.
     const store = storeOver(movingGo().client);
-    store.getState().pushToast('toast.error.body');
+    store.getState().pushToast({ operationKey: 'toast.operation.move', messageKey: 'toast.error.body' });
     const user = await enterTheBoard(store);
 
     expect(focusedCardId()).toBe('a');
@@ -312,7 +312,7 @@ describe('the global shortcuts', () => {
     // Focus is deliberately parked on the toast's dismiss button — a region the
     // board does not own — before every press.
     const store = storeOver(movingGo().client);
-    store.getState().pushToast('toast.error.body');
+    store.getState().pushToast({ operationKey: 'toast.operation.move', messageKey: 'toast.error.body' });
     const user = await enterTheBoard(store);
 
     await user.tab();
@@ -402,7 +402,7 @@ describe('the focus ring', () => {
     // tabindex and no native focusability never matches :focus-visible at all,
     // which is the other way to have an invisible focus ring.
     const store = storeOver(movingGo({ 0: ['a1', 'a2'], 1: ['b1'] }).client);
-    store.getState().pushToast('toast.error.body');
+    store.getState().pushToast({ operationKey: 'toast.operation.move', messageKey: 'toast.error.body' });
 
     return enterTheBoard(store).then(() => {
       const reachable = [...document.querySelectorAll<HTMLElement>('[data-node-id], button')];

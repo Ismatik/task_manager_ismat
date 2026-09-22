@@ -2,7 +2,7 @@ import type { StateCreator } from 'zustand';
 
 import { applyAppearance, revealAfterBoot } from '../lib/appearance';
 import type { SettingsView } from '../lib/client';
-import { GO_ERROR_KEY } from './call';
+import { outcomeOf } from './call';
 import type { AppState } from './index';
 
 // Nexus — the settings slice: the four persisted preferences (D6), held exactly
@@ -19,7 +19,11 @@ import type { AppState } from './index';
 // A refusal therefore does not "roll back to the previous value" — it RE-READS
 // and applies whatever the service reports, because the service is the only
 // thing that knows whether the write was refused, partly applied or normalised.
-// One toast; the Go error goes to the console.
+// One toast; the Go error goes to the console. The toast NAMES THE SETTING the
+// user was changing (D25) — "changing the theme" is a different sentence from
+// "changing the language", and a stack of two that both said "something went
+// wrong" would be unreadable. The verdict (a rule refused, or something broke)
+// is store/call.ts's, from the code Go sent.
 
 export interface SettingsSlice {
   /** The last view the service returned, or null before the first read. */
@@ -43,8 +47,8 @@ export const createSettingsSlice: StateCreator<AppState, [], [], SettingsSlice> 
   };
 
   /** One toast, then the service's own answer. */
-  const refused = async (cause: unknown): Promise<SettingsView | null> => {
-    get().pushToast(GO_ERROR_KEY, cause);
+  const refused = async (operationKey: string, cause: unknown): Promise<SettingsView | null> => {
+    get().pushToast({ operationKey, ...outcomeOf(cause), cause });
 
     try {
       return adopt(await get().client.Settings());
@@ -60,13 +64,14 @@ export const createSettingsSlice: StateCreator<AppState, [], [], SettingsSlice> 
   };
 
   const write = async (
+    operationKey: string,
     operation: (value: string) => Promise<SettingsView>,
     value: string,
   ): Promise<SettingsView | null> => {
     try {
       return adopt(await operation(value));
     } catch (cause) {
-      return refused(cause);
+      return refused(operationKey, cause);
     }
   };
 
@@ -77,7 +82,7 @@ export const createSettingsSlice: StateCreator<AppState, [], [], SettingsSlice> 
       try {
         return adopt(await get().client.Settings());
       } catch (cause) {
-        get().pushToast(GO_ERROR_KEY, cause);
+        get().pushToast({ operationKey: 'toast.operation.loadSettings', ...outcomeOf(cause), cause });
         // The markup's static default stays in force, and the boot gate comes
         // off regardless: a failed read must not leave a blank window.
         revealAfterBoot(get().view.document);
@@ -85,9 +90,9 @@ export const createSettingsSlice: StateCreator<AppState, [], [], SettingsSlice> 
       }
     },
 
-    setPalette: (value) => write(get().client.SetPalette, value),
-    setTheme: (value) => write(get().client.SetTheme, value),
-    setAccent: (value) => write(get().client.SetAccent, value),
-    setLanguage: (value) => write(get().client.SetLanguage, value),
+    setPalette: (value) => write('toast.operation.setPalette', get().client.SetPalette, value),
+    setTheme: (value) => write('toast.operation.setTheme', get().client.SetTheme, value),
+    setAccent: (value) => write('toast.operation.setAccent', get().client.SetAccent, value),
+    setLanguage: (value) => write('toast.operation.setLanguage', get().client.SetLanguage, value),
   };
 };

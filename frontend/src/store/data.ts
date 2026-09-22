@@ -261,7 +261,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
   timer: null,
 
   async loadBoard() {
-    const board = await callGo(get(), () => get().client.Board());
+    const board = await callGo(get(), 'toast.operation.loadBoard', () => get().client.Board());
     if (board === null) {
       return null;
     }
@@ -271,7 +271,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
   },
 
   async loadHabits() {
-    const habits = await callGo(get(), () => get().client.HabitStrip());
+    const habits = await callGo(get(), 'toast.operation.loadHabits', () => get().client.HabitStrip());
     if (habits === null) {
       return null;
     }
@@ -281,7 +281,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
   },
 
   async loadTimer() {
-    const timer = await callGo(get(), () => get().client.TimerCurrent());
+    const timer = await callGo(get(), 'toast.operation.loadTimer', () => get().client.TimerCurrent());
     if (timer === null) {
       return null;
     }
@@ -296,7 +296,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
   },
 
   async moveToColumn(nodeId, status) {
-    if ((await callGo(get(), () => get().client.MoveToColumn(nodeId, status))) === null) {
+    if ((await callGo(get(), 'toast.operation.move', () => get().client.MoveToColumn(nodeId, status))) === null) {
       // Refused — a project to doing (D9), say. callGo already raised the one
       // toast, and the board is untouched, so the card has not moved and
       // focus is still on it.
@@ -312,7 +312,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
   },
 
   async setPriority(nodeId, priority) {
-    if ((await callGo(get(), () => get().client.SetPriority(nodeId, priority))) === null) {
+    if ((await callGo(get(), 'toast.operation.setPriority', () => get().client.SetPriority(nodeId, priority))) === null) {
       // Refused — a value outside 1..4, or a node that is no longer there.
       // callGo already raised the one toast, and nothing local was touched, so
       // there is nothing on screen claiming the change happened.
@@ -371,12 +371,14 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
 
     const answer =
       source === destination
-        ? await callGo(get(), () =>
+        ? await callGo(get(), 'toast.operation.reorder', () =>
             // '' is app.go's wire spelling of "no parent": there is no Go nil
             // to send, and the binding turns the empty string back into one.
             get().client.MoveNode(nodeId, moving.node.parentId ?? '', to.index),
           )
-        : await callGo(get(), () => get().client.MoveToColumn(nodeId, to.status));
+        : await callGo(get(), 'toast.operation.move', () =>
+            get().client.MoveToColumn(nodeId, to.status),
+          );
 
     // Unconditional, and that is the point of it. Accepted, Go's answer
     // replaces the guess — with the rewritten due date (D8) and the cascade
@@ -410,7 +412,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
     // UncheckHabitToday take a node id and nothing else, and Go answers with
     // domain.Today(clock) — the same today `checkedToday` was derived against
     // in the strip this optimism just edited (S2-18).
-    const answer = await callGo(get(), () =>
+    const answer = await callGo(get(), 'toast.operation.checkHabit', () =>
       before.checkedToday
         ? get().client.UncheckHabitToday(nodeId)
         : get().client.CheckHabitToday(nodeId),
@@ -449,7 +451,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
       activity: undefined,
     } as NewNode;
 
-    const created = await callGo(get(), () => get().client.CreateNode(draft));
+    const created = await callGo(get(), 'toast.operation.create', () => get().client.CreateNode(draft));
     if (created === null) {
       return null;
     }
@@ -467,7 +469,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
   },
 
   async startTimer(nodeId) {
-    const timer = await callGo(get(), () => get().client.TimerStart(nodeId));
+    const timer = await callGo(get(), 'toast.operation.startTimer', () => get().client.TimerStart(nodeId));
     if (timer === null) {
       return false;
     }
@@ -478,7 +480,7 @@ export const createDataSlice: StateCreator<AppState, [], [], DataSlice> = (set, 
   },
 
   async stopTimer() {
-    const timer = await callGo(get(), () => get().client.TimerStop());
+    const timer = await callGo(get(), 'toast.operation.stopTimer', () => get().client.TimerStop());
     if (timer === null) {
       return false;
     }

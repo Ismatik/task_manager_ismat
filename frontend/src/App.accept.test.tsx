@@ -420,7 +420,7 @@ describe('the Russian audit', () => {
     await user.keyboard(`${THE_TITLE}{Enter}`);
     await waitFor(() => expect(focusedCardId()).toBe('new-1'));
 
-    store.getState().pushToast('toast.error.body');
+    store.getState().pushToast({ operationKey: 'toast.operation.move', messageKey: 'toast.error.body' });
 
     return { user, store };
   }
@@ -519,7 +519,7 @@ describe('the Russian audit', () => {
     const store = storeOver(go.client);
     const user = await openTheApp(store, language);
 
-    store.getState().pushToast('toast.error.body');
+    store.getState().pushToast({ operationKey: 'toast.operation.move', messageKey: 'toast.error.body' });
 
     expect(screen.getByRole('banner'), 'region 1').toBeInTheDocument();
     expect(await screen.findByRole('checkbox'), 'region 2').toBeInTheDocument();
@@ -559,7 +559,7 @@ describe('the accessibility audit', () => {
     await openTheApp(store);
     await screen.findByRole('checkbox');
 
-    store.getState().pushToast('toast.error.body');
+    store.getState().pushToast({ operationKey: 'toast.operation.move', messageKey: 'toast.error.body' });
     await screen.findByRole('alert');
 
     const interactive = [
