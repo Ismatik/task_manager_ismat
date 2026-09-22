@@ -98,6 +98,24 @@ capture_state() {
   local data="$PWD/$OUT/data/$fixture"
   local runtime="$PWD/$OUT/run"
 
+  # Everything this harness claims about never opening the user's database
+  # rests on the line above. internal/store/db.go honours XDG_DATA_HOME only
+  # when it is absolute and otherwise falls back to ~/.local/share WITHOUT
+  # failing, so a relative path here would not break the run: it would succeed
+  # against the wrong database, seed rows into it, and walk past both checks
+  # below with a window and a non-blank frame. A comment cannot catch that
+  # (D17), so the next line is an assertion instead of a note. $runtime is
+  # deliberately not covered: platform.RuntimeDir() takes XDG_RUNTIME_DIR as
+  # given, so a relative one resolves against this process's directory and
+  # lands under the repo, which cannot be anyone else's socket.
+  case "$data" in
+  /*) ;;
+  *) die "XDG_DATA_HOME would not be absolute: $data
+      internal/store/db.go ignores a relative XDG_DATA_HOME and falls back to
+      ~/.local/share/nexus/nexus.db, so this run would seed and photograph the
+      user's own database instead of a throwaway one." ;;
+  esac
+
   mkdir -p "$data" "$runtime"
   # Only ever inside our own throwaway runtime directory.
   rm -f "$runtime/nexus/ipc.sock"
