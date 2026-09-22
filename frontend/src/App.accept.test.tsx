@@ -372,12 +372,19 @@ describe('the ACCEPT criterion, driven by keys alone', () => {
 // `shrink-0` on a max-content localised string holds the box at the width of its
 // longest line just as surely. So the fix was not to add a fifth word to the
 // list. **The audit changed shape**: it now asks, of every element carrying
-// text, whether every class it wears that could decide the question is on a
-// short PERMITTED list. A utility nobody has used yet is caught the day it is
-// first used, because the default answer is "no", and permitting one is an edit
-// to a list in src/test/shrink.ts that a reviewer reads.
+// text, whether every class it wears is one that CANNOT decide the question.
 //
-// An enumeration of mechanisms is a guess about the future. An allow-list is not.
+// The default answer is no. A utility nobody has used yet — including one from a
+// Tailwind that does not exist yet — is reported the day it is first used, and
+// permitting it is an edit to a list in src/test/shrink.ts that a reviewer
+// reads. That sentence was written here once before S3-10 while the module still
+// judged a token only if it matched one of seven enumerated families, so
+// `text-nowrap` and `size-24` walked straight past it; shrink.test.ts now proves
+// the claim with utilities outside every family the module names, and with a
+// 357-utility corpus measured against the installed Tailwind.
+//
+// An enumeration of the mechanisms that clip is a guess about the future.
+// An enumeration of the ones that cannot fails loudly instead of silently.
 
 describe('the Russian audit', () => {
   /** The whole assembled screen, in Russian, with every region non-empty. */
