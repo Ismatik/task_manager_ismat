@@ -37,9 +37,10 @@
   the out-of-scope line contradicted the brief on *set priority* (see
   [The plan correction](#the-plan-correction--set-priority-from-the-palette-is-stage-2)).
 - **[Stage 3 — Defect remediation, then Detail + Tree + Search/Archive](#stage-3--defect-remediation-then-detail--tree--searcharchive):
-  IN PROGRESS; block A OPEN.** Thirty-five tickets, **S3-01 … S3-35**, in **two blocks**.
+  IN PROGRESS; block A OPEN and code-complete.** Thirty-eight tickets, **S3-01 … S3-38**, in
+  **two blocks**.
   **Block A, [S3-01 … S3-09](#block-a--the-blocking-defect-block-s3-01--s3-09) plus
-  [S3-30 … S3-35](#added-to-block-a-after-the-block-a-review--s3-30--s3-35), is
+  [S3-30 … S3-36](#added-to-block-a-after-the-block-a-review--s3-30--s3-36), is
   blocking**: the user ran the app by hand on real hardware after Stage 2 closed and found
   **nine defects** — recorded as **K6 – K14** in [`PLAN.md` §7](./PLAN.md) and ruled as
   **D18 – D26** — and their condition for proceeding was *"if these details are resolved in
@@ -51,12 +52,17 @@
   been answered by the user and are CLOSED**: **OQ1 → Inter** (unblocking S3-06) and
   **OQ2 → the middle option**, which puts `COUNT` and `UNTIL` into the recurrence language
   (**D27**, **D28**) and adds **S3-19** — both in [`PLAN.md` §7](./PLAN.md).
-  **The block A review returned PASS on the code** (`c32a1c9..b53f1a4`), and **S3-30,
-  S3-31, S3-33 and S3-34 have since shipped green at `c3c954e`** (five gates, guard 8/8,
-  **374 front-end tests across 29 files**, cover **100.0% / 94.0%**). Block A stays open
-  on **S3-06** (blocked on the user running `npm install @fontsource/inter`), on **S3-32**,
-  on **S3-35** — the sixth ticket, raised by S3-34's own report and ruled by **D34**
-  (**K17**) — and on **S3-09**, the hand pass. **This machine can take screenshots and
+  **The block A review returned PASS on the code** (`c32a1c9..b53f1a4`), and **S3-30 … S3-35
+  and S3-06 have all since shipped green at `735ece1`** (five gates, guard 8/8,
+  **389 front-end tests across 30 files**, cover **100.0% / 94.0%**). **Two further Reviewer
+  runs returned PASS on S3-06 and S3-32, and PASS with one blocking issue on S3-30, S3-31,
+  S3-33, S3-34 and S3-35 — an issue entirely in prose the PM owns** (the `refuse()`
+  call-site count, corrected a second time in **D30**/**K16**, this time from a measurement
+  rather than from a grep that could not see the generic form). Block A stays open on
+  **S3-36** — the seventh ticket, raised by S3-32's review and ruled by **D36** (**K18**),
+  one line that stops `make shots` silently seeding the user's real database — and on
+  **S3-09**, the hand pass. **S3-37 and S3-38** (**K19**, **D36**) are block B tickets and
+  **do not** gate it; they run before S3-20. **This machine can take screenshots and
   always could** (**E4**): that correction discharged two of Stage 2's five owed checks,
   confirmed **K8** fixed on real paint, found **K15** and has since **confirmed K15 fixed**.
   **E4 itself has now been corrected once more**: the cause of a blank capture is
@@ -64,7 +70,7 @@
   on this machine. **K7, the resize defect the user reported, stays structurally unreachable
   here** — there is no window manager, so the window cannot be resized at all.
 
-Decisions referenced as **D1–D34 / E1–E4** and known issues **K1–K17** live in
+Decisions referenced as **D1–D36 / E1–E4** and known issues **K1–K19** live in
 [`PLAN.md` §7](./PLAN.md). Four decisions were confirmed by the user *during* Stage 1
 and are recorded there — **D8** (a column move always overwrites the due date),
 **D9** (type beats leaf-ness — a project is never timeable), **D10** (a node with no
@@ -4632,38 +4638,48 @@ red** until the frontend offers it.
 
 ## Stage 3 — Defect remediation, then Detail + Tree + Search/Archive
 
-**Status: IN PROGRESS. Block A is OPEN; block B has not started.** Thirty-five tickets,
-**S3-01 … S3-35**, one conventional commit each, in **two blocks**.
+**Status: IN PROGRESS. Block A is OPEN and code-complete; block B has not started.**
+Thirty-eight tickets, **S3-01 … S3-38**, one conventional commit each, in **two blocks**.
 
 **Block A — [S3-01 … S3-09](#block-a--the-blocking-defect-block-s3-01--s3-09) and
-[S3-30 … S3-35](#added-to-block-a-after-the-block-a-review--s3-30--s3-35) — is
+[S3-30 … S3-36](#added-to-block-a-after-the-block-a-review--s3-30--s3-36) — is
 blocking, and blocking is meant literally: no ticket from S3-10 onwards may be started
 until every ticket in block A is committed and `make check`, `make cover`,
 `make front-test` and `make guard` are all green at the end of it.** That is the user's
 condition, in their words: *"if these details are resolved in the next steps, we are good
 to go."*
 
-> **Where block A stands — at `c3c954e`.** The Reviewer returned **PASS on the code** for
-> `c32a1c9..b53f1a4` — S3-01, S3-02, S3-03, S3-04, S3-05, S3-07 and S3-08, including the
-> four re-opened corrections recorded inside those tickets. **S3-30, S3-31, S3-33 and S3-34
-> have since shipped and are green**: five gates, `make guard` 8/8 with `GUARD_ALLOW_RE`
-> empty, `make front-test` **374 tests across 29 files**, `make cover` domain **100.0%** /
-> service **94.0%**. Block A stays **open** on:
+> **Where block A stands — at `735ece1`, and it is CODE-COMPLETE.** The Reviewer returned
+> **PASS on the code** for `c32a1c9..b53f1a4` — S3-01, S3-02, S3-03, S3-04, S3-05, S3-07 and
+> S3-08, including the four re-opened corrections recorded inside those tickets.
+> **S3-30 … S3-35 and S3-06 have all since shipped and are green**: five gates, `make guard`
+> 8/8 with `GUARD_ALLOW_RE` empty, `make front-test` **389 tests across 30 files**,
+> `make cover` domain **100.0%** / service **94.0%**.
 >
-> - **S3-06**, blocked on the user running `npm install @fontsource/inter`;
-> - **S3-32**, the capture harness — **its recipe was corrected this pass**: the cause of a
->   blank capture is `GDK_BACKEND` / `WAYLAND_DISPLAY`, **not** the `WEBKIT_DISABLE_*` pair,
->   which does nothing here (**E4**);
-> - **S3-35**, added after S3-34's own report (**K17**, **D34**) — the component sweep's
->   non-recursive glob, and the **third** named condition on starting block B;
+> **Two further Reviewer runs then reported.** **PASS** on S3-06 and S3-32. **PASS with one
+> blocking issue** on S3-30, S3-31, S3-33, S3-34 and S3-35 — **and the blocking issue was
+> entirely in prose the PM owns**: the `refuse()` call-site count, corrected once from 27 to
+> 26 and still wrong, because `grep -c 'refuse('` is blind to `refuse[T](…)`. It is **28**.
+> Fixed at the head of **S3-30**, in the **S3-08** postscript, and in **D30**/**K16**, each
+> with the command that measures it. **No code was affected.**
+>
+> Block A stays **open** on:
+>
+> - **S3-36**, one `case` statement in `scripts/shots/capture.sh` so that a relative
+>   `XDG_DATA_HOME` is refused instead of silently redirecting the harness at the user's real
+>   database (**K18**, **D36**) — the **fourth** named condition on starting block B, and the
+>   only one whose failure mode is irreversible;
 > - **S3-09**, the hand pass, which is still the gate into block B.
 >
-> **Execution order from here: S3-06 → S3-32 → S3-35 → S3-09.** S3-06 before S3-32 because
-> Russian typography is what S3-32 photographs; S3-35 touches one test file and has no
-> ordering edge, so it may land at any point before S3-09.
+> **Execution order from here: S3-36 → S3-09.**
 >
 > **Shipped in this block after the PASS:** S3-30 (`c50cf24`), S3-31 (`e7868c8`),
-> S3-33 (`f8baa76`), S3-34 (`c3c954e`).
+> S3-33 (`f8baa76`), S3-34 (`c3c954e`), S3-35 (`8ac8552`), S3-06 (`7f75cc2`, with the
+> dependency itself added by the user at `2910aca`), S3-32 (`735ece1`).
+>
+> **Not block A: S3-37 and S3-38** (**K19**, **D36**) — the two sweeps assert less than
+> their comments claim. They run inside block B, before S3-20, and are **not** conditions on
+> starting it.
 
 **Block B — S3-10 … S3-29 — is the feature stage** from `PLAN.md` §5: the task detail
 panel, the tree view, search and archive, plus **C6** and `README.md`.
@@ -4823,7 +4839,19 @@ ticket that adds it, not a hope.
 
 | Package | Ticket | Why it, and not hand-rolled |
 |---|---|---|
-| `@fontsource/inter` | S3-06 | **K11**: neither UI face has a Cyrillic glyph, so 81 of `ru.json`'s 82 leaves render in the system `sans-serif`. **Inter is the user's choice (OQ1, closed)**, one face registered under **both** family names. Vendored exactly as the three existing faces are — **woff2 files from `node_modules`, fingerprinted into `dist/assets`, no CDN, no `<link>`, no runtime fetch**, and that is an acceptance criterion and not a hope. **This is a new dependency and S3-06's commit body must say so explicitly.** The Dev verifies Inter's real coverage from the package's own `unicode.json` before committing — the name is not the evidence. |
+| `@fontsource/inter` | S3-06 | **K11**: neither UI face has a Cyrillic glyph, so 81 of `ru.json`'s 82 leaves render in the system `sans-serif`. **Inter is the user's choice (OQ1, closed)**, one face registered under **both** family names. Vendored exactly as the three existing faces are — **woff2 files from `node_modules`, fingerprinted into `dist/assets`, no CDN, no `<link>`, no runtime fetch**, and that is an acceptance criterion and not a hope. **This is a new dependency and S3-06's commit body must say so explicitly.** The Dev verifies Inter's real coverage from the package's own `unicode.json` before committing — the name is not the evidence. **Shipped across two commits: `2910aca` (the user's own, `package.json`/lockfile only) and `7f75cc2` (S3-06 proper) — see the note below.** |
+
+> **`2910aca` is recorded against S3-06, and that is what this row's rule required.**
+> `@fontsource/inter@^5.3.0` was added to `package.json` and the lockfile by **the user, in
+> their own commit**, outside any ticket and not in conventional form (*"Configuration
+> addition:New font added - inter."*). It is pushed, and **this project does not rewrite
+> pushed history**, so the commit stands as it is. The rule this table states — *a new
+> dependency is declared against a ticket* — is satisfied **here, in writing**, and the
+> compliance work the rule exists for is done by **`7f75cc2`**, which declares the
+> dependency in its body, quotes the subsets read from `unicode.json`, names the emitted
+> woff2 files and records the bundle delta. The Reviewer ruled it **noted, not blocking**,
+> and the PM agrees: the artefact the rule wants is the written justification, and it exists.
+> **The ledger entry is the correction**: `2910aca` → **S3-06**.
 | `react-markdown` + `remark-gfm` | S3-20 | The brief specifies a Markdown editor **and preview**. A hand-rolled renderer is a security surface and a correctness sink. **`react-markdown` does not render raw HTML by default, and `rehype-raw` must NOT be added** — a local-only app rendering arbitrary HTML from its own database is a needless hole. Both are pure-JS, bundled, no network. |
 
 **Nothing else, and OQ2's answer does not change that.** In particular: **no RRULE
@@ -4894,6 +4922,7 @@ fixed at the source, and no Stage 3 ticket may be the first to allow-list one.
 | [S3-33](#s3-33--test-the-shrink-audit-states-only-what-is-true-of-it-d32) | The shrink audit states only what is true of it (**D32**) | `test:` |
 | [S3-34](#s3-34--test-the-store-sweep-is-recursive-test-free-and-non-vacuous-d32) | The store sweep is recursive, test-free and non-vacuous (**D32**) — the Reviewer's second condition | `test:` |
 | [S3-35](#s3-35--test-the-component-sweep-is-recursive-too-k17-d34) | **The component sweep is recursive too** (**K17**, **D34**) — the PM's third condition on starting block B | `test:` |
+| [S3-36](#s3-36--build-the-capture-harness-refuses-a-relative-data-directory-k18-d36) | **The capture harness refuses a relative data directory** (**K18**, **D36**) — the PM's fourth condition, and the one whose failure is irreversible | `build:` |
 | [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) | **The hand pass that closes the blocking block** | `test:` |
 | **Block B — the feature stage** | | |
 | [S3-10](#s3-10--featservice-nodedetail--the-one-read-the-panel-renders) | `NodeDetail` — the one read the panel renders | `feat:` |
@@ -4906,6 +4935,8 @@ fixed at the source, and no Stage 3 ticket may be the first to allow-list one.
 | [S3-17](#s3-17--featservice-the-archive-list-and-restore) | The archive list and restore | `feat:` |
 | [S3-18](#s3-18--featservice-publish-every-enum-set-c6-d26) | Publish every enum set (**C6**, **D26**) | `feat:` |
 | [S3-19](#s3-19--featdomain-count-and-until-enter-the-recurrence-language-d27-d28) | **`COUNT` and `UNTIL` enter the recurrence language** (**D27**, **D28**) — **S3-23 is blocked on it** | `feat:` |
+| [S3-37](#s3-37--test-the-sweeps-assert-the-glob-their-comments-describe-k19-d36) | The sweeps assert the glob their comments describe (**K19**, **D36**) — **before S3-20**, not a block B gate | `test:` |
+| [S3-38](#s3-38--test-the-component-sweep-names-a-wrong-directory-glob-k19-d36) | The component sweep names a wrong-directory glob (**K19**, **D36**) — **before S3-20**, not a block B gate | `test:` |
 | [S3-20](#s3-20--featfrontend-the-detail-slide-over--shell-keyboard-markdown) | **The detail slide-over** — shell, keyboard, Markdown | `feat:` |
 | [S3-21](#s3-21--featfrontend-the-panels-field-editors) | The panel's field editors | `feat:` |
 | [S3-22](#s3-22--featfrontend-inline-subtasks) | Inline subtasks | `feat:` |
@@ -4930,23 +4961,33 @@ fixed at the source, and no Stage 3 ticket may be the first to allow-list one.
   is reducing.
 - **S3-06, S3-07 and S3-08 touch none of those files** and could in principle move, but
   they are kept after the layout work so the hand pass in S3-09 sees one settled screen.
-- **The six tickets added after the block A review go between S3-08 and S3-09, in the
-  order S3-30 → S3-31 → S3-32 → S3-33 → S3-34 → S3-35**, and only two of those edges are
+- **The seven tickets added after the block A review go between S3-08 and S3-09, in the
+  order S3-30 → S3-31 → S3-32 → S3-33 → S3-34 → S3-35 → S3-36**, and only three of those
+  edges are
   real: **S3-31 before S3-32**, because there is no point photographing a board whose
-  columns are about to change height; and **S3-06 before S3-32**, because Russian typography
+  columns are about to change height; **S3-06 before S3-32**, because Russian typography
   in the designed family is one of the things the captures exist to show — if S3-06 is still
   blocked on the user when S3-32 lands, the RU captures are re-taken after it and the
-  ticket says so. S3-30, S3-33, S3-34 and S3-35 touch disjoint files and may land in any
-  order among themselves. **S3-30, S3-31, S3-33 and S3-34 have shipped**; the remaining
-  order is **S3-06 → S3-32 → S3-35 → S3-09**, with S3-35 free to move anywhere before
-  S3-09.
-- **S3-30, S3-34 and S3-35 gate block B by name, not merely by being in block A.** The
-  first two are the Reviewer's stated conditions; **S3-35 is a PM ruling (D34)** and is
-  argued rather than asserted. All three are about the same decay, in three places: block B
-  adds **bound methods** (which is what S3-30 forces through `refuse()`), **store surface**
-  (which is what S3-34 stops the toast sweep from silently missing) and **components**
-  (which is what S3-35 stops the D19 resize-workaround sweep from silently missing — and
-  that sweep is the *only* enforcement **K7** has on this machine).
+  ticket says so; and **S3-32 before S3-36**, trivially, because S3-36 edits the script
+  S3-32 creates. S3-30, S3-33, S3-34 and S3-35 touch disjoint files and may land in any
+  order among themselves. **S3-30 … S3-35 and S3-06 have all shipped, at `735ece1`**; the
+  remaining order is **S3-36 → S3-09**.
+- **S3-30, S3-34, S3-35 and S3-36 gate block B by name, not merely by being in block A.**
+  The first two are the Reviewer's stated conditions; **S3-35 and S3-36 are PM rulings
+  (D34, D36)** and are argued rather than asserted. The first three are about the same decay
+  in three places: block B adds **bound methods** (which is what S3-30 forces through
+  `refuse()`), **store surface** (which is what S3-34 stops the toast sweep from silently
+  missing) and **components** (which is what S3-35 stops the D19 resize-workaround sweep
+  from silently missing — and that sweep is the *only* enforcement **K7** has on this
+  machine). **S3-36 is a different kind and is ranked first among the four**: it is not decay
+  but **irreversibility** — `make shots`' *"it cannot touch the user's database"* rests
+  entirely on a comment, and block B is when that script is edited repeatedly, by **S3-29**
+  and by every new screen added to the matrix.
+- **S3-37 and S3-38 are NOT block B gates**, and that is a deliberate ruling (**D36**). They
+  run **between S3-19 and S3-20**, because S3-20 … S3-28 are when the component sweep starts
+  carrying real weight and its comment starts being read as a guarantee. Their failure mode
+  needs a **deliberate** edit to a glob, where **K17**'s arrived from ordinary work — which
+  is the whole difference between gating block B and running inside it.
 - **Inside block B: every Go ticket before the frontend ticket that calls it.**
   S3-10 … S3-19 are Go and touch no `frontend/src` file except the regenerated
   `frontend/wailsjs`. **S3-20 before S3-21 … S3-24**, which fill the panel it creates.
@@ -5000,11 +5041,11 @@ children of S3-20's panel and become reachable when it opens.
 
 ### Block A — the blocking defect block (S3-01 … S3-09)
 
-**Nine tickets — and six more, [S3-30 … S3-35](#added-to-block-a-after-the-block-a-review--s3-30--s3-35),
-added after the block A review returned PASS. None of block B starts until all fifteen
-are committed and green**, and three of them — **S3-30**, **S3-34** and **S3-35** — are
-named conditions on starting it (the first two the Reviewer's, the third a PM ruling,
-**D34**).
+**Nine tickets — and seven more, [S3-30 … S3-36](#added-to-block-a-after-the-block-a-review--s3-30--s3-36),
+added after the block A review returned PASS. None of block B starts until all sixteen
+are committed and green**, and four of them — **S3-30**, **S3-34**, **S3-35** and
+**S3-36** — are named conditions on starting it (the first two the Reviewer's, the last two
+PM rulings, **D34** and **D36**).
 
 **Read this before starting any of them.** Most of what these tickets fix is **invisible to
 every mechanical check in this repository**: jsdom has no layout engine, so every
@@ -5500,21 +5541,48 @@ Requirements:
       one writer** in `frontend/src` (`git grep -n '\.lang *=' frontend/src`).
 - [ ] `git diff -- design/` is empty, and `--font-ui` is **not** redefined anywhere in
       `frontend/src`.
-- [ ] `git grep -nE 'https?://' frontend/src` still returns nothing, and
-      `@fontsource/inter`'s files resolve from `node_modules` — the bundle is inspected and
-      the commit body names the emitted woff2 files. **No network fetch at runtime**, which
-      is the acceptance criterion the dependency table demands and not a hope.
+- [ ] **No `https?://` appears in a `src:`, `href`, `fetch` or `import` position anywhere in
+      `frontend/src`**, and `@fontsource/inter`'s files resolve from `node_modules` — the
+      bundle is inspected and the commit body names the emitted woff2 files. **No network
+      fetch at runtime**, which is the acceptance criterion the dependency table demands and
+      not a hope. *(**REWORDED.** This criterion said `git grep -nE 'https?://' frontend/src`
+      **still returns nothing** — and that grep was **already non-empty before S3-06 was
+      written**: `frontend/src/test/node-builtins.d.ts:19` carries
+      `http://localhost:3000/src/style.css` inside a comment explaining jsdom's document
+      origin, added by **S3-01**. S3-06 added **zero** new matches. An unsatisfiable
+      criterion cannot be counted as met, so it is reworded to the predicate the rule was
+      ever about — a URL in a **fetching position**, not a URL in prose. The mechanical
+      enforcement is already better than any grep: `font-coverage.test.ts:322-337` reads
+      **every `@font-face` `src:` off disk** and fails if a face's file is missing or
+      unreadable, which a CDN reference cannot satisfy because a CDN reference is not a
+      path.)*
+- [ ] **The no-network property itself is recorded separately and unambiguously.** It is
+      intact, and it was verified **three ways**: the source contains no fetching URL; every
+      `@font-face` `src:` resolves to a file on disk (`font-coverage.test.ts`); and the
+      built `dist` contains no remote reference. **A stale grep predicate is a documentation
+      defect and is not evidence of a network call** — and the two must not be conflated in
+      either direction: a green grep would not have proved the property either.
 - [ ] **Inter's real coverage was read from
       `node_modules/@fontsource/inter/unicode.json`** — not assumed from the face's name —
       and the commit body quotes the subsets it found, including `U+2116` and `U+0301`.
 - [ ] `make front-test`, `make check` green; the build output size delta is recorded in the
       commit body.
 - [ ] **Stated honestly:** jsdom has **no font engine**. Nothing here proves the Cyrillic UI
-      actually renders in the designed family, or that the header stops wrapping. That is
+      actually renders in the designed family. That is
       [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) item 6, in both
-      palettes.
+      palettes. *(This criterion also said **"or that the header stops wrapping"**. **It
+      does not stop wrapping, and it never could** — see **D35**: captures before and after
+      S3-06 show the Russian header taking two rows **identically**, and in English the four
+      control groups fill one 1024px row with the Apply button flush right and no slack at
+      all. The font was not the cause. S3-09 item 6 is reworded to **wraps rather than
+      clips**, which is **D20**'s actual standard and which the captures satisfy. **The Dev
+      declined to claim this item** off S3-32's "Converted" table because his own capture
+      showed it unmet — and that refusal is why the criterion changed instead of quietly
+      passing.)*
 
 **Commit:** `feat(frontend): vendor a cyrillic ui face and set html lang from settings (S3-06)`
+**Shipped at `7f75cc2`**, with the dependency itself added by the user at `2910aca` —
+recorded against this ticket in the dependency table above.
 
 ---
 
@@ -5644,35 +5712,66 @@ Requirements:
 
 **Commit:** `feat(service): give refusals their own code and name the failed operation (S3-08)`
 
-> **POSTSCRIPT — the count this ticket's record left behind was wrong, and it propagated.**
-> S3-08's shipped surface was recorded as *"27 refusals across 25 bound methods"* and
-> **both figures are wrong**: the bound surface is **22** (`app.go` has 25
-> `func (a *App)` declarations, but `startup`, `context` and `onIPCMessage` are unexported,
-> unbound and do not return `(T, error)`), and the call sites number **26**
-> (`grep -c 'refuse(' app.go` says 27 because `app.go:60` is a doc comment). **S3-08's work
-> is unaffected** — the Reviewer verified its coverage complete, and it is — but the figure
-> was inherited by **K16**, **D30** and **S3-30**, and made S3-30's acceptance criterion
-> *"All 25 current bound methods are found"* unsatisfiable. Corrected in all four places,
-> and kept visible in each, because a number restated in two places and corrected in one is
-> the defect **S3-33** was written to fix, in a smaller costume.
+> **POSTSCRIPT — the count this ticket's record left behind was wrong, it propagated, and
+> the first correction was wrong too.** Three states, kept in order:
+>
+> | Stated | Source | Verdict |
+> |---|---|---|
+> | *"27 refusals across 25 bound methods"* — S3-08's own record | `grep -c 'refuse(' app.go` = 27; a raw count of `func (a *App)` = 25 | **both wrong** |
+> | *"26 call sites across 22 bound methods"* — the correction at `9208248` | 27 minus the doc comment at `app.go:60` | **22 right, 26 wrong** |
+> | **28 call sites across 22 bound methods** | `grep -cE '^[[:space:]]*return refuse[([]' app.go` | **current, measured, reproduced twice** |
+>
+> The bound surface is **22**: `app.go` has 25 `func (a *App)` declarations, but `startup`,
+> `context` and `onIPCMessage` are unexported, unbound and do not return `(T, error)`. The
+> call sites are **28**, and the reason 26 was wrong is that **`grep -c 'refuse('` cannot
+> see the generic instantiation form** — `return refuse[[]service.HabitView](nil, err)` at
+> **`app.go:250`** and **`app.go:259`** spells `refuse[` … `](` and contains no `refuse(`
+> substring. The first correction removed a doc comment from a blind grep and kept the
+> blindness.
+>
+> **The commands, because from here a number in prose carries the command that produced it:**
+>
+> ```sh
+> grep -cE '^func \(a \*App\) [A-Z]'        app.go   # bound methods  -> 22
+> grep -cE '^[[:space:]]*return refuse[([]' app.go   # refuse() sites -> 28
+> ```
+>
+> **S3-08's work is unaffected** — the Reviewer verified its coverage complete, and it is —
+> but the figure was inherited by **K16**, **D30** and **S3-30**, and made S3-30's
+> acceptance criterion *"All 25 current bound methods are found"* unsatisfiable. Corrected
+> in all four places, and **kept visible in each**, because a number restated in two places
+> and corrected in one is the defect **S3-33** was written to fix, in a smaller costume —
+> and because correcting it *wrongly* made that very record self-refuting until now. **The
+> Dev measured it right all along**: `app_refusal_test.go:83` has carried the correct
+> command and the correct integer since `c50cf24`, and the PM's prose is what drifted.
 
 ---
 
-### Added to block A after the block A review — S3-30 … S3-35
+### Added to block A after the block A review — S3-30 … S3-36
 
-**Five were written after the Reviewer returned PASS on `c32a1c9..b53f1a4`, and a sixth —
-S3-35 — came out of S3-34's own report.** They are block A tickets, they run **between
-S3-08 and S3-09**, and three of them — **S3-30**, **S3-34** and **S3-35** — are **conditions
-on starting block B**. The first two are the Reviewer's own; **S3-35 is a PM ruling**
-(**D34**), argued in `PLAN.md` rather than asserted here. Nothing here reopens a passed
+**Five were written after the Reviewer returned PASS on `c32a1c9..b53f1a4`, a sixth —
+S3-35 — came out of S3-34's own report, and a seventh — S3-36 — came out of S3-32's own
+review.** They are block A tickets, they run **between
+S3-08 and S3-09**, and four of them — **S3-30**, **S3-34**, **S3-35** and **S3-36** — are
+**conditions on starting block B**. The first two are the Reviewer's own; **S3-35 and S3-36
+are PM rulings** (**D34**, **D36**), argued in `PLAN.md` rather than asserted here. Nothing
+here reopens a passed
 ticket: S3-33 and S3-34 correct claims made *about* S3-02's and S3-07's work without
-changing what that work does, S3-31 fixes a line neither of them touched, and S3-35 changes
-one glob in one test file.
+changing what that work does, S3-31 fixes a line neither of them touched, S3-35 changes
+one glob in one test file, and S3-36 adds one `case` statement to one shell script.
 
-**Status at `c3c954e`: S3-30, S3-31, S3-33 and S3-34 are committed and green** — five gates,
-`make guard` 8/8 with `GUARD_ALLOW_RE` empty, `make front-test` **374 across 29 files**,
-`make cover` domain **100.0%** / service **94.0%**. **S3-32** and **S3-35** are open, as are
-S3-06 (blocked on the user) and S3-09.
+**Status at `735ece1`: S3-30 … S3-35 are all committed and green, as is S3-06** — five
+gates, `make guard` 8/8 with `GUARD_ALLOW_RE` empty, `make front-test` **389 across 30
+files**, `make cover` domain **100.0%** / service **94.0%**. **Block A is code-complete and
+open on S3-36 and S3-09 only.**
+
+**Two Reviewer runs reported on this group.** **PASS** on S3-06 and S3-32. **PASS with one
+blocking issue** on S3-30, S3-31, S3-33, S3-34 and S3-35 — **and the blocking issue was
+entirely in prose the PM owns**: the `refuse()` call-site count, which had been corrected
+once from 27 to 26 and was still wrong, because `grep -c 'refuse('` cannot see the generic
+instantiation form. It is **28**, measured, and the correction is recorded at the head of
+**S3-30** and in the **S3-08** postscript, with the command that produces it. **No code
+changed; the code was derived from the AST and was never affected.**
 
 ---
 
@@ -5680,27 +5779,65 @@ S3-06 (blocked on the user) and S3-09.
 
 **This is K16, ruled by D30, and it is the Reviewer's explicit condition on starting block
 B.** S3-08 gave refusals their own code and named the failed operation — and it did so
-**by hand: `refuse()` is applied 26 times across the 22 bound methods in `app.go`, and
-nothing mechanical forces a 23rd to call it.**
+**by hand: `refuse()` is applied at 28 call sites across the 22 bound methods in `app.go`,
+and nothing mechanical forces a 23rd to call it.**
 
-> **CORRECTED — this ticket said "27 times across the 25 bound methods" and both figures
-> were wrong.** `app.go` has **25** `func (a *App)` declarations, but three of them —
-> `startup`, `context`, `onIPCMessage` — are **unexported, are not bound by Wails, and do
-> not return `(T, error)`**, so the **bound surface is 22**. And `grep -c 'refuse(' app.go`
-> returns 27 because **`app.go:60` is a doc comment**, not a call — there are **26** call
-> sites. The committed test enumerates and passes at **22**, which clears **D32**'s floor of
-> 20, so **nothing is broken by the error** — but the acceptance criterion *"All 25 current
-> bound methods are found"* **was unsatisfiable as written**, and is corrected below.
+> **CORRECTED TWICE. The call-site figure has been wrong three times; it is 28, and the
+> command that says so is written down beside it.**
+>
+> | Stated | Source | Verdict |
+> |---|---|---|
+> | *"27 times across the 25 bound methods"* | `grep -c 'refuse(' app.go`; raw `func (a *App)` count | **both wrong** |
+> | *"26 call sites across 22 bound methods"* (`9208248`) | 27 minus the doc comment at `app.go:60` | **22 right, 26 wrong** |
+> | **28 call sites across 22 bound methods** | measured, below | **current** |
+>
+> **The bound surface is 22.** `app.go` has **25** `func (a *App)` declarations, but three
+> of them — `startup`, `context`, `onIPCMessage` — are **unexported, are not bound by Wails,
+> and do not return `(T, error)`**.
+>
+> **The call sites are 28, not 26.** `grep -c 'refuse(' app.go` returns 27 because
+> `app.go:60` is a **doc comment** — but subtracting that comment kept the grep's real
+> defect, which is that **`refuse(` is blind to the generic instantiation form**:
+> `return refuse[[]service.HabitView](nil, err)` at **`app.go:250`** and **`app.go:259`**
+> spells `refuse[` … `](` and contains no `refuse(` substring at all. So the first
+> correction swapped one grep artifact for another.
+>
+> ```sh
+> grep -cE '^func \(a \*App\) [A-Z]'        app.go   # bound methods  -> 22
+> grep -cE '^[[:space:]]*return refuse[([]' app.go   # refuse() sites -> 28
+> ```
+>
+> The `[([]` character class is the point: it matches **both** `return refuse(` and
+> `return refuse[T](`. **The Dev recorded exactly this command and this integer at
+> `app_refusal_test.go:83` when the ticket shipped**, and the Reviewer reproduced 28
+> independently; only the PM's prose drifted.
+>
+> The committed test enumerates and passes at **22**, which clears **D32**'s floor of 20, so
+> **nothing is broken by any of the three errors** — but the acceptance criterion *"All 25
+> current bound methods are found"* **was unsatisfiable as written**, and is corrected below.
 >
 > **Kept visible rather than overwritten, because this is exactly the defect class
 > [S3-33](#s3-33--test-the-shrink-audit-states-only-what-is-true-of-it-d32) exists to fix.**
 > S3-33 found a corpus size written in four places with three values, none of them right,
-> in `frontend/src`. This is the same failure one document up, in a file the PM owns: a
-> figure restated from memory in **S3-08**'s record and inherited here. **A number restated
-> in two places and corrected in one is the same failure in a smaller costume.** The
-> enforcement is `app_refusal_test.go`'s own enumeration, which is derived and not typed —
-> so the only thing that can go stale is the prose, and the prose is now dated to this
-> correction. **D30** and **K16** carry the same correction in `PLAN.md`.
+> in `frontend/src`. This is the same failure one document up, in a file the PM owns — and
+> the second round is the sharper lesson: **this note's own moral is that a number restated
+> in two places and corrected in one is the defect S3-33 was written to fix, and then the
+> correction was itself wrong in all four places.** A record that moralises about counts
+> while carrying a wrong one refutes itself. **The rule that comes out of it: a number in
+> prose carries the command that produced it, or it is not written down.** The enforcement
+> is `app_refusal_test.go`'s own enumeration, which is derived and not typed — so the only
+> thing that can go stale is the prose. **D30** and **K16** carry the same correction in
+> `PLAN.md`.
+>
+> **OWED, and it is the Dev's, not the PM's.** `app_refusal_test.go:85-88` still quotes
+> *"D30 and S3-30 say '27 times across the 25 bound methods'"* — the first, now
+> doubly-superseded figure — in a comment that deliberately **reports** the PM's prose rather
+> than correcting it, which was the right call at the time. That comment is **code** and is
+> the Dev's to update to *"D30 and S3-30 say 28 call sites across 22 bound methods, which is
+> what the commands above measure"*. **It is not a gate on block B** — the comment is inert
+> and the surrounding commands are correct — but it must not be left to rot; the next ticket
+> that touches `app_refusal_test.go` carries it, and **S3-09**'s report names it if nothing
+> has.
 
 **The Reviewer ruled this not blocking for block A** — it verified current coverage is
 complete, and a miss degrades a *message* rather than corrupting data — **and ruled it must
@@ -5874,11 +6011,11 @@ Requirements, and **D29** is the ruling they implement:
       and nothing else** — the drop and the in-column scroll are still S3-09 item 5b, and no
       report may cite this capture for either. The same frame also shows two things that are
       **known and not fixed**, recorded here so they are not re-reported as new: the UI in
-      the **system `sans-serif`** (**K11**, S3-06, blocked on the user), and a **two-row
-      header** — which is **not yet a finding either way**, because *"the header does not
-      gain a row"* is a claim about Russian **in the designed family** and this frame was
-      taken under substituted metrics. It is re-judged from the re-taken captures after
-      S3-06, which S3-32 already requires.
+      the **system `sans-serif`** (**K11**, S3-06, blocked on the user at the time), and a
+      **two-row header**, which was then *"not yet a finding either way"*. **Both are now
+      settled**: S3-06 shipped at `7f75cc2`, and the re-taken captures show the Russian
+      header at **two rows in the designed family too** — so the font was never the cause,
+      and **D35** reworded S3-09 item 6 to *"wraps rather than clips"*.
 - [ ] `git grep -nE '#[0-9a-fA-F]{3,8}' frontend/src` returns nothing; `make guard`,
       `make front-test`, `make check` green.
 
@@ -5980,7 +6117,7 @@ worse than none.**
 
 | | |
 |---|---|
-| **Converted — from "owed to the user's hardware" to "observable here"** | Static paint at a real 1024×768, in every palette, theme and language: Russian not clipping, headings not wrapping one character per line, the due badge and card count readable, the habit chip fitting, the header not gaining a row, the UI in the designed family rather than the system `sans-serif` (**K11**/S3-06), and the columns filling the window (**K15**/S3-31). **Anyone can now look — including the Reviewer, on this machine, at a committed image.** |
+| **Converted — from "owed to the user's hardware" to "observable here"** | Static paint at a real 1024×768, in every palette, theme and language: Russian not clipping, headings not wrapping one character per line, the due badge and card count readable, the habit chip fitting, **the header wrapping rather than clipping** (**CORRECTED** — this row said *"the header not gaining a row"*; it **does** gain a row in Russian, in every face, and **D35** reworded the criterion to what the captures actually show), the UI in the designed family rather than the system `sans-serif` (**K11**/S3-06), and the columns filling the window (**K15**/S3-31). **Anyone can now look — including the Reviewer, on this machine, by running `make shots` and opening the PNG it writes.** |
 | **NOT converted — an eye is still an eye** | The only *automated* assertions a PNG supports here are **not blank** and **right dimensions**. *"Nothing clips"* remains a judgement made by looking. What changed is **who can look and how cheaply**, not that a computer decides it. |
 | **Out of reach entirely — needs input or a resize (E4)** | The ten-step keyboard-only run; the `:focus-visible` ring; the dragged card following the pointer (**K6**); the empty-column drop and the in-column scroll (**K15**); the no-flash-of-wrong-background first frame (**D12**, **K1**) — a delayed capture cannot see the first frame; and **K7, the resize defect the user actually reported**, which is structurally unreachable because there is **no window manager at all**. **All of these stay on [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block).** |
 
@@ -6015,7 +6152,26 @@ worse than none.**
       not present them as showing the designed family.
 - [ ] `make check`, `make cover`, `make front-test`, `make guard` green.
 
+> **RECONCILED — the "Converted" table and the first acceptance criterion contradicted each
+> other, and the criterion wins.** The table said the Reviewer looks *"at a committed
+> image"*; the criterion required a **git-ignored** directory. **The Dev followed the
+> criterion**: `/build/shots/` is in `.gitignore`, with a comment pointing at **S3-29**'s
+> README grid. That is the right resolution and the table is corrected to match it, for
+> three reasons. **One**, a capture is regenerated output, not a source artefact, and
+> committing eight PNGs per re-take would put binary churn in every layout ticket's diff.
+> **Two**, `make shots` runs in under a minute on this machine, so *"anyone can look"* is
+> satisfied by running it — the target's whole point is that looking is now cheap.
+> **Three**, S3-29 is the ticket that **selects** a small number of frames and commits them
+> under `docs/images/`, and that selection is a deliberate editorial act, not a side effect
+> of running a harness. **The committed image the Reviewer eventually reads is S3-29's, not
+> S3-32's.**
+
 **Commit:** `build: add make shots, the capture harness (S3-32)`
+**Shipped at `735ece1`.** The **PASS** review of this ticket raised one non-blocking
+observation that is now a block A ticket: `scripts/shots/capture.sh:98`'s absolute-path
+invariant is a **comment**, not an assertion — **K18**, ruled by **D36**, ticket
+[**S3-36**](#s3-36--build-the-capture-harness-refuses-a-relative-data-directory-k18-d36),
+which **gates block B**.
 
 ---
 
@@ -6239,6 +6395,92 @@ Requirements:
 
 **Commit:** `test: sweep the components recursively (S3-35)`
 
+**Shipped at `8ac8552`.** Its **PASS** review raised two non-blocking observations about
+what the fixed sweep does and does not assert — **K19**, ruled by **D36**, tickets
+[**S3-37**](#s3-37--test-the-sweeps-assert-the-glob-their-comments-describe-k19-d36) and
+[**S3-38**](#s3-38--test-the-component-sweep-names-a-wrong-directory-glob-k19-d36). **Neither
+gates block B**; both run inside it, before S3-20.
+
+---
+
+## S3-36 — build: the capture harness refuses a relative data directory (K18, D36)
+
+**This is K18, ruled by D36, and it is the PM's fourth condition on starting block B.** It
+is one line, and it is here because **the failure it prevents is the destruction of the
+user's data**, which is the only failure mode in Stage 3 that nothing can undo.
+
+**The argument, in full.** [**S3-32**](#s3-32--build-make-shots--the-capture-harness-e4-d31)
+states three separate times that `make shots` cannot touch the user's real database —
+requirement, acceptance criterion, and a verified mtime/size check in its commit body. Every
+one of those rests on **one property**: that `XDG_DATA_HOME`, as the harness exports it, is
+**absolute**. `scripts/shots/capture.sh:98` is
+
+```sh
+local data="$PWD/$OUT/data/$fixture"
+```
+
+and the only thing recording that the `$PWD/` prefix is load-bearing is a **comment**.
+`internal/store/db.go:41` honours `XDG_DATA_HOME` **only when it is absolute**, and
+otherwise falls back **silently** to `~/.local/share`. A relative path therefore does not
+fail — it **succeeds against the wrong database**. And the harness's own two checks would
+not notice: there would still be a window (`xwininfo` passes) and it would still have painted
+(the `%k` floor passes). **A green `make shots` would be a photograph of the user's own board,
+after the harness had seeded rows into it.**
+
+**This is the same move the blankness floor already makes.** S3-32 refused to trust that a
+window that exists has painted, and asserted it. Refusing to trust that a string starts with
+`/` is the identical discipline against a worse outcome. **A comment is not a check** —
+that is already **D17**'s sentence; here it guards something irreversible.
+
+**Why it gates block B rather than waiting.** The path is absolute *today*; the risk is a
+future edit. **Block B is that future**: **S3-29** builds the README screenshot grid out of
+this target's output, and every new screen — detail panel, tree, search, archive — is a new
+state in the matrix, so the script gets edited repeatedly by people who did not write it. One
+line, before that starts.
+
+**Scope (may touch):** `scripts/shots/capture.sh` only. **No `Makefile` change, no
+`internal/` change, no production code.** `internal/store/db.go:41` is **not** touched — its
+fallback is correct behaviour for the app and is the single spelling of where data lives
+(**D32**'s "one definition" rule); what is missing is the harness asserting its own
+precondition, not the store changing its.
+
+Requirements:
+
+- **The harness dies if `$data` is not absolute**, before it exports `XDG_DATA_HOME` or
+  launches anything, in the script's existing idiom:
+
+  ```sh
+  case "$data" in /*) ;; *) die "XDG_DATA_HOME must be absolute, got: $data" ;; esac
+  ```
+
+- **The message names the value and says why**, in one line: a relative `XDG_DATA_HOME` is
+  ignored by `internal/store/db.go` and the app would open the user's real database.
+- **The comment stays and is re-pointed at the assertion** rather than standing in for it.
+  Two spellings of one rule is the defect this project keeps paying for — so the comment
+  explains *why the check exists*, and does not restate *what it checks*.
+- **The same check covers `$runtime` if and only if a relative `$runtime` can cause a wrong
+  write.** The Dev decides from the code, not from symmetry, and **says which** in the commit
+  body. If it cannot, it is not checked, and the reason is recorded.
+- **No other behaviour changes.** Same matrix, same two checks, same output paths.
+
+**Acceptance criteria**
+- [ ] **Negative control, and it is the whole ticket**: temporarily change line 98 to a
+      relative path, run `make shots`, watch it **die naming the value**, restore. **Record
+      the exact message in the commit body**, and record that **before this ticket the same
+      edit produced a green run** — that second half is the proof the ticket was needed.
+- [ ] `~/.local/share/nexus/nexus.db` is **unmodified** by a normal `make shots` run —
+      mtime and size before and after, as S3-32 already required — and the commit body says
+      so again, because this ticket is the one that makes that claim mechanical rather than
+      conventional.
+- [ ] The `die` fires **before** `XDG_DATA_HOME` is exported and before any binary runs;
+      shown by the message being the only output.
+- [ ] `make check` is still **exactly** the five gates; `git diff` on the `check` target is
+      empty. `make shots` still produces the full matrix, and one frame is opened to confirm
+      it is unchanged.
+- [ ] `make check`, `make cover`, `make front-test`, `make guard` green.
+
+**Commit:** `build: refuse a relative data directory in the capture harness (S3-36)`
+
 ---
 
 ## S3-09 — test: the hand pass that closes the blocking block
@@ -6303,12 +6545,31 @@ make build && ./build/bin/nexus
 | 4 | Resize the window repeatedly, in **both palettes**, at **more than one display scaling** | The layout never sticks broken, and never needs a restart. **If it still does**, report it and apply **D19**'s escalation ladder — do not quietly add a repaint hack | **K7** / S3-04 |
 | 5 | Grab a card and drag it slowly across every column boundary | The card is **visible under the pointer the whole time**, is not painted over by the next column, and does not teleport home. Drop works; a rejected drop rolls back | **K6** / S3-05 |
 | 5b | **Drop a card on an empty column, and on the blank area below the last card of a full column.** Then fill one column past the window height | Both drops land in that column. A column with more cards than fit **scrolls inside itself**, its heading stays put, and **the document still does not scroll**. The static half — columns filling the window — is visible in `make shots`' output; **the drops and the in-column scroll need input and are hand-only** | **K15** / S3-31 |
-| 6 | Switch to Russian, in **both palettes** | The whole UI is in the designed family — **not** the system `sans-serif`. Numbers and dates are still JetBrains Mono. The header does not gain a row. `document.documentElement.lang` is `ru` | **K11** / S3-06 |
+| 6 | Switch to Russian, in **both palettes** | The whole UI is in the designed family — **not** the system `sans-serif`. Numbers and dates are still JetBrains Mono. **The header wraps rather than clips, and every control stays reachable** — nothing is truncated and nothing is cut off. `document.documentElement.lang` is `ru`. **REWORDED by D35**, see the note below the table | **K11** / S3-06 |
 | 6b | **Look at `make shots`' output**, all eight palette × theme × language states | Every frame is non-blank (the target enforces that), the layout is intact at 1024×768, and the Russian frames are in the designed family. **This is capture doing item 2's and part of item 6's job, and nothing else's** | **E4** / S3-32 |
 | 7 | Force several failures in a row, and one real refusal (drag a project to Doing) | At most three toasts; identical ones collapse with a count; each dismisses itself; **each says which operation failed**; the refusal reads as a rule, not as a malfunction | **K12** / S3-07, S3-08 |
 | 8 | **Steps 1–10 of [Stage 2's hand script](#half-2--by-hand-on-the-real-binary-mouse-untouched)**, mouse untouched, reported step by step | As written there — **including the three D8 due-badge assertions at steps 3, 4 and 7** | Stage 2 hand-pass item 1 |
 | 9 | Quit and relaunch, in **both** themes | **No flash of the wrong background** on the first frame (**D12**, **K1**) | Stage 2 hand-pass item 2 |
 | 10 | Tab around, in **both palettes** | The `:focus-visible` accent ring is **actually painted** and is visible against both | Stage 2 hand-pass item 4 |
+
+> **Item 6 was REWRITTEN, not carried as a debt — D35.** It used to say *"the header does
+> not gain a row"*. **Two independent captures, one before S3-06 and one after, show the
+> header taking two rows in Russian identically**, so **D23**'s hypothesis that the
+> substituted font caused the extra row is **refuted by measurement**. In English the four
+> control groups — Palette, Theme, Language, Accent — fit one row at 1024px with the Apply
+> button flush against the right edge and **no slack at all**; in Russian they take two rows
+> and **wrap cleanly, with nothing clipped and nothing truncated**, which is exactly what
+> **D20** asks for. There is no face in which the old criterion is achievable at 1024px in
+> Russian, and **an unachievable criterion is a defect in the criterion, not a debt against
+> S3-06**. If one row at 1024px in Russian is wanted, that is a **new layout requirement** —
+> condensing, stacking or hiding the control groups behind a disclosure — and it needs its
+> own ticket and its own D-number, raised against the header rather than against the font.
+> **The PM is not raising it**; the wrapped header is legible and complete.
+>
+> **Why it changed rather than quietly passing: the Dev declined to claim it.** S3-32's
+> "Converted" table listed *"the header not gaining a row"* among the things capture
+> discharges, and the Dev could have ticked it. He reported his own capture showing it unmet
+> instead. That is the behaviour this project wants and it is recorded as the cause.
 
 **Acceptance criteria**
 - [ ] Part 1's two tests are committed and green, and the commit body states **precisely
@@ -6737,6 +6998,137 @@ Requirements:
 
 ---
 
+### Between the Go half and the screens — S3-37 and S3-38 (K19, D36)
+
+**These are numbered 37 and 38 because numbering here is chronological, not positional** —
+the same as S3-30 … S3-36, which run between S3-08 and S3-09. **They run between S3-19 and
+S3-20**, and **they are NOT conditions on starting block B.**
+
+**Why there, and why not a gate.** **K17** was a gate because its failure arrives from
+ordinary work: block B puts a component in a subdirectory and a non-recursive glob misses
+it. **K19's failure needs a deliberate edit** — someone rewriting the glob to be
+non-recursive *while keeping the exclusion half*, or pointing it at the wrong directory.
+That is not what block B does by default, so holding block B for it would be the wrong
+trade. But **S3-20 … S3-28 add nine screens' worth of components**, which is the moment the
+component sweep goes from *correct and idle* to *correct and load-bearing*, and the moment
+its comment starts being read as a guarantee. Making the comment true first costs two small
+test-file commits. **See D36 for the full argument.**
+
+---
+
+## S3-37 — test: the sweeps assert the glob their comments describe (K19, D36)
+
+**This is the recursion half of K19.** `frontend/src/components/surface.test.tsx:88-98` —
+and `Toast.test.tsx:454-520` in the same shape since **S3-34** — carries a comment stating
+that the glob pattern and the assertions around it *"cannot quietly disagree"*.
+
+**They can, and here is the exact hole.** A **naive** revert to `'./*.tsx'` does go red,
+because **S3-35** deleted the in-loop `path.endsWith('.test.tsx')` filter, so a `*.test.tsx`
+key now reaches the assertions and trips the exclusion check. But a **careful** revert to
+
+```ts
+['./*.tsx', '!./*.test.tsx']
+```
+
+— both halves present, just not recursive — is **green today**. `src/components/` is flat,
+so nothing in the swept material can tell the difference. **The exclusion half is asserted
+and the floor is asserted; the recursion half is described only.** That is K17's own defect
+one layer up: a rule written in prose beside a mechanism that does not enforce it, which is
+precisely what **D32** and **CLAUDE.md**'s *"no type rule may be spelled twice"* exist to
+stop.
+
+**The fix is a convention this repository already uses three times**, which is why this is a
+small ticket and not a design problem: **read the test file's own text with `node:fs` and
+assert the literal pattern strings appear.** `frontend/src/test/shrink.test.ts` and
+`App.layout.test.tsx` both read source across a boundary rather than trusting a convention,
+and **S3-33** used exactly this trick to pin the corpus size to what the file actually says.
+
+**Scope (may touch):** `frontend/src/components/surface.test.tsx` and
+`frontend/src/components/Toast.test.tsx`. **Test files only.** No production file, no
+classification change, no new dependency, and **no change to what either sweep asserts about
+the code it sweeps**.
+
+Requirements:
+
+- **Each sweep asserts its own glob pattern literally**, read from the test file's own text
+  with `node:fs`, so that `'./**/*.tsx'` and `'!./**/*.test.tsx'` — including the `**` — are
+  present in the source. A pattern retyped into an assertion elsewhere in the same file
+  would be a second spelling and proves only that the file agrees with itself; **the
+  assertion reads the file, not a constant**.
+- **The comment is rewritten to match what is now true.** *"The two cannot quietly disagree"*
+  becomes a statement of what is asserted and how, and it names the `node:fs` read as the
+  mechanism.
+- **Both files, in one commit.** They are the same claim in two places; fixing one and
+  leaving the other is the defect itself.
+- **Nothing else changes.** The forbidden patterns, the floors, the exclusion assertions and
+  the **D19** comment are untouched.
+
+**Acceptance criteria**
+- [ ] **Negative control, and it is the whole ticket**: change each glob to
+      `['./*.tsx', '!./*.test.tsx']` — the *careful* revert, both halves, not recursive —
+      and watch the new assertion go **red naming the missing `**`**. Restore. **Record in
+      the commit body that this same edit was green before the ticket**, because that is the
+      proof it was needed.
+- [ ] The assertion reads the test file's own text from disk; `git grep` shows the pattern
+      string is **not** duplicated into a module constant that the glob also consumes.
+- [ ] Both sweeps' existing assertions, floors and exclusion checks still pass unchanged;
+      the file counts they report are unchanged.
+- [ ] The comments in both files describe only what is now mechanically true.
+- [ ] `make front-test`, `make guard`, `make check` green.
+
+**Commit:** `test: assert the sweep globs the comments describe (S3-37)`
+
+---
+
+## S3-38 — test: the component sweep names a wrong-directory glob (K19, D36)
+
+**This is the asymmetry half of K19, and it is the smaller of the two.** The two sweeps
+disagree about how many failure directions they can name.
+
+`Toast.test.tsx` asserts `!path.startsWith('../store/')`, so a glob pointed at the wrong
+directory is **named as such**. `frontend/src/components/surface.test.tsx` has **no
+equivalent**, so the same mistake surfaces as the floor's *"nothing was scanned"* — a message
+that describes a **different cause** (the directory moved, or the pattern is malformed) and
+sends the next reader at the wrong thing.
+
+**There are four ways these sweeps fail and only three are distinguished**: matched nothing
+(the floor), matched too few (the floor's `> 5`), matched test files (the exclusion
+assertion) — and **matched the wrong directory**, which is aliased onto the first. **D32**'s
+standard is that a check says *which* failure happened, and **S3-31**'s and **S3-32**'s
+two-check designs are the pattern this repository already follows: cheap and specific first,
+then the general floor.
+
+**Scope (may touch):** `frontend/src/components/surface.test.tsx`. **Test file only.**
+
+Requirements:
+
+- **A path-shape assertion beside the floor**, in `Toast.test.tsx`'s idiom: every swept key
+  is a path **inside** `src/components/`, and a key that is not is reported **by name**,
+  with the directory the sweep believed it was reading.
+- **It is an addition, not a replacement.** The floor stays: the two catch different things
+  and **S3-32**'s ruling — *"neither check alone distinguishes the two failures"* — is the
+  same ruling here.
+- **The message says the cause, not the symptom**: *"the component sweep matched a path
+  outside `src/components/`"*, naming the path.
+- **This is the third use of the shape, so say so.** If the Dev finds a fourth sweep in
+  `frontend/src` lacking it, **report it — do not widen silently.**
+
+**Acceptance criteria**
+- [ ] **Negative control**: point the glob at `'../store/**/*.ts'`, watch the new assertion
+      go **red naming a store path** rather than the floor firing with *"nothing was
+      scanned"*, restore. Record both messages in the commit body — the new one and the one
+      that used to appear — since the difference *is* the ticket.
+- [ ] The floor still fires independently on a directory with no matches; both controls are
+      recorded.
+- [ ] Nothing about what the sweep asserts of the code changes; the file count is unchanged.
+- [ ] Any fourth `import.meta.glob` sweep in `frontend/src` without a path-shape assertion
+      is **reported, not changed**.
+- [ ] `make front-test`, `make guard`, `make check` green.
+
+**Commit:** `test: name a wrong-directory glob in the component sweep (S3-38)`
+
+---
+
 ## S3-20 — feat(frontend): the detail slide-over — shell, keyboard, Markdown
 
 **This ticket creates the panel region and mounts it** — see
@@ -7097,11 +7489,11 @@ PASS.
 **Block A has its own gate, earlier**: criteria 1–7 and **22–26** must hold **before S3-10
 starts**, and S3-09 is where that is declared.
 
-1. [ ] **Block A is closed before block B began.** S3-01 … S3-09 **and S3-30 … S3-35** all
+1. [ ] **Block A is closed before block B began.** S3-01 … S3-09 **and S3-30 … S3-36** all
        committed, in the order this file gives, and `make check` / `make cover` /
        `make front-test` / `make guard` all green at S3-09, before the first block B commit.
        Checkable from the git history.
-2. [ ] **Every one of K6 – K12, plus K15, K16 and K17, is closed**, each by its named ticket,
+2. [ ] **Every one of K6 – K12, plus K15 – K19, is closed**, each by its named ticket,
        each with the mechanical check that ticket promised — **and each with an explicit
        written statement of what its mechanical check does NOT prove** (rule 17).
 3. [ ] **`make guard` is eight of eight**, with **`GUARD_ALLOW_RE` still empty**. Check 7
@@ -7128,7 +7520,7 @@ starts**, and S3-09 is where that is declared.
        per field by asserting the exact Go call and then asserting the panel renders **Go's
        answer**, not the typed value — and *reparent in the tree shows on Kanban instantly*,
        demonstrated through `render(<App />)`, keyboard only.
-9. [ ] **All thirty-five tickets are committed**, one conventional commit each, in order,
+9. [ ] **All thirty-eight tickets are committed**, one conventional commit each, in order,
        authored solely by `Ismat <mukhamejanov.ismat@gmail.com>`, with **no AI author, no
        co-author trailer and no "Generated with" line** (**D7**).
 10. [ ] `make check` green — **all five gates, unchanged in number and definition**,
@@ -7221,6 +7613,39 @@ starts**, and S3-09 is where that is declared.
         attachments, time log, tree, search and archive views are covered the day they are
         written — the third named condition on starting block B, and the only one that is a
         **PM ruling** rather than the Reviewer's.
+27. [ ] **K18 is closed (D36, S3-36): `make shots` refuses a relative data directory rather
+        than documenting that it must be absolute.** `scripts/shots/capture.sh` dies, naming
+        the value, before it exports `XDG_DATA_HOME` or launches anything, and the negative
+        control is recorded **both ways** — the relative path fails now, and **the same edit
+        produced a green run before this ticket**. This is the **fourth** named condition on
+        starting block B and the only one whose failure mode is **irreversible**: every
+        *"the harness cannot touch the user's database"* claim in S3-32 rested on a comment,
+        `internal/store/db.go:41` falls back **silently** to `~/.local/share` for a relative
+        `XDG_DATA_HOME`, and both of the harness's own checks would still have passed while
+        it photographed the user's own board.
+28. [ ] **K19 is closed (D36, S3-37, S3-38): the sweeps assert what their comments claim,
+        and name a wrong-directory glob.** The literal pattern strings — `**` included — are
+        asserted by reading each test file's own text with `node:fs`, with the *careful*
+        revert to `['./*.tsx', '!./*.test.tsx']` recorded as the negative control and
+        recorded as **green before the ticket**; and `surface.test.tsx` names a path outside
+        `src/components/` instead of aliasing that failure onto the floor's *"nothing was
+        scanned"*. **These two are NOT conditions on starting block B** — deliberately, per
+        D36 — and run between S3-19 and S3-20.
+29. [ ] **The record corrections of this pass are in place and none of them is silent.**
+        The `refuse()` call-site count is **28**, measured by
+        `grep -cE '^[[:space:]]*return refuse[([]' app.go`, with all three prior states
+        (27, 26, 28) kept visible and the rule *a number in prose carries the command that
+        produced it* written down; **`2910aca` is recorded against S3-06** in the dependency
+        table, so the new-dependency rule has a ticket in writing; **S3-06's `https?://`
+        criterion is reworded** to a fetching-position predicate, because the old grep was
+        already non-empty before S3-06 existed (`test/node-builtins.d.ts:19`, from S3-01)
+        and an unsatisfiable criterion cannot count as met — with the **no-network property
+        recorded separately as intact**, verified three ways; **S3-09 item 6 is rewritten**
+        by **D35** rather than carried as a debt; and **S3-32's "Converted" table is
+        reconciled** with its own acceptance criterion in favour of the git-ignored
+        directory. **One correction is owed in code and is the Dev's**:
+        `app_refusal_test.go:85-88` still quotes the superseded *"27 times across the 25
+        bound methods"*.
 
 **Out of Stage 3 scope, and it must stay out**: the standalone frameless quick-add window
 and the NL parser, focus mode, the tray, autostart, D-Bus sleep/lock, backup, export, the
