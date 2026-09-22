@@ -424,6 +424,42 @@ describe('a refusal that crossed the boundary', () => {
 });
 
 /**
+ * WHERE THE STORE IS, as a glob, and it is one line with two deliberate halves.
+ *
+ * `**` because the sweep must stay exhaustive as the store grows (S3-34, D32).
+ * `src/store/` is flat today — twelve files — so `../store/*.ts` matched all of
+ * it and was green, which is exactly the shape of defect this project keeps
+ * paying for: a check that is correct by accident. Block B adds store surface
+ * (S3-20 … S3-27), and the day someone writes `src/store/slices/x.ts` the old
+ * pattern would have missed it in SILENCE — `OPERATION_KEYS` would simply not
+ * contain that file's keys, so both directions of the comparison below would
+ * stay empty and the sweep would report that everything is covered.
+ *
+ * The negative pattern excludes the store's own tests, in the form
+ * `App.mount.test.tsx:47` already uses here, so there is one spelling of "a
+ * source file but not a test file" in this repository rather than two. It is
+ * not a behaviour change today — the five `store/*.test.ts` files contribute
+ * only keys the real files already contribute, a strict subset — but a test
+ * fixture is not the store, and a sweep that says "the store raises this"
+ * should be reading the store.
+ *
+ * `STORE_GLOB` beside it is PROSE, for the failure messages, and it exists only
+ * because Vite resolves `import.meta.glob` at build time and therefore requires
+ * its patterns as literals — a constant cannot be interpolated into the call.
+ * So that the two cannot quietly disagree, `sweepTheStore` asserts the properties
+ * the sentence claims — every match under `store/`, no match a `*.test.ts` —
+ * against what the glob actually returned, rather than leaving the description
+ * to be believed.
+ */
+const STORE_GLOB = '../store/**/*.ts (excluding ../store/**/*.test.ts)';
+
+const STORE_SOURCES = import.meta.glob(['../store/**/*.ts', '!../store/**/*.test.ts'], {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>;
+
+/**
  * Every `toast.operation.*` key the store actually passes to `callGo`, read off
  * the store's own source.
  *
@@ -437,18 +473,56 @@ describe('a refusal that crossed the boundary', () => {
  * that exists in the locale file but that no action passes is not a gap, and a
  * key an action passes that the locale file lacks is a raw key on screen, which
  * `App.accept.test.tsx` already fails on.
+ *
+ * # It refuses to be empty, HERE, where it is derived (S3-34, D32)
+ *
+ * Everything downstream is a comparison against this set, and every one of them
+ * is vacuously true of the empty set: "the store raises these and this file
+ * drives none of them" has nothing to list, and "gives every operation a
+ * sentence of its own" is `new Set([]).size === 0`, which passes. The sibling
+ * tests that prove the set is non-empty are real, but they are OTHER tests —
+ * a derived set that derives nothing must be red at the derivation.
+ *
+ * TWO assertions, because they are two different failures and a single "it is
+ * empty" would not say which happened. A glob that matches no modules means the
+ * store moved or the pattern is wrong; modules that yield no keys means the
+ * store stopped passing operation keys, or the regex no longer matches what it
+ * passes. The same module-scope shape `App.layout.test.tsx`'s `sourceOf` uses:
+ * the check belongs to the derivation, not to a test that might not run.
  */
-const OPERATION_KEYS = new Set(
-  Object.values(
-    import.meta.glob('../store/*.ts', {
-      query: '?raw',
-      import: 'default',
-      eager: true,
-    }) as Record<string, string>,
-  ).flatMap((source) =>
-    [...source.matchAll(/toast\.operation\.([A-Za-z0-9]+)/g)].map((match) => match[1]),
-  ),
-);
+function sweepTheStore(): Set<string> {
+  const files = Object.keys(STORE_SOURCES);
+  expect(files.length, `the sweep of ${STORE_GLOB} matched no files at all`).toBeGreaterThan(0);
+
+  // And that it swept what it says it swept. These are the two halves of the
+  // pattern, checked against its result: without them `STORE_GLOB` above is a
+  // sentence nothing enforces, which is the defect S3-33 had just finished
+  // paying for one directory over.
+  const strays = files.filter((path) => !path.startsWith('../store/'));
+  expect(strays, `the sweep of ${STORE_GLOB} reached outside the store: ${strays.join(' ')}`).toEqual(
+    [],
+  );
+
+  const tests = files.filter((path) => path.endsWith('.test.ts'));
+  expect(
+    tests,
+    `the sweep of ${STORE_GLOB} read the store's own tests, which are not the store: ${tests.join(' ')}`,
+  ).toEqual([]);
+
+  const keys = new Set(
+    Object.values(STORE_SOURCES).flatMap((source) =>
+      [...source.matchAll(/toast\.operation\.([A-Za-z0-9]+)/g)].map((match) => match[1]),
+    ),
+  );
+  expect(
+    keys.size,
+    `the sweep of ${STORE_GLOB} read ${files.length} file(s) and found no toast.operation.* key in any of them: ${files.join(' ')}`,
+  ).toBeGreaterThan(0);
+
+  return keys;
+}
+
+const OPERATION_KEYS = sweepTheStore();
 
 describe('every toast names the operation it came from', () => {
   // One failure per store action. The assertion is that the RENDERED sentences
