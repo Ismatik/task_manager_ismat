@@ -36,6 +36,27 @@ import { Card } from './Card';
 // only once even that will not fit; the heading wraps on word boundaries. There
 // is no `w-` anywhere and nothing truncates.
 //
+// # Height, and why an empty column is a drop target at all (S3-31, K15, D29)
+//
+// There is NO height in this file. The section is a flex item of the board's
+// row, and since S3-31 removed the board's `items-start` it stretches to the
+// board's full height — derived from the shell's chain, never typed, which is
+// D21's rule and D22's chain continued rather than re-spelt.
+//
+// That is not decoration, and the screenshot that found it makes the case
+// better than a paragraph can: with `items-start` the column ended where its
+// cards ended, so `useDroppable` below — which exists precisely to catch a card
+// dropped on an EMPTY column or on the padding under the last card — had a
+// header-high strip to work with, and the large area beneath belonged to the
+// board, which is not a drop target. Stretching the section IS the drop target.
+//
+// The scroll goes with it. `min-h-0` here and on the `<ul>`, plus `flex-1` on
+// the `<ul>`, make the CARD LIST the vertical scroller: a column with more
+// cards than fit scrolls inside itself, under a heading that stays put because
+// the heading is the list's sibling rather than its child. Before S3-31 nothing
+// scrolled inside a column at all and the board absorbed it, which took every
+// column's heading out of view at once.
+//
 // Surfaces are token-only and palette-blind: `bg-surface` + `backdrop-blur-glass`
 // is translucent under Aurora, a no-op under Studio (whose `--blur` is 0px),
 // where `shadow-sm` supplies the edge instead.
@@ -187,7 +208,14 @@ export function Column({ column, rovingNodeId }: ColumnProps) {
       // `accent` is what design/README.md assigns to the active thing on
       // screen, and `elevated` is the surface one step up. Nothing here is a
       // hex literal and nothing here knows which column it is.
-      className={`flex min-w-36 flex-1 basis-0 flex-col gap-2 rounded-lg border p-2 shadow-sm backdrop-blur-glass transition-colors duration-fast ${
+      // `min-h-0` is the column's link in the vertical chain (S3-31, D29). The
+      // board stretches this section to its full height — that is what gives
+      // `useDroppable` above a rectangle to catch a drop in — and this section
+      // is itself a COLUMN flex container, so its card list below cannot shrink
+      // under `min-height: auto` unless the release is written at every step
+      // between the two. There is deliberately no height here: the height comes
+      // from the board, derived, never typed (D21).
+      className={`flex min-h-0 min-w-36 flex-1 basis-0 flex-col gap-2 rounded-lg border p-2 shadow-sm backdrop-blur-glass transition-colors duration-fast ${
         isOver ? 'border-accent bg-elevated' : 'border-line bg-surface'
       }`}
     >
@@ -220,7 +248,42 @@ export function Column({ column, rovingNodeId }: ColumnProps) {
           items={column.nodes.map((view) => view.node.id)}
           strategy={verticalListSortingStrategy}
         >
-          <ul className="flex min-w-0 flex-col gap-2">
+          {/* THE CARD LIST IS THE VERTICAL SCROLLER (S3-31, D29), and the
+              heading above is its SIBLING, not its child — which is the whole
+              of "the column header does not scroll away". A heading that
+              scrolled out of view makes a drag across five columns
+              unnavigable, and putting the scroll on the section instead would
+              have taken the heading with it.
+
+              `min-h-0 flex-1` together are the release and the claim: `flex-1`
+              takes the height the heading did not, so the list — and with it
+              the space a card can be dropped into — reaches the bottom of the
+              column even when there are two cards; `min-h-0` lets it shrink
+              below its content, without which `overflow-y-auto` has nothing to
+              do because the list never becomes smaller than its cards.
+
+              BOTH AXES ARE NAMED, and the horizontal one is `auto` rather
+              than `hidden` because the S3-02 shrink audit argued it down.
+              Per CSS Overflow 3 an `overflow-y` of `auto` against an
+              `overflow-x` of `visible` promotes the horizontal axis to `auto`
+              anyway — the exact promotion S3-01 found on the board, one
+              element down — so the moment D29 makes this list the vertical
+              scroller it becomes a horizontal scroll container too, whether or
+              not anyone writes it down. The only spelling that would prevent
+              that is `overflow-x-hidden`, which CLIPS: test/shrink.ts reported
+              it here by name, as a mechanism that can cut Russian off mid-word
+              with nothing on screen to say so, and permitting it would be a
+              deliberate edit to another ticket's file. Silence is worse than
+              either, so the computed truth is written out instead.
+
+              Nothing can actually overflow it sideways — every card is
+              `min-w-0` and wraps on word boundaries — so no horizontal
+              scrollbar appears. What genuinely changed is that "a column never
+              scrolls sideways" is now a statement about the SECTION, which has
+              no overflow of its own, and not about this list. That follows
+              from D29 rather than from a choice made here, and it is reported
+              rather than buried. */}
+          <ul className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-auto overflow-y-auto">
             {column.nodes.map((view) => (
               <SortableCard
                 key={view.node.id}

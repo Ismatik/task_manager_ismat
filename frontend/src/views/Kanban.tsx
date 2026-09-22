@@ -365,11 +365,25 @@ export function Kanban() {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      {/* THE BOARD IS THE SCROLLER, in BOTH axes, and both are stated (D22).
-          When five columns will not fit even at their floor width, the board
-          scrolls sideways; when a column is taller than the window, the board
-          scrolls down. A column never scrolls inside itself, which is what "no
-          horizontal scroll inside a column" means.
+      {/* THE BOARD OWNS THE HORIZONTAL SCROLL; A COLUMN OWNS ITS OWN VERTICAL
+          ONE (D22, then D29). When five columns will not fit even at their floor
+          width, the board scrolls sideways. When one column has more cards than
+          fit, that column's card list scrolls — inside itself, under a heading
+          that stays put — which is the half D22 left unfinished and S3-31
+          finished. See components/Column.tsx for the other end of the chain.
+
+          `items-start` IS GONE, and that is this element's whole change (K15,
+          D29). It overrode flex's default `stretch`, so every column was only as
+          tall as its cards: on a real 1024×768 capture of the running binary,
+          four of the five columns were short boxes at the top of a large empty
+          area. That is not decoration. components/Column.tsx's `useDroppable`
+          exists to catch a card dropped on an EMPTY column or on the padding
+          below the last card, and a column that ends where its cards end has
+          almost none of that rectangle — the large region beneath it belonged to
+          this div, which is not a drop target. Nothing replaced `items-start`:
+          the row is the flex default, and a `min-h-[…]` would have been D21's
+          defect a second time (a derived floor, typed out) and a second spelling
+          of the height chain.
 
           Until S3-01 this element said `overflow-x-auto` and nothing else, and
           the comment here claimed the vertical axis was untouched. It was not:
@@ -379,10 +393,22 @@ export function Kanban() {
           documentation. Both axes are written down now, so the next reader is
           told the truth by the code rather than by a spec rule nobody reads.
 
+          `overflow-y-auto` STAYS, and after this ticket it is a backstop rather
+          than the board's job: with the columns stretched to exactly this
+          element's content height, there is no vertical overflow left for it to
+          scroll. It is kept because removing it is not available — `overflow-x`
+          of `auto` would promote a `visible` companion straight back to `auto`,
+          so "the board does not scroll vertically" can only be written as
+          `overflow-y-hidden`, which is a CLIP and a stronger claim than D29
+          made; and because App.layout.test.tsx asserts this exact class, and
+          S3-31 says in as many words that S3-01's height-chain test is not to be
+          modified. Reported rather than decided here.
+
           `h-full` is what makes either axis able to scroll at all: without a
           definite height the board is as tall as its tallest column and there is
           no overflow to scroll. It is a real height because App.tsx's <main>
-          carries `min-h-0` over style.css's html/body/#root chain.
+          carries `min-h-0` over style.css's html/body/#root chain — and it is
+          now also what every column's height is measured against.
 
           RULED OUT, so nobody rediscovers it (D22): the "latched scrollLeft"
           theory. The columns are `flex-1 basis-0`, so `scrollWidth` tracks
@@ -393,7 +419,7 @@ export function Kanban() {
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        className="flex h-full min-w-0 items-start gap-2 overflow-x-auto overflow-y-auto"
+        className="flex h-full min-w-0 gap-2 overflow-x-auto overflow-y-auto"
       >
         {board.map((column) => (
           <Column key={column.status} column={column} rovingNodeId={roving} />
