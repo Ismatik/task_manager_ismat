@@ -37,9 +37,9 @@
   the out-of-scope line contradicted the brief on *set priority* (see
   [The plan correction](#the-plan-correction--set-priority-from-the-palette-is-stage-2)).
 - **[Stage 3 — Defect remediation, then Detail + Tree + Search/Archive](#stage-3--defect-remediation-then-detail--tree--searcharchive):
-  IN PROGRESS; block A OPEN.** Thirty-four tickets, **S3-01 … S3-34**, in **two blocks**.
+  IN PROGRESS; block A OPEN.** Thirty-five tickets, **S3-01 … S3-35**, in **two blocks**.
   **Block A, [S3-01 … S3-09](#block-a--the-blocking-defect-block-s3-01--s3-09) plus
-  [S3-30 … S3-34](#added-to-block-a-after-the-block-a-review--s3-30--s3-34), is
+  [S3-30 … S3-35](#added-to-block-a-after-the-block-a-review--s3-30--s3-35), is
   blocking**: the user ran the app by hand on real hardware after Stage 2 closed and found
   **nine defects** — recorded as **K6 – K14** in [`PLAN.md` §7](./PLAN.md) and ruled as
   **D18 – D26** — and their condition for proceeding was *"if these details are resolved in
@@ -51,14 +51,20 @@
   been answered by the user and are CLOSED**: **OQ1 → Inter** (unblocking S3-06) and
   **OQ2 → the middle option**, which puts `COUNT` and `UNTIL` into the recurrence language
   (**D27**, **D28**) and adds **S3-19** — both in [`PLAN.md` §7](./PLAN.md).
-  **The block A review returned PASS on the code** (`c32a1c9..b53f1a4`); block A stays open
-  on **S3-06** (blocked on the user running `npm install @fontsource/inter`), on the five
-  tickets added after that PASS — **S3-30 … S3-34**, ruled as **D29 – D32** and recorded as
-  **K15 – K16** — and on **S3-09**, the hand pass. **This machine can take screenshots and
+  **The block A review returned PASS on the code** (`c32a1c9..b53f1a4`), and **S3-30,
+  S3-31, S3-33 and S3-34 have since shipped green at `c3c954e`** (five gates, guard 8/8,
+  **374 front-end tests across 29 files**, cover **100.0% / 94.0%**). Block A stays open
+  on **S3-06** (blocked on the user running `npm install @fontsource/inter`), on **S3-32**,
+  on **S3-35** — the sixth ticket, raised by S3-34's own report and ruled by **D34**
+  (**K17**) — and on **S3-09**, the hand pass. **This machine can take screenshots and
   always could** (**E4**): that correction discharged two of Stage 2's five owed checks,
-  confirmed **K8** fixed on real paint, and found **K15**.
+  confirmed **K8** fixed on real paint, found **K15** and has since **confirmed K15 fixed**.
+  **E4 itself has now been corrected once more**: the cause of a blank capture is
+  **`GDK_BACKEND` / `WAYLAND_DISPLAY`**, not the `WEBKIT_DISABLE_*` pair, which does nothing
+  on this machine. **K7, the resize defect the user reported, stays structurally unreachable
+  here** — there is no window manager, so the window cannot be resized at all.
 
-Decisions referenced as **D1–D32 / E1–E4** and known issues **K1–K16** live in
+Decisions referenced as **D1–D34 / E1–E4** and known issues **K1–K17** live in
 [`PLAN.md` §7](./PLAN.md). Four decisions were confirmed by the user *during* Stage 1
 and are recorded there — **D8** (a column move always overwrites the due date),
 **D9** (type beats leaf-ness — a project is never timeable), **D10** (a node with no
@@ -4626,32 +4632,38 @@ red** until the frontend offers it.
 
 ## Stage 3 — Defect remediation, then Detail + Tree + Search/Archive
 
-**Status: IN PROGRESS. Block A is OPEN; block B has not started.** Thirty-four tickets,
-**S3-01 … S3-34**, one conventional commit each, in **two blocks**.
+**Status: IN PROGRESS. Block A is OPEN; block B has not started.** Thirty-five tickets,
+**S3-01 … S3-35**, one conventional commit each, in **two blocks**.
 
 **Block A — [S3-01 … S3-09](#block-a--the-blocking-defect-block-s3-01--s3-09) and
-[S3-30 … S3-34](#added-to-block-a-after-the-block-a-review--s3-30--s3-34) — is
+[S3-30 … S3-35](#added-to-block-a-after-the-block-a-review--s3-30--s3-35) — is
 blocking, and blocking is meant literally: no ticket from S3-10 onwards may be started
 until every ticket in block A is committed and `make check`, `make cover`,
 `make front-test` and `make guard` are all green at the end of it.** That is the user's
 condition, in their words: *"if these details are resolved in the next steps, we are good
 to go."*
 
-> **Where block A stands.** The Reviewer returned **PASS on the code** for
+> **Where block A stands — at `c3c954e`.** The Reviewer returned **PASS on the code** for
 > `c32a1c9..b53f1a4` — S3-01, S3-02, S3-03, S3-04, S3-05, S3-07 and S3-08, including the
-> four re-opened corrections recorded inside those tickets. Block A stays **open** on:
+> four re-opened corrections recorded inside those tickets. **S3-30, S3-31, S3-33 and S3-34
+> have since shipped and are green**: five gates, `make guard` 8/8 with `GUARD_ALLOW_RE`
+> empty, `make front-test` **374 tests across 29 files**, `make cover` domain **100.0%** /
+> service **94.0%**. Block A stays **open** on:
 >
 > - **S3-06**, blocked on the user running `npm install @fontsource/inter`;
-> - **S3-30 … S3-34**, five tickets added *after* that PASS — two of them the Reviewer's
->   own conditions on starting block B (**S3-30**, **S3-34**), one a real visual defect a
->   screenshot found (**S3-31**, **K15**), one the capture harness that makes such
->   screenshots repeatable (**S3-32**), one a pair of audit claims that are not true of
->   the audits making them (**S3-33**);
+> - **S3-32**, the capture harness — **its recipe was corrected this pass**: the cause of a
+>   blank capture is `GDK_BACKEND` / `WAYLAND_DISPLAY`, **not** the `WEBKIT_DISABLE_*` pair,
+>   which does nothing here (**E4**);
+> - **S3-35**, added after S3-34's own report (**K17**, **D34**) — the component sweep's
+>   non-recursive glob, and the **third** named condition on starting block B;
 > - **S3-09**, the hand pass, which is still the gate into block B.
 >
-> **Execution order from here: S3-06 → S3-30 → S3-31 → S3-32 → S3-33 → S3-34 → S3-09.**
-> S3-06 first because Russian typography is what S3-32 photographs; S3-31 before S3-32 so
-> the capture is of a settled screen.
+> **Execution order from here: S3-06 → S3-32 → S3-35 → S3-09.** S3-06 before S3-32 because
+> Russian typography is what S3-32 photographs; S3-35 touches one test file and has no
+> ordering edge, so it may land at any point before S3-09.
+>
+> **Shipped in this block after the PASS:** S3-30 (`c50cf24`), S3-31 (`e7868c8`),
+> S3-33 (`f8baa76`), S3-34 (`c3c954e`).
 
 **Block B — S3-10 … S3-29 — is the feature stage** from `PLAN.md` §5: the task detail
 panel, the tree view, search and archive, plus **C6** and `README.md`.
@@ -4727,10 +4739,15 @@ refresh. Plus S3-09's successor hand pass at the end of the stage.
   screen to photograph. It has one now, and it is **no longer blocked**: `xvfb` and
   `imagemagick` are installed and always were (**E4**), capture is **S3-32**'s `make shots`,
   and **S3-29** selects its four-way grid from that matrix.
-- **`make shots`** (**S3-32**, **D31**) — the capture harness, with a mandatory blankness
-  check. It converts the *static* visual criteria from *owed to the user's hardware* to
-  *observable here*, and **it does not close the hand pass**: everything needing input or a
-  resize stays on **S3-09**.
+- **`make shots`** (**S3-32**, **D31**) — the capture harness, with a mandatory
+  **window-presence** check (`xwininfo -root -children | grep nexus`) **and** a mandatory
+  **blankness** check (`convert … -format "%k"`). It runs the binary under
+  `env -u WAYLAND_DISPLAY DISPLAY=:99 GDK_BACKEND=x11 LC_NUMERIC=C` — **`GDK_BACKEND=x11` is
+  the cause and the cure, not the `WEBKIT_DISABLE_*` pair, which does nothing here**
+  (**E4**, measured). It converts the *static* visual criteria from *owed to the user's
+  hardware* to *observable here*, and **it does not close the hand pass**: everything
+  needing input or a resize stays on **S3-09**, including **K7**, which is structurally
+  unreachable on this machine because there is no window manager.
 
 ### What Stage 3 must NOT do
 
@@ -4789,6 +4806,14 @@ full**, unchanged. These are added:
     or status line may cite a capture for **static paint** and for nothing else. Citing one
     for an item that needs a keystroke, a drag, a resize or a first frame is rule 16's
     failure in a new medium.
+21. **When a variable is credited with a fix, it was isolated.** **E4's original claim that
+    `WEBKIT_DISABLE_DMABUF_RENDERER` and `WEBKIT_DISABLE_COMPOSITING_MODE` make the app
+    paint under Xvfb was wrong** — several variables were changed in one step and the win
+    was attributed to the wrong one. The cause is `GDK_BACKEND=x11`, because this shell sets
+    `WAYLAND_DISPLAY` and the window opens on the real compositor. **A ticket, comment or
+    commit body that names an environment variable as a cause must have changed that
+    variable alone**, and say so. This is the same discipline as negative-control testing,
+    applied to the environment instead of to the code.
 
 ### New dependencies, and why each one is justified
 
@@ -4817,7 +4842,8 @@ that have not changed; **no date library**, because dates are Go's and `Intl` fo
 `make cover` and `make front-test` are unchanged. **A fourth non-gate target, `make shots`,
 is added by [S3-32](#s3-32--build-make-shots--the-capture-harness-e4-d31)** (**E4**,
 **D31**) — it captures the palette × theme × language matrix under Xvfb and **fails on a
-blank frame**. It is **not** a gate and does not join `make check`: it launches a GUI, it
+missing window and on a blank frame**, in that order. It is **not** a gate and does not join
+`make check`: it launches a GUI, it
 takes seconds per state, and a capture is evidence to be looked at rather than a pass/fail
 assertion about what is in the picture. **`make guard` grows from six checks to
 eight**, and each new check is added by the ticket whose own criterion requires it, with
@@ -4867,6 +4893,7 @@ fixed at the source, and no Stage 3 ticket may be the first to allow-list one.
 | [S3-32](#s3-32--build-make-shots--the-capture-harness-e4-d31) | **`make shots` — the capture harness** (**E4**, **D31**) | `build:` |
 | [S3-33](#s3-33--test-the-shrink-audit-states-only-what-is-true-of-it-d32) | The shrink audit states only what is true of it (**D32**) | `test:` |
 | [S3-34](#s3-34--test-the-store-sweep-is-recursive-test-free-and-non-vacuous-d32) | The store sweep is recursive, test-free and non-vacuous (**D32**) — the Reviewer's second condition | `test:` |
+| [S3-35](#s3-35--test-the-component-sweep-is-recursive-too-k17-d34) | **The component sweep is recursive too** (**K17**, **D34**) — the PM's third condition on starting block B | `test:` |
 | [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block) | **The hand pass that closes the blocking block** | `test:` |
 | **Block B — the feature stage** | | |
 | [S3-10](#s3-10--featservice-nodedetail--the-one-read-the-panel-renders) | `NodeDetail` — the one read the panel renders | `feat:` |
@@ -4903,18 +4930,23 @@ fixed at the source, and no Stage 3 ticket may be the first to allow-list one.
   is reducing.
 - **S3-06, S3-07 and S3-08 touch none of those files** and could in principle move, but
   they are kept after the layout work so the hand pass in S3-09 sees one settled screen.
-- **The five tickets added after the block A review go between S3-08 and S3-09, in the
-  order S3-30 → S3-31 → S3-32 → S3-33 → S3-34**, and only two of those edges are real:
-  **S3-31 before S3-32**, because there is no point photographing a board whose columns
-  are about to change height; and **S3-06 before S3-32**, because Russian typography in
-  the designed family is one of the things the captures exist to show — if S3-06 is still
+- **The six tickets added after the block A review go between S3-08 and S3-09, in the
+  order S3-30 → S3-31 → S3-32 → S3-33 → S3-34 → S3-35**, and only two of those edges are
+  real: **S3-31 before S3-32**, because there is no point photographing a board whose
+  columns are about to change height; and **S3-06 before S3-32**, because Russian typography
+  in the designed family is one of the things the captures exist to show — if S3-06 is still
   blocked on the user when S3-32 lands, the RU captures are re-taken after it and the
-  ticket says so. S3-30, S3-33 and S3-34 touch disjoint files and may land in any order
-  among themselves.
-- **S3-30 and S3-34 gate block B by name, not merely by being in block A.** They are the
-  Reviewer's two stated conditions, and both are about decay: block B adds bound methods
-  (which is what S3-30 forces through `refuse()`) and store surface (which is what S3-34
-  stops the toast sweep from silently missing).
+  ticket says so. S3-30, S3-33, S3-34 and S3-35 touch disjoint files and may land in any
+  order among themselves. **S3-30, S3-31, S3-33 and S3-34 have shipped**; the remaining
+  order is **S3-06 → S3-32 → S3-35 → S3-09**, with S3-35 free to move anywhere before
+  S3-09.
+- **S3-30, S3-34 and S3-35 gate block B by name, not merely by being in block A.** The
+  first two are the Reviewer's stated conditions; **S3-35 is a PM ruling (D34)** and is
+  argued rather than asserted. All three are about the same decay, in three places: block B
+  adds **bound methods** (which is what S3-30 forces through `refuse()`), **store surface**
+  (which is what S3-34 stops the toast sweep from silently missing) and **components**
+  (which is what S3-35 stops the D19 resize-workaround sweep from silently missing — and
+  that sweep is the *only* enforcement **K7** has on this machine).
 - **Inside block B: every Go ticket before the frontend ticket that calls it.**
   S3-10 … S3-19 are Go and touch no `frontend/src` file except the regenerated
   `frontend/wailsjs`. **S3-20 before S3-21 … S3-24**, which fill the panel it creates.
@@ -4968,10 +5000,11 @@ children of S3-20's panel and become reachable when it opens.
 
 ### Block A — the blocking defect block (S3-01 … S3-09)
 
-**Nine tickets — and five more, [S3-30 … S3-34](#added-to-block-a-after-the-block-a-review--s3-30--s3-34),
-added after the block A review returned PASS. None of block B starts until all fourteen
-are committed and green**, and **S3-30** and **S3-34** are the Reviewer's own named
-conditions on starting it.
+**Nine tickets — and six more, [S3-30 … S3-35](#added-to-block-a-after-the-block-a-review--s3-30--s3-35),
+added after the block A review returned PASS. None of block B starts until all fifteen
+are committed and green**, and three of them — **S3-30**, **S3-34** and **S3-35** — are
+named conditions on starting it (the first two the Reviewer's, the third a PM ruling,
+**D34**).
 
 **Read this before starting any of them.** Most of what these tickets fix is **invisible to
 every mechanical check in this repository**: jsdom has no layout engine, so every
@@ -5611,15 +5644,35 @@ Requirements:
 
 **Commit:** `feat(service): give refusals their own code and name the failed operation (S3-08)`
 
+> **POSTSCRIPT — the count this ticket's record left behind was wrong, and it propagated.**
+> S3-08's shipped surface was recorded as *"27 refusals across 25 bound methods"* and
+> **both figures are wrong**: the bound surface is **22** (`app.go` has 25
+> `func (a *App)` declarations, but `startup`, `context` and `onIPCMessage` are unexported,
+> unbound and do not return `(T, error)`), and the call sites number **26**
+> (`grep -c 'refuse(' app.go` says 27 because `app.go:60` is a doc comment). **S3-08's work
+> is unaffected** — the Reviewer verified its coverage complete, and it is — but the figure
+> was inherited by **K16**, **D30** and **S3-30**, and made S3-30's acceptance criterion
+> *"All 25 current bound methods are found"* unsatisfiable. Corrected in all four places,
+> and kept visible in each, because a number restated in two places and corrected in one is
+> the defect **S3-33** was written to fix, in a smaller costume.
+
 ---
 
-### Added to block A after the block A review — S3-30 … S3-34
+### Added to block A after the block A review — S3-30 … S3-35
 
-**These five were written after the Reviewer returned PASS on `c32a1c9..b53f1a4`.** They
-are block A tickets, they run **between S3-08 and S3-09**, and two of them — **S3-30** and
-**S3-34** — are the Reviewer's own **stated conditions on starting block B**. Nothing here
-reopens a passed ticket: S3-33 and S3-34 correct claims made *about* S3-02's and S3-07's
-work without changing what that work does, and S3-31 fixes a line neither of them touched.
+**Five were written after the Reviewer returned PASS on `c32a1c9..b53f1a4`, and a sixth —
+S3-35 — came out of S3-34's own report.** They are block A tickets, they run **between
+S3-08 and S3-09**, and three of them — **S3-30**, **S3-34** and **S3-35** — are **conditions
+on starting block B**. The first two are the Reviewer's own; **S3-35 is a PM ruling**
+(**D34**), argued in `PLAN.md` rather than asserted here. Nothing here reopens a passed
+ticket: S3-33 and S3-34 correct claims made *about* S3-02's and S3-07's work without
+changing what that work does, S3-31 fixes a line neither of them touched, and S3-35 changes
+one glob in one test file.
+
+**Status at `c3c954e`: S3-30, S3-31, S3-33 and S3-34 are committed and green** — five gates,
+`make guard` 8/8 with `GUARD_ALLOW_RE` empty, `make front-test` **374 across 29 files**,
+`make cover` domain **100.0%** / service **94.0%**. **S3-32** and **S3-35** are open, as are
+S3-06 (blocked on the user) and S3-09.
 
 ---
 
@@ -5627,8 +5680,27 @@ work without changing what that work does, and S3-31 fixes a line neither of the
 
 **This is K16, ruled by D30, and it is the Reviewer's explicit condition on starting block
 B.** S3-08 gave refusals their own code and named the failed operation — and it did so
-**by hand: `refuse()` is applied 27 times across the 25 bound methods in `app.go`, and
-nothing mechanical forces a 26th to call it.**
+**by hand: `refuse()` is applied 26 times across the 22 bound methods in `app.go`, and
+nothing mechanical forces a 23rd to call it.**
+
+> **CORRECTED — this ticket said "27 times across the 25 bound methods" and both figures
+> were wrong.** `app.go` has **25** `func (a *App)` declarations, but three of them —
+> `startup`, `context`, `onIPCMessage` — are **unexported, are not bound by Wails, and do
+> not return `(T, error)`**, so the **bound surface is 22**. And `grep -c 'refuse(' app.go`
+> returns 27 because **`app.go:60` is a doc comment**, not a call — there are **26** call
+> sites. The committed test enumerates and passes at **22**, which clears **D32**'s floor of
+> 20, so **nothing is broken by the error** — but the acceptance criterion *"All 25 current
+> bound methods are found"* **was unsatisfiable as written**, and is corrected below.
+>
+> **Kept visible rather than overwritten, because this is exactly the defect class
+> [S3-33](#s3-33--test-the-shrink-audit-states-only-what-is-true-of-it-d32) exists to fix.**
+> S3-33 found a corpus size written in four places with three values, none of them right,
+> in `frontend/src`. This is the same failure one document up, in a file the PM owns: a
+> figure restated from memory in **S3-08**'s record and inherited here. **A number restated
+> in two places and corrected in one is the same failure in a smaller costume.** The
+> enforcement is `app_refusal_test.go`'s own enumeration, which is derived and not typed —
+> so the only thing that can go stale is the prose, and the prose is now dated to this
+> correction. **D30** and **K16** carry the same correction in `PLAN.md`.
 
 **The Reviewer ruled this not blocking for block A** — it verified current coverage is
 complete, and a miss degrades a *message* rather than corrupting data — **and ruled it must
@@ -5641,7 +5713,7 @@ they are the whole argument:
    A hand-applied rule decays exactly when its surface grows.
 2. **The same block already decided this question the other way.** **S3-01 argued that an
    eleven-times-by-hand rule needed a guard, and built check 7 for it. S3-08 then shipped a
-   twenty-seven-times-by-hand rule without one.** Two tickets, one block, opposite
+   twenty-six-times-by-hand rule without one.** Two tickets, one block, opposite
    conclusions about the same shape. That inconsistency is the finding.
 
 **Scope (may touch):** a new Go test file beside `app.go` (`app_refusal_test.go` or the
@@ -5674,8 +5746,10 @@ Requirements:
 - [ ] The test enumerates the bound methods **from `app.go`'s own text**, and asserts the
       count it found is **greater than 20** — a walk that finds nothing must be red
       (**D32**).
-- [ ] All 25 current bound methods are found and all pass.
-- [ ] **Negative control, and it is the whole ticket**: add a throwaway 26th bound method
+- [ ] **All 22 current bound methods are found and all pass.** *(Was "All 25", which was
+      unsatisfiable: `app.go` has 25 `func (a *App)` declarations but only 22 are exported,
+      bound and `(T, error)`-returning. See the correction at the head of this ticket.)*
+- [ ] **Negative control, and it is the whole ticket**: add a throwaway 23rd bound method
       returning a bare error, watch the test fail **naming that method**, remove it. Record
       the exact failure text in the commit body.
 - [ ] **Second negative control**: strip `refuse(` from one existing method, watch the test
@@ -5725,10 +5799,34 @@ Requirements, and **D29** is the ruling they implement:
 - **The column owns its vertical scroll; the board keeps the horizontal.** The card list
   inside each column becomes the `overflow-y-auto` element, with **`min-h-0` on every flex
   ancestor between it and the board**, without which it cannot shrink and the whole change
-  does nothing. The board keeps `overflow-x-auto` and stops being the vertical scroller.
+  does nothing. The board keeps `overflow-x-auto`, and its vertical axis becomes a
+  **dormant fallback** rather than the scroller in use.
   **This is the half D22 left unfinished** — and it answers *"what happens when one
   column's cards exceed the window height"*, which today is: nothing scrolls inside a
   column at all.
+
+  > **CORRECTED by D33.** This bullet originally said the board *"stops being the vertical
+  > scroller"*, and **that is not achievable as a class change** without contradicting the
+  > next bullet. Tailwind has no "unset": the spellable values are `auto`, `hidden`,
+  > `scroll`, `visible` and `clip`, and `overflow-y: visible` on an element whose x-axis is
+  > `auto` **computes to `auto` anyway**. So the real choice is `auto` or `hidden`, and
+  > `hidden` is a **clip** — content that somehow exceeded the board would be unreachable,
+  > silently, with no scrollbar to say so. On top of that,
+  > `frontend/src/App.layout.test.tsx:154` asserts the class, and this ticket forbids
+  > modifying it. **D33 rules: the board keeps `overflow-y-auto`, and that is accepted.**
+  > After the column stretch and the `min-h-0` chain, nothing inside the board can exceed
+  > it, so the axis should never engage — but **"should never engage" is not "cannot"**, and
+  > the criterion below now states the weaker true thing instead of the stronger false one.
+
+- **The column's card list is `overflow-x-auto`, not `overflow-x-hidden` — RATIFIED by
+  D33.** `overflow-hidden` is refused by name in **S3-02**'s shrink audit, and that refusal
+  is correct here rather than an obstacle to route around: **D20** rejects it because it is
+  the canonical way a localised string is silently clipped, Russian runs ~30% wider, and a
+  card list is the container most densely packed with user text in the whole app. An
+  exception would also be the first allow-list-shaped carve-out in a project whose
+  `GUARD_ALLOW_RE` is empty and stays empty. The x-axis should never engage either (the
+  cards are `min-w-0` and wrap); if it does, a scrollbar is a **visible** symptom, which is
+  the direction D20 chose deliberately.
 - **The document still never scrolls.** S3-01's height-chain test stays green, unmodified.
   If it needs modifying, stop and report — that is the signal that this ticket has broken
   **D22** rather than completed it.
@@ -5740,10 +5838,20 @@ Requirements, and **D29** is the ruling they implement:
 
 **Acceptance criteria — and the split is stated, per rule 17**
 - [ ] **Mechanical (the class contract, the only half jsdom can hold)**: the board row is
-      **not** `items-start`; the vertical scroll container is the column's card list and
-      **not** the board; the `min-h-0` chain from the board to that list is unbroken; the
-      board still has `overflow-x-auto`. Asserted in the style `App.keyboard.test.tsx`
-      already uses for class contracts.
+      **not** `items-start`; the **vertical scroll container in use** is the column's card
+      list, which carries `overflow-y-auto`; the `min-h-0` chain from the board to that list
+      is unbroken; the board still has `overflow-x-auto`, and **retains `overflow-y-auto` as
+      a dormant fallback** that the height chain gives nothing to scroll. Asserted in the
+      style `App.keyboard.test.tsx` already uses for class contracts.
+      *(**REWRITTEN under D33.** This criterion previously read "the vertical scroll
+      container is the column's card list and **not** the board", which was unsatisfiable
+      alongside the next criterion — removing the board's `overflow-y-auto` is only
+      spellable as `overflow-y-hidden`, a clip rather than a removal, and
+      `App.layout.test.tsx:154` asserts the class this ticket may not modify. It now states
+      what is actually true and testable.)*
+- [ ] **Mechanical**: the column's card list is `overflow-x-auto`, **not**
+      `overflow-x-hidden` — the S3-02 shrink audit fails `-hidden` by name and that refusal
+      stands (**D33**, **D20**). No `GUARD_ALLOW_RE` entry is added; it stays empty.
 - [ ] **Mechanical**: `Column.tsx`'s droppable node is the element that now has the full
       height — asserted structurally (the `useDroppable` ref sits on the stretched element,
       not on an inner content box).
@@ -5759,6 +5867,18 @@ Requirements, and **D29** is the ruling they implement:
       in-column scroll need input, which cannot be driven here (E4)**, and go on
       [S3-09](#s3-09--test-the-hand-pass-that-closes-the-blocking-block)'s list as a new
       item.
+      **→ The static half is DISCHARGED.** A 1024×768 capture of the running binary taken
+      after `e7868c8` shows **all five columns as full-height bordered boxes** running from
+      under the header to the bottom edge, so `useDroppable`'s rectangle is the whole visible
+      column where before four of five were header-high strips. **That closes the static half
+      and nothing else** — the drop and the in-column scroll are still S3-09 item 5b, and no
+      report may cite this capture for either. The same frame also shows two things that are
+      **known and not fixed**, recorded here so they are not re-reported as new: the UI in
+      the **system `sans-serif`** (**K11**, S3-06, blocked on the user), and a **two-row
+      header** — which is **not yet a finding either way**, because *"the header does not
+      gain a row"* is a claim about Russian **in the designed family** and this frame was
+      taken under substituted metrics. It is re-judged from the re-taken captures after
+      S3-06, which S3-32 already requires.
 - [ ] `git grep -nE '#[0-9a-fA-F]{3,8}' frontend/src` returns nothing; `make guard`,
       `make front-test`, `make check` green.
 
@@ -5790,17 +5910,49 @@ Requirements:
 - **`make shots` is a non-gate target**, alongside `make cover`, `make front-test` and
   `make guard`. **`make check` stays exactly the five gates** — unchanged in number and
   definition since S0-11, and this ticket does not touch that list.
-- **The two WebKit environment variables are exported by the target, not by the operator:**
-  `WEBKIT_DISABLE_DMABUF_RENDERER=1` and `WEBKIT_DISABLE_COMPOSITING_MODE=1`. **Without
-  them the window is present in the X tree at the correct size and the capture is one flat
-  colour** — a failure that reads exactly like a working capture of a broken app. The
-  Makefile carries a comment saying so, because the next person will otherwise spend the
-  same hours.
-- **The blankness check is mandatory and is the reason this is a target rather than a shell
-  snippet in somebody's report.** After each capture,
-  `convert <png> -format "%k" info:` — a result of `1` means **nothing painted** and the
-  target **fails**, naming the file and the state. A harness without this check silently
-  certifies blank images, which is worse than no harness.
+- **The target forces the X11 backend and unsets `WAYLAND_DISPLAY`, and it does so itself
+  rather than asking the operator to.** The working invocation, measured (**E4**):
+
+  ```sh
+  env -u WAYLAND_DISPLAY DISPLAY=:99 GDK_BACKEND=x11 LC_NUMERIC=C ./build/bin/nexus &
+  ```
+
+  **This shell sets `WAYLAND_DISPLAY=wayland-0`**, so GTK prefers the Wayland backend, the
+  window opens on the **real compositor**, and `:99` has **no window on it at all** while
+  the process runs healthily and exits 0. The capture is then one flat colour — a failure
+  that reads exactly like a working capture of a broken app. The Makefile carries a comment
+  saying so, because the next person will otherwise spend the same hours.
+
+  > **CORRECTED, and the correction is the point of this bullet.** This ticket previously
+  > required `WEBKIT_DISABLE_DMABUF_RENDERER=1` and `WEBKIT_DISABLE_COMPOSITING_MODE=1` and
+  > named them as the cause. **They do nothing on this machine.** That claim came from
+  > changing several variables in one step and attributing the win to the wrong one.
+  > Re-measured by isolating one variable at a time against the same running binary:
+  >
+  > | configuration | windows on `:99` | distinct colours |
+  > |---|---|---|
+  > | `WEBKIT_DISABLE_*` only | **0** | **1** |
+  > | `GDK_BACKEND=x11` only | 2 | **961** |
+  > | both | 2 | 961 |
+  >
+  > The Dev **may** still export the `WEBKIT_DISABLE_*` pair — it is harmless — but the
+  > Makefile comment must name `GDK_BACKEND` / `WAYLAND_DISPLAY` as the cause, and must not
+  > present the WebKit pair as one. **`LC_NUMERIC=C` is separate and is still required**
+  > (**D12**, **K1**).
+
+- **Two checks are mandatory, in this order, and they are the reason this is a target
+  rather than a shell snippet in somebody's report.**
+  1. **Window presence, first, because it is cheap and specific:**
+     `xwininfo -root -children | grep nexus`. Zero matches means **no window was ever
+     created on this display** — a different failure from a window that painted blank, with
+     a different fix (the backend, not the renderer). The target **fails**, naming the state
+     and saying to check `GDK_BACKEND` / `WAYLAND_DISPLAY`.
+  2. **Then blankness:** `convert <png> -format "%k" info:` — a result of `1` means
+     **nothing painted** and the target **fails**, naming the file and the state.
+
+  Neither check alone distinguishes the two failures: `%k` of `1` cannot tell you *why*, and
+  a present window can still paint blank. A harness without both silently certifies blank
+  images, which is worse than no harness.
 - **The matrix**: the four palette × theme combinations × the two languages, at
   **1024×768** — the size **K8**, **K9** and the DONE criteria all name. Each capture is
   written to a **predictable, git-ignored** path under `build/shots/` naming its state.
@@ -5835,10 +5987,17 @@ worse than none.**
 **Acceptance criteria**
 - [ ] `make shots` produces one PNG per state of the matrix, at 1024×768, in a git-ignored
       directory, each named for its palette, theme and language.
-- [ ] **The blankness check fires.** Negative control: remove one of the two
-      `WEBKIT_DISABLE_*` exports, run the target, and it **fails** with a message naming the
-      blank file and the two variables. Restore. **The commit body quotes that message** —
-      this is the single most valuable line in the ticket.
+- [ ] **Both checks fire, and they are provoked by the thing that actually causes the
+      failure.** Negative control: **restore `WAYLAND_DISPLAY`** (drop the
+      `env -u WAYLAND_DISPLAY`, or drop `GDK_BACKEND=x11`), run the target, and it **fails**
+      — at the `xwininfo` check, naming the state and the two variables. Restore. **The
+      commit body quotes that message** — this is the single most valuable line in the
+      ticket. *Do not use the `WEBKIT_DISABLE_*` exports as the control: removing them
+      changes nothing here, so a target that still passes without them is correct and a
+      "control" built on them proves nothing* (**E4**).
+- [ ] **The blankness check fires independently**, exercised on a deliberately blank PNG
+      (e.g. `convert -size 1024x768 xc:black`), so that the `%k` floor is shown to be live
+      and not merely unreachable behind the `xwininfo` check. Recorded in the commit body.
 - [ ] `XDG_DATA_HOME` is exported to a path under `build/`; `grep` of the Makefile and any
       script shows **no** reference to `~/.local/share` or to the user's real data
       directory. Running `make shots` leaves `~/.local/share/nexus/nexus.db` **unmodified**
@@ -5987,9 +6146,98 @@ Requirements:
 - [ ] `surface.test.tsx:85`'s `./*.tsx` glob is **reported on** in the commit body — either
       "correct, components are flat and that is asserted elsewhere" or "same latent
       problem, and here is the follow-up ticket". **Not changed here.**
+      **→ REPORTED. The answer was "same latent problem", mitigated differently: it cannot
+      go silently *empty* (it has a floor) but it can go silently *partial*. Ruled by
+      **D34** (`PLAN.md` §7), recorded as **K17**, and ticketed as
+      [S3-35](#s3-35--test-the-component-sweep-is-recursive-too-k17-d34).**
 - [ ] `make front-test`, `make guard`, `make check` green.
 
 **Commit:** `test: sweep the store recursively and refuse an empty set (S3-34)`
+
+---
+
+## S3-35 — test: the component sweep is recursive too (K17, D34)
+
+**This is K17, ruled by D34, and it exists because S3-34 did its job.** S3-34's last
+criterion required the Dev to **report on** `frontend/src/components/surface.test.tsx:85`
+rather than change it. The report came back and it is a real finding, with a real
+distinction from the store sweep S3-34 had just fixed.
+
+`surface.test.tsx:85` is `import.meta.glob('./*.tsx', { query: '?raw', … })` — **not
+recursive**, the same latent defect. It is **mitigated differently and only halfway**:
+
+- it filters test files with `path.endsWith('.test.tsx')` **inside the loop** rather than by
+  pattern, so the glob's own key set still includes them; and
+- it carries a floor — `expect(Object.keys(sources).length, 'nothing was scanned')
+  .toBeGreaterThan(5)`.
+
+So it **cannot go silently empty** — **D32**'s vacuity half is already covered, which is why
+S3-34 was right not to fold it in — but it **can go silently partial**, which D32 forbids in
+the same sentence: *"must not silently under-match"*.
+
+**Why this ranks above the store sweep rather than below it, and this is the whole
+argument.** What that sweep enforces is **D19**'s prohibition on a
+`requestAnimationFrame` / `offsetHeight` / `getBoundingClientRect` resize workaround. **A
+component the glob misses is a resize workaround that nothing in this repository forbids.**
+And the resize defect is **K7 — the one the user actually reported**, and the one that is
+**structurally unverifiable on this machine**: there is no window manager, so the window
+cannot be resized at all (**E4**). This sweep is K7's *only* enforcement here. A partial
+sweep is the single worst place for silence in the whole suite.
+
+`frontend/src/components/` is flat today — **18 files** — so the sweep is correct today.
+**Block B ends that**: S3-20 … S3-27 add the detail slide-over, the field editors, inline
+subtasks, the recurrence editor, attachments, the editable time log and running clock, the
+tree view, the search screen and the archive view. Any of those may land in a subdirectory,
+and **a slide-over panel is precisely where a developer reaches for
+`getBoundingClientRect`.**
+
+**This gates block B**, alongside **S3-30** and **S3-34**. That is a **PM ruling, not the
+Reviewer's** — see **D34** for the argument. In short: one line plus a deletion, protecting
+a surface that grows in block B specifically, guarding the enforcement of the defect the
+user reported and no machine here can see.
+
+**Scope (may touch):** `frontend/src/components/surface.test.tsx`. **Test file only.** No
+production file, no classification change, no new dependency. If the same `./*` pattern is
+found in a third place, **report it** — do not widen silently.
+
+Requirements:
+
+- **The glob is recursive and excludes test files by pattern**, using the negative-pattern
+  form this repository already uses twice (`App.mount.test.tsx:47`, and `Toast.test.tsx`
+  after S3-34): `['./**/*.tsx', '!./**/*.test.tsx']`.
+- **The in-loop `path.endsWith('.test.tsx')` filter goes**, because the pattern now does
+  that job. Two spellings of one rule is the defect this project keeps paying for — see
+  **CLAUDE.md**, *"No type rule may be spelled twice"*.
+- **The floor stays and is re-checked** against what the recursive glob now matches. A sweep
+  that finds nothing must still be red (**D32**), and its message still says what was
+  swept and where it looked.
+- **Nothing about what the sweep asserts changes.** The forbidden pattern
+  (`requestAnimationFrame|offsetHeight|getBoundingClientRect`) is untouched, and the D19
+  comment above it stays.
+- **Say what it found.** The commit body records the file count the recursive glob matches
+  today and confirms it equals the flat count (18 files, of which 3 are `*.test.tsx`), since
+  the directory is flat — so this ticket demonstrably changes no present behaviour and only
+  removes a future silence.
+
+**Acceptance criteria**
+- [ ] The glob is `['./**/*.tsx', '!./**/*.test.tsx']`; the in-loop `endsWith` filter is
+      gone; the floor is retained and re-checked; the whole `surface.test.tsx` suite passes
+      otherwise unchanged.
+- [ ] **Negative control, and it is the whole ticket**: add a throwaway
+      `frontend/src/components/panel/x.tsx` containing `getBoundingClientRect`, watch the
+      sweep go **red naming that path**, delete it. **Confirm the same file under the old
+      `./*.tsx` glob was green** — and record **both** outcomes in the commit body, because
+      the second is the proof the ticket was needed. This is the shape S3-34 used and it
+      worked.
+- [ ] **Negative control on the floor**: point the glob at a directory with no matches, watch
+      the floor fail with its message, restore.
+- [ ] The commit body states the recursive glob's present match count and that it equals
+      today's, so the change is shown to be behaviour-preserving now and protective later.
+- [ ] Any third use of a non-recursive `./*` glob found while doing this is **reported, not
+      changed**.
+- [ ] `make front-test`, `make guard`, `make check` green.
+
+**Commit:** `test: sweep the components recursively (S3-35)`
 
 ---
 
@@ -6846,14 +7094,14 @@ Stage 3 closes only once **all** of these hold, **verified by the Reviewer and n
 by the PM**. Per `PLAN.md` §5 a stage cannot close without a **PASS**; criterion 21 is that
 PASS.
 
-**Block A has its own gate, earlier**: criteria 1–7 and **22–25** must hold **before S3-10
+**Block A has its own gate, earlier**: criteria 1–7 and **22–26** must hold **before S3-10
 starts**, and S3-09 is where that is declared.
 
-1. [ ] **Block A is closed before block B began.** S3-01 … S3-09 **and S3-30 … S3-34** all
+1. [ ] **Block A is closed before block B began.** S3-01 … S3-09 **and S3-30 … S3-35** all
        committed, in the order this file gives, and `make check` / `make cover` /
        `make front-test` / `make guard` all green at S3-09, before the first block B commit.
        Checkable from the git history.
-2. [ ] **Every one of K6 – K12, plus K15 and K16, is closed**, each by its named ticket,
+2. [ ] **Every one of K6 – K12, plus K15, K16 and K17, is closed**, each by its named ticket,
        each with the mechanical check that ticket promised — **and each with an explicit
        written statement of what its mechanical check does NOT prove** (rule 17).
 3. [ ] **`make guard` is eight of eight**, with **`GUARD_ALLOW_RE` still empty**. Check 7
@@ -6880,7 +7128,7 @@ starts**, and S3-09 is where that is declared.
        per field by asserting the exact Go call and then asserting the panel renders **Go's
        answer**, not the typed value — and *reparent in the tree shows on Kanban instantly*,
        demonstrated through `render(<App />)`, keyboard only.
-9. [ ] **All thirty-four tickets are committed**, one conventional commit each, in order,
+9. [ ] **All thirty-five tickets are committed**, one conventional commit each, in order,
        authored solely by `Ismat <mukhamejanov.ismat@gmail.com>`, with **no AI author, no
        co-author trailer and no "Generated with" line** (**D7**).
 10. [ ] `make check` green — **all five gates, unchanged in number and definition**,
@@ -6929,19 +7177,28 @@ starts**, and S3-09 is where that is declared.
 22. [ ] **K16 is closed (D30, S3-30): nothing lets a bound method skip `refuse()`.** A Go
         test enumerates the bound methods **from `app.go`'s own text** — not from a typed
         list — asserts each routes through `refuse(`, and **fails naming the method** when a
-        26th is planted. Both negative controls recorded. **Block B's ten-plus new bound
-        methods are covered the day they are written**, which is the condition the block A
-        review attached to starting block B.
+        23rd is planted. The enumeration finds **22** and the floor is **20** (**D32**).
+        Both negative controls recorded. **Block B's ten-plus new bound methods are covered
+        the day they are written**, which is the condition the block A review attached to
+        starting block B.
 23. [ ] **K15 is closed (D29, S3-31)**: the board is not `items-start`, columns fill it,
         **the column's card list owns the vertical scroll** with an unbroken `min-h-0` chain,
         the heading does not scroll away, and **the document still does not scroll** — S3-01's
         tests pass unmodified. The class contract is asserted; the drop onto an empty column
         and the in-column scroll are on **S3-09** as item 5b, **because input cannot be
         driven here** and this ticket says so rather than implying a test covers it.
-24. [ ] **`make shots` exists, fails on a blank frame, and never touches the user's
-        database** (**E4**, **D31**, S3-32). The blankness negative control — removing one
-        `WEBKIT_DISABLE_*` export and watching the target fail — is recorded with its exact
-        message. **`make check` is still exactly the five gates.** And the honest half:
+        **The static half is DISCHARGED**: a 1024×768 capture taken after `e7868c8` shows all
+        five columns as full-height bordered boxes from under the header to the bottom edge.
+        **D33 rules on the two things S3-31 reported rather than decided** — the board keeps
+        `overflow-y-auto` as a **dormant fallback** (accepted, criterion rewritten) and the
+        card list is `overflow-x-auto` rather than `-hidden` (ratified).
+24. [ ] **`make shots` exists, fails on a missing window **and** on a blank frame, and never
+        touches the user's database** (**E4**, **D31**, S3-32). The negative control —
+        **restoring `WAYLAND_DISPLAY` or dropping `GDK_BACKEND=x11`** and watching the
+        `xwininfo` check fail — is recorded with its exact message, and the `%k` floor is
+        shown live on a deliberately blank PNG. **The `WEBKIT_DISABLE_*` pair is not the
+        cause and may not be used as the control**; that claim was measured false (**E4**).
+        **`make check` is still exactly the five gates.** And the honest half:
         **no document, commit body or report claims `make shots` closes the hand pass** —
         it converts *static paint at a real size* from **owed to the user's hardware** to
         **observable here**, it does not turn an eye into a machine, and everything needing
@@ -6953,6 +7210,17 @@ starts**, and S3-09 is where that is declared.
         (**S3-34**), guard check 8b's unfiltered-by-design status is **documented** in the
         `guard:` recipe (**S3-32**), and the 8.4% deny-by-default false-positive surface is
         **recorded and deliberately not ticketed** — it is loud, not silent.
+26. [ ] **K17 is closed (D34, S3-35): no source sweep in `frontend/src` is non-recursive.**
+        `components/surface.test.tsx`'s glob is `['./**/*.tsx', '!./**/*.test.tsx']`, the
+        in-loop `endsWith` filter is gone, the floor is retained and re-checked, and **both**
+        negative controls are recorded — a component planted in a subdirectory goes red, and
+        **the same file under the old glob was green**. This matters beyond tidiness:
+        **that sweep is the only enforcement K7 has on this machine** (**E4** — no window
+        manager, no resize), so a component it misses is a **D19** resize workaround nothing
+        forbids. Block B's detail panel, field editors, subtasks, recurrence editor,
+        attachments, time log, tree, search and archive views are covered the day they are
+        written — the third named condition on starting block B, and the only one that is a
+        **PM ruling** rather than the Reviewer's.
 
 **Out of Stage 3 scope, and it must stay out**: the standalone frameless quick-add window
 and the NL parser, focus mode, the tray, autostart, D-Bus sleep/lock, backup, export, the
