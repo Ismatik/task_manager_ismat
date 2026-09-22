@@ -133,6 +133,7 @@ afterEach(() => {
   const root = document.documentElement;
   root.removeAttribute('style');
   root.removeAttribute('class');
+  root.removeAttribute('lang');
   delete root.dataset.palette;
   delete root.dataset.drift;
 });
@@ -235,7 +236,24 @@ describe('changing a setting, by keyboard alone', () => {
     // i18next followed the SERVICE'S answer, which is lib/i18n.ts's rule.
     await waitFor(() => expect(screen.getByRole('main')).toHaveAttribute('aria-label', 'Доска'));
     expect(screen.getByRole('banner')).toHaveAttribute('aria-label', 'Оформление и язык');
+    // ...and so did the document itself (K11, D23). Before S3-06, <html lang>
+    // stayed at the markup's "en" for the life of the process.
+    expect(document.documentElement.lang).toBe('ru');
   });
+
+  // K11 / D23, asserted at the shell. lib/appearance.test.ts asserts the write;
+  // this asserts that the SETTINGS READ reaches it, which is the half that was
+  // missing entirely — the function existed, nothing ever called it with a
+  // language, and there was no writer of <html lang> in frontend/src at all.
+  it.each([['en'], ['ru']])(
+    'serves the document as %s, because that is what the settings read reported',
+    async (language) => {
+      const fake = settingsGo({ language });
+      await openTheApp(storeOver(fake.client), language);
+
+      expect(document.documentElement.lang).toBe(language);
+    },
+  );
 
   it('survives a restart: the controls come back reading what Go stored', async () => {
     const fake = settingsGo();

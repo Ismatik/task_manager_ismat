@@ -27,6 +27,97 @@
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
 
+/* CYRILLIC FOR THE TWO UI FAMILIES — K11, closed by D23 (the USER'S ruling).
+ *
+ * Space Grotesk covers [vietnamese, latin-ext, latin]; Figtree covers
+ * [latin-ext, latin]. Read from each package's own unicode.json, not from its
+ * name. NEITHER CONTAINS A SINGLE CYRILLIC GLYPH — only JetBrains Mono does —
+ * so before this block, switching to Russian dropped the whole UI into the
+ * system sans-serif while every number stayed in JetBrains Mono: two unrelated
+ * typefaces in one header, different metrics, and the header gained a row.
+ * That is the user's reported "the theme and colour buttons break when I
+ * switch language", photographed at 1024x768 before and after.
+ *
+ * WHY THE FAMILY NAMES BELOW ARE THE DESIGNED ONES, AND NOT 'Inter'.
+ * `--font-ui` is declared in design/tokens.css, which is READ-ONLY, so a
+ * fallback list cannot be added to it. Registering additional @font-face rules
+ * under the SAME family names adds coverage to a family without touching the
+ * declaration that names it — which is exactly what `unicode-range` is for.
+ * CSS font matching then composes the two per codepoint: Latin still comes
+ * from the designed face, Cyrillic comes from Inter, and no component and no
+ * token knows this happened.
+ *
+ * Note the ranges do not overlap the designed faces' own: @fontsource ships a
+ * unicode-range on every subset it emits, and neither family emits a Cyrillic
+ * subset at all. There is no rule here that has to win a tie.
+ *
+ * ONE FACE, BOTH FAMILIES (D23), so Studio does not get a worse match than
+ * Aurora. The three weights are the three the designed faces are imported at,
+ * above.
+ *
+ * The range is the `cyrillic` subset of @fontsource/inter as its unicode.json
+ * declares it, copied from that file and from nowhere else. It includes U+0301
+ * (the combining acute) and U+2116 (No.). frontend/src/locales/font-coverage.test.ts
+ * reads these very declarations and refuses any codepoint of ru.json that they
+ * do not cover, so narrowing the range below turns a test red rather than a
+ * Russian screen blank.
+ *
+ * LOCAL, like the three faces above: the woff2 comes out of node_modules and
+ * Vite fingerprints it into dist/assets. No <link>, no CDN, no runtime fetch. */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/inter/files/inter-cyrillic-400-normal.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('@fontsource/inter/files/inter-cyrillic-500-normal.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/inter/files/inter-cyrillic-700-normal.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Figtree';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/inter/files/inter-cyrillic-400-normal.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Figtree';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('@fontsource/inter/files/inter-cyrillic-500-normal.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Figtree';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/inter/files/inter-cyrillic-700-normal.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

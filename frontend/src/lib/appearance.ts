@@ -1,17 +1,33 @@
-// Nexus — the appearance runtime: palette, theme and accent, applied to the
-// document exactly as design/README.md prescribes.
+// Nexus — the appearance runtime: palette, theme, accent and the document
+// language, applied to the document exactly as design/README.md prescribes.
 //
 //     document.documentElement.dataset.palette = palette;
 //     document.documentElement.classList.toggle('dark', isDark);
 //     document.documentElement.style.setProperty('--accent', color);
+//     document.documentElement.lang = language;
 //
 // # This module decides nothing and stores nothing
 //
-// The three values live in the `settings` table (D6) and are read and written
+// The four values live in the `settings` table (D6) and are read and written
 // through SettingsService. What is here is the DOM half: given a SettingsView,
 // put the document into the state it describes. It holds no state of its own,
 // which is what lets the store apply the service's answer — including after a
 // refusal — by calling the same function again.
+//
+// # Why <html lang> is written HERE and nowhere else (K11, D23)
+//
+// index.html hard-codes lang="en" and, until S3-06, nothing ever updated it:
+// the Russian UI was served as an English document, which is wrong for a screen
+// reader, for hyphenation and for the font matching that K11 is about. The
+// language is a persisted setting like the other three, this module already
+// receives the whole SettingsView, already runs once at boot and once per
+// settings write, and is already the only module in frontend/src that writes to
+// documentElement. So it gets one more line and NOT a second module.
+//
+// The static lang="en" in index.html stays as the pre-boot default, exactly as
+// data-palette="aurora" does. And the value is NOT derived from anything: both
+// i18next and this line take the same SettingsView field, so neither can be a
+// second opinion about what the language is.
 //
 // # No hex, ever
 //
@@ -29,6 +45,7 @@ export interface Appearance {
   palette: string;
   theme: string;
   accent: string;
+  language: string;
 }
 
 // The three presentation mappings, each written down ONCE.
@@ -94,6 +111,11 @@ export function applyAppearance(
 
   root.dataset.palette = appearance.palette;
   root.classList.toggle(DARK_CLASS, appearance.theme === DARK_THEME);
+
+  // The one writer of <html lang> in frontend/src (K11, D23). The value is
+  // carried through untouched, like `accent`: which languages exist is
+  // domain.Languages()' answer, and a mapping here would be a second one.
+  root.lang = appearance.language;
 
   if (appearance.accent === '') {
     // Clearing must be CLEARING: D6 says "" means "use the palette's own
