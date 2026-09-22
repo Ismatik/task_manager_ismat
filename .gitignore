@@ -3,6 +3,12 @@
 /frontend/dist/
 /nexus
 
+# `make shots` output: the PNG matrix, its throwaway XDG_DATA_HOME and
+# XDG_RUNTIME_DIR, and the per-state process logs. The target regenerates all of
+# it and wipes the directory first; S3-29's README grid picks frames out of it by
+# hand rather than the repository carrying them.
+/build/shots/
+
 # wails build caches the frontend install with a checksum file
 /frontend/package.json.md5
 

@@ -158,6 +158,110 @@ front-test: $(NODE_MODULES) ## Run the vitest suite in frontend/ (not a gate)
 	cd $(FRONTEND_DIR) && npm run test -- --run
 
 # ---------------------------------------------------------------------------
+# SHOTS — photograph the running binary. The FOURTH non-gate target, and the
+# one it is easiest to overclaim (S3-32, D31, E4).
+#
+# `make check` is still exactly the five gates. This joins cover, front-test and
+# guard: it launches a GUI, it takes seconds per state, and a picture is evidence
+# to be LOOKED AT rather than a pass/fail assertion about what is in it.
+#
+# ---------------------------------------------------------------------------
+# WHY THIS EXISTS AT ALL
+#
+# From Stage 0 to Stage 3 this project recorded every visual criterion as
+# "unverifiable here", on a premise that was false: xvfb-run, import and convert
+# are installed and always were. That premise sent three stages of visual checks
+# into the hand-owed pile without cause, and it is why nine defects waited for
+# the user's own laptop to find them.
+#
+# ---------------------------------------------------------------------------
+# GDK_BACKEND=x11 IS THE WHOLE TRICK, AND IT IS NOT THE OBVIOUS ONE
+#
+# This shell sets WAYLAND_DISPLAY=wayland-0. With it set, GTK prefers the
+# Wayland backend and the window opens ON THE REAL COMPOSITOR — leaving the Xvfb
+# display with NO WINDOW ON IT AT ALL while the process runs healthily and exits
+# 0. The capture is then one flat colour, which reads exactly like a working
+# capture of a broken application. So the target unsets WAYLAND_DISPLAY and
+# forces the X11 backend ITSELF, rather than asking whoever runs it to remember:
+#
+#     env -u WAYLAND_DISPLAY DISPLAY=:99 GDK_BACKEND=x11 LC_NUMERIC=C ./build/bin/nexus
+#
+# WEBKIT_DISABLE_DMABUF_RENDERER and WEBKIT_DISABLE_COMPOSITING_MODE ARE NOT THE
+# CAUSE AND ARE NOT SET HERE. An earlier version of this project's notes named
+# them as the requirement. That claim came from changing several variables in one
+# step and crediting the win to the wrong one. Re-measured against the same
+# running binary, changing ONE variable at a time:
+#
+#     configuration            windows on :99   distinct colours
+#     WEBKIT_DISABLE_* only          0                 1
+#     GDK_BACKEND=x11 only           2               961
+#     both                           2               961
+#
+# LC_NUMERIC=C is separate and IS still required — it is D12/K1, and without it
+# Wails emits the window background as "rgba(27, 38, 54, 0,0)" under a
+# comma-decimal locale and GTK discards it.
+#
+# ---------------------------------------------------------------------------
+# TWO CHECKS, IN THIS ORDER, AND NEITHER ALONE IS ENOUGH
+#
+#   1. Window presence — `xwininfo -root -children | grep nexus`. Cheap and
+#      specific: zero matches means no window was ever created ON THIS DISPLAY,
+#      which is a different failure from a window that painted blank and has a
+#      different fix (the backend, not the renderer).
+#   2. Blankness — `convert <png> -format "%k" info:` returning 1 means nothing
+#      painted.
+#
+# %k cannot tell you WHY it is 1, and a present window can still paint blank. A
+# harness with only one of them silently certifies blank images, which is worse
+# than having no harness. The script also exercises the %k floor on a PNG that is
+# blank by construction, on every run, because a check that lives behind another
+# check is a check nobody ever sees fire.
+#
+# ---------------------------------------------------------------------------
+# THE USER'S DATABASE IS NEVER OPENED
+#
+# internal/store/db.go honours an absolute XDG_DATA_HOME — that is the single
+# spelling of where the data lives — so the script exports it to a throwaway
+# directory under build/ and seeds there. XDG_RUNTIME_DIR goes to a throwaway
+# too, so the single-instance socket cannot collide with a Nexus the user is
+# actually running: it would hand the launch over, exit 0, and the capture would
+# silently photograph a bare root window.
+#
+# Seeding goes through this project's own pure-Go driver (there is no sqlite3
+# binary here, and a second writer to the schema would be a second spelling of
+# it). The seeding program is behind the `shots` build tag, so `go list ./...`
+# does not see it and $(GOPKGS) — gates 1 and 2, and the `make cover` bars — is
+# unaffected.
+#
+# ---------------------------------------------------------------------------
+# WHAT IT DOES NOT DO — Dev rule 20, and this list is the point
+#
+# Converted from "owed to the user's hardware" to "observable here": static paint
+# at a real 1024x768, in every palette, theme and language.
+#
+# NOT converted: the only assertions a PNG supports automatically are "not blank"
+# and "right size". "Nothing clips" is still a judgement made by looking; what
+# changed is who can look and how cheaply, not that a computer decides it.
+#
+# Out of reach entirely, because input cannot be driven and there is no window
+# manager: the ten-step keyboard run, the :focus-visible ring, the drag following
+# the pointer (K6), the empty-column drop (K15), the no-flash-of-wrong-background
+# FIRST frame (D12/K1 — a delayed capture cannot see it), and K7, the resize
+# defect the user actually reported, which is structurally unreachable here. All
+# of those stay on S3-09, and S3-09 is still the gate into block B.
+
+SHOTS_SCRIPT := scripts/shots/capture.sh
+
+.PHONY: shots
+shots: $(BIN_DIR)/nexus ## Capture the palette x theme x language matrix under Xvfb (not a gate)
+	@$(SHOTS_SCRIPT)
+
+# The binary is the subject, so it is a real prerequisite rather than a hope.
+# `build` is phony and always runs; this only builds when the binary is absent.
+$(BIN_DIR)/nexus:
+	@$(MAKE) --no-print-directory build
+
+# ---------------------------------------------------------------------------
 # GUARD — the mechanical rules check. Also NOT a gate.
 #
 # Stage 1 failed review three times on one defect: a rule written down twice and
@@ -337,6 +441,12 @@ guard: ## The mechanical rules greps over frontend/src (not a gate)
 		out=$$(git grep -n --untracked -E "\.focus\(|\[[\"']focus[\"']\]|autoFocus" -- frontend/src ':!$(GUARD_FOCUS_FILE)' ':!*.test.ts' ':!*.test.tsx' | keep); \
 		[ -z "$$out" ] || { fail "check 7, a focus move outside $(GUARD_FOCUS_FILE). D22: no focus move may scroll its ancestors, and that rule has ONE spelling - focusWithoutScrolling() in $(GUARD_FOCUS_FILE), which passes { preventScroll: true }. Call it instead; it accepts null, so a ref or a querySelector result needs no ?. of its own. React's autoFocus is the same defect wearing a JSX prop: it calls focus() with no options. Drop the prop and call the helper from an effect." "$$out"; }; \
 	fi; \
+	: 'check 8b is NOT filtered through GUARD_ALLOW_RE, and that is deliberate.'; \
+	: 'Every other check asks "is this forbidden thing present"; an allow-list can'; \
+	: 'legitimately say "here, on purpose". 8b asks "is this REQUIRED thing still'; \
+	: 'here", and an allow-list entry against a PRESENCE assertion would not permit'; \
+	: 'an exception, it would switch the assertion off — turning a deleted blur'; \
+	: 'green, which is exactly the regression 8b was added to catch (D32).'; \
 	for f in $(GUARD_BLUR_FILES); do \
 		git grep -n --untracked -E 'backdrop-blur-glass' -- $$f 2>/dev/null | grep -qvE '^[^:]*:[0-9]+:[[:space:]]*(//|\*|/\*)' || \
 			fail "check 8b, the blur is GONE from a file D19 puts it on. The allow-list is exhaustive in both directions: these three surfaces - the five columns and the two full-screen overlay scrims - are where Aurora's backdrop-filter lives, and a file that has lost it has lost the effect that makes Aurora Aurora with nothing else in the project to notice. Put backdrop-blur-glass back, or change D19 and this list together." "$$f"; \
