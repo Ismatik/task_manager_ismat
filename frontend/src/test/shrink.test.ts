@@ -1,6 +1,12 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { describeRefusals, PERMITTED_UTILITIES, shrinkRefusals } from './shrink';
+import {
+  describeRefusals,
+  judgeableElements,
+  PERMITTED_UTILITIES,
+  shrinkRefusals,
+} from './shrink';
 
 // Nexus — the audit's own test, and it exists for one claim in particular.
 //
@@ -26,7 +32,8 @@ import { describeRefusals, PERMITTED_UTILITIES, shrinkRefusals } from './shrink'
 /**
  * # The corpus, and how it was obtained
  *
- * Not from memory. A 266-candidate list covering every Tailwind 3.4 utility
+ * Not from memory. A 358-candidate list — 95 + 263, which is `WIDTH_OR_WRAPPING`
+ * and `NEUTRAL` below — covering every Tailwind 3.4 utility
  * family was compiled through postcss with THIS PROJECT'S tailwind config
  * (`design/tailwind.config.js`, so the colour names are the real token names),
  * `@tailwind components; @tailwind utilities;`, and every generated declaration
@@ -273,5 +280,120 @@ describe('shrinkRefusals', () => {
     // every caller asserts separately that it walked something. K8 got through a
     // green audit once; it will not be because the audit had nothing to look at.
     expect(shrinkRefusals(tree(''))).toEqual([]);
+  });
+});
+
+describe('judgeableElements', () => {
+  it('counts an element whose class the audit can read', () => {
+    const host = tree('<span class="min-w-0">Сегодня</span><p class="p-2">Готово</p>');
+    expect(judgeableElements(host)).toHaveLength(2);
+  });
+
+  it('does not count an SVG icon that carries no class at all', () => {
+    // THE reason this function exists (S3-33, D32). App.accept.test.tsx's
+    // non-vacuity guard used to filter on `element.className !== ''`, and on an
+    // SVGElement `className` is an `SVGAnimatedString` — an OBJECT — so the
+    // comparison is true for every icon whether or not it has a class. A screen
+    // of nothing but icons therefore satisfied a `> 20` that was there to prove
+    // the audit had something to judge.
+    const icons = tree('<svg></svg>'.repeat(25));
+
+    // What the old filter said about that fixture, kept as the record of the
+    // defect rather than as prose claiming it: twenty-five, i.e. green.
+    expect(
+      [...icons.querySelectorAll('*')].filter((element) => element.className !== ''),
+    ).toHaveLength(25);
+    // And what it says now.
+    expect(judgeableElements(icons)).toEqual([]);
+  });
+
+  it('still counts an icon that DOES carry a class, because that one is judgeable', () => {
+    // The fix must not overshoot. `getAttribute('class')` is a string on SVG
+    // and HTML alike, which is exactly why `classTokens` uses it — an icon
+    // wearing `shrink-0` is something the audit has a real opinion about.
+    expect(judgeableElements(tree('<svg class="h-4 w-4 shrink-0"></svg>'))).toHaveLength(1);
+  });
+});
+
+/**
+ * The corpus's own size, derived rather than remembered.
+ *
+ * `WIDTH_OR_WRAPPING` and `NEUTRAL` above are the corpus. Their lengths are the
+ * only authority on how big it is, and everything below compares prose against
+ * them rather than against a number somebody typed.
+ */
+const CORPUS_SIZE = WIDTH_OR_WRAPPING.length + NEUTRAL.length;
+
+/**
+ * Every file that describes the corpus in words, relative to the package root —
+ * which is where npm runs a script from, and therefore where `make front-test`
+ * puts us. Same technique and the same path convention as App.layout.test.tsx.
+ */
+const FILES_DESCRIBING_THE_CORPUS = [
+  'src/test/shrink.ts',
+  'src/test/shrink.test.ts',
+  'src/App.accept.test.tsx',
+];
+
+/**
+ * A claim of the form "<n>-utility" or "<n>-candidate", wherever it is made.
+ *
+ * Deliberately written without a digit of its own: a literal here would be a
+ * FOURTH place stating the corpus size, and the whole point of this block is
+ * that there are three, and that all three are read rather than trusted.
+ */
+const SIZE_CLAIM = /(\d+)-(?:utility|candidate)\b/g;
+
+describe('the corpus describes itself correctly', () => {
+  // D32, and the second time this project has paid for a number in prose.
+  //
+  // Before S3-33 the corpus size was stated in four places with THREE different
+  // values — 266, 266, 357 and 357 — and none of them was the truth, which is
+  // 358. Nothing was red, because nothing compared the sentences to the arrays.
+  // `e172592` was the first instance of exactly this and it is why the rule now
+  // exists: a number in a comment has no enforcement unless something reads it.
+
+  it('is not empty, so every comparison below means something', () => {
+    // The floor. A corpus that came out empty would make "every stated size
+    // matches" true of nothing at all.
+    expect(WIDTH_OR_WRAPPING.length, 'WIDTH_OR_WRAPPING is empty').toBeGreaterThan(0);
+    expect(NEUTRAL.length, 'NEUTRAL is empty').toBeGreaterThan(0);
+  });
+
+  it('lists each utility once, in one half, so its size is a real count', () => {
+    // A size claim is only meaningful if the arrays are sets: a duplicate makes
+    // `length` overstate the corpus, and an entry in both halves would be a
+    // utility classified two ways at once.
+    expect(new Set(WIDTH_OR_WRAPPING).size, 'WIDTH_OR_WRAPPING repeats itself').toBe(
+      WIDTH_OR_WRAPPING.length,
+    );
+    expect(new Set(NEUTRAL).size, 'NEUTRAL repeats itself').toBe(NEUTRAL.length);
+
+    const both = WIDTH_OR_WRAPPING.filter((utility) => NEUTRAL.includes(utility));
+    expect(both, `classified in both halves: ${both.join(' ')}`).toEqual([]);
+  });
+
+  it.each(FILES_DESCRIBING_THE_CORPUS)('%s states the size it actually is', (path) => {
+    const text = readFileSync(path, 'utf8');
+    expect(text.length, `${path} was read as empty`).toBeGreaterThan(0);
+
+    const claims = [...text.matchAll(SIZE_CLAIM)];
+    // Non-vacuity again, one level down: a file that stopped describing the
+    // corpus would otherwise pass this by having nothing to check.
+    expect(claims.length, `${path} no longer states a corpus size at all`).toBeGreaterThan(0);
+
+    for (const [claim, stated] of claims) {
+      expect(
+        Number(stated),
+        `${path} says "${claim}", but the corpus is ${CORPUS_SIZE} — ${WIDTH_OR_WRAPPING.length} width-or-wrapping plus ${NEUTRAL.length} neutral`,
+      ).toBe(CORPUS_SIZE);
+    }
+
+    // And the split, so a reader can re-count it in one command instead of
+    // trusting the total.
+    expect(
+      text,
+      `${path} does not show how the corpus size splits (${WIDTH_OR_WRAPPING.length} + ${NEUTRAL.length})`,
+    ).toContain(`${WIDTH_OR_WRAPPING.length} + ${NEUTRAL.length}`);
   });
 });

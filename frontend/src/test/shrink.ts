@@ -60,8 +60,9 @@
 //     member. An open `^text-` is precisely the bug described above.
 //
 // The lists below were checked against the installed tailwindcss 3.4.19 rather
-// than from memory: a 266-utility corpus was compiled with the project's own
-// config, every generated declaration read, and each utility labelled by whether
+// than from memory: a 358-utility corpus — 95 + 263, the two arrays committed
+// in shrink.test.ts — was compiled with the project's own config, every
+// generated declaration read, and each utility labelled by whether
 // it declares width / min-width / max-width / flex / flex-basis / flex-shrink /
 // flex-grow / flex-wrap / white-space / text-wrap / text-overflow /
 // overflow-wrap / word-break / hyphens / overflow / -webkit-line-clamp /
@@ -69,6 +70,15 @@
 // asserted against this module, so a too-broad IRRELEVANT entry fails a test by
 // name. `sr-only` (width: 1px), `line-clamp-*`, `aspect-*` and `size-*` were all
 // found that way and none of them was on the original list.
+//
+// THAT NUMBER IS ENFORCED, and it is worth saying why (S3-33, D32). It was
+// wrong here, and differently wrong in two other files, for a whole stage: the
+// corpus was described as 266, 266 and 357 utilities in three places and is 358
+// in fact. A number in prose has no enforcement, and this project has now paid
+// for that twice — `e172592` was the first. So shrink.test.ts reads this file,
+// finds every "<n>-utility" / "<n>-candidate" claim in it, and compares each
+// against `WIDTH_OR_WRAPPING.length + NEUTRAL.length`. Growing a list and
+// leaving this paragraph alone is now RED rather than merely untrue.
 //
 // # What it still cannot do
 //
@@ -354,6 +364,34 @@ export function shrinkRefusals(root: ParentNode): ShrinkRefusal[] {
   }
 
   return refusals;
+}
+
+/**
+ * Every element under `root` that this module could form an opinion about —
+ * i.e. that wears at least one class token.
+ *
+ * # Why this is exported rather than written at the call site (S3-33, D32)
+ *
+ * `shrinkRefusals` returning an empty array means either "nothing refuses to
+ * shrink" or "nothing was walked", and only one of those is good news. The
+ * caller in App.accept.test.tsx therefore guards it with a non-vacuity count —
+ * and that count was `element.className !== ''`, which is wrong on an
+ * `SVGElement`: `className` there is an `SVGAnimatedString`, an object, so it
+ * never equals the string `''` and EVERY ICON ON SCREEN counted toward the
+ * threshold. The guard read stronger than it was, over the audit K8 walked
+ * straight past.
+ *
+ * It reads the class the way `classTokens` does — `getAttribute('class')`,
+ * which is a string on HTML and SVG alike — so a class-less `<svg>` no longer
+ * inflates the count and an icon that DOES carry a class still counts, because
+ * the audit really can judge that one.
+ *
+ * It lives here, next to `classTokens`, because a copy of this filter at the
+ * call site would be the same rule in two places — which is the defect this
+ * project has failed review over more times than any other.
+ */
+export function judgeableElements(root: ParentNode): Element[] {
+  return [...root.querySelectorAll('*')].filter((element) => classTokens(element).length > 0);
 }
 
 /** The refusals as lines, for an assertion message that says where to look. */

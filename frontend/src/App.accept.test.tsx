@@ -16,7 +16,7 @@ import {
   undefinedProgress,
 } from './test/fakeClient';
 import { BOTH_LANGUAGES, renderIn, tabUntil } from './test/render';
-import { describeRefusals, shrinkRefusals } from './test/shrink';
+import { describeRefusals, judgeableElements, shrinkRefusals } from './test/shrink';
 
 // Nexus — Stage 2's ACCEPT criterion, as something a machine checks.
 //
@@ -381,7 +381,10 @@ describe('the ACCEPT criterion, driven by keys alone', () => {
 // judged a token only if it matched one of seven enumerated families, so
 // `text-nowrap` and `size-24` walked straight past it; shrink.test.ts now proves
 // the claim with utilities outside every family the module names, and with a
-// 357-utility corpus measured against the installed Tailwind.
+// 358-utility corpus — 95 + 263, the two arrays in shrink.test.ts — measured
+// against the installed Tailwind. That size is not remembered here: shrink.test.ts
+// reads this file and fails if the number in this paragraph stops matching the
+// arrays (S3-33, D32).
 //
 // An enumeration of the mechanisms that clip is a guess about the future.
 // An enumeration of the ones that cannot fails loudly instead of silently.
@@ -469,10 +472,14 @@ describe('the Russian audit', () => {
 
     // Non-vacuity first. A walk over a screen that never rendered would report
     // nothing wrong, and it was the SILENTLY EMPTY audit that let K8 through.
-    expect(
-      [...document.body.querySelectorAll('*')].filter((element) => element.className !== '').length,
-      'nothing was walked',
-    ).toBeGreaterThan(20);
+    //
+    // It counts only what the audit can actually judge (S3-33, D32). Until this
+    // ticket the filter was `element.className !== ''`, and on an SVGElement
+    // `className` is an `SVGAnimatedString` — an object, never equal to the
+    // string `''` — so every icon on screen counted toward the threshold and
+    // the guard read stronger than it was. `judgeableElements` asks the same
+    // question `shrinkRefusals` asks, in the same module, once.
+    expect(judgeableElements(document.body).length, 'nothing was walked').toBeGreaterThan(20);
 
     survey(document.body, 'the launch screen');
 
