@@ -82,10 +82,17 @@ var refuseExceptions = map[string]string{}
 //	grep -cE '^func \(a \*App\) [A-Z]'        app.go   # bound methods  -> 22
 //	grep -cE '^[[:space:]]*return refuse[([]' app.go   # refuse() sites -> 28
 //
-// D30 and S3-30 say "27 times across the 25 bound methods". Those two numbers
-// are reported rather than corrected here: PLAN.md and TASKS.md are the PM's,
-// and the argument they support — a rule applied by hand at every site, with
-// nothing forcing the next one — is unaffected by which two integers it is.
+// D30 and S3-30 now agree with those two commands: 28 call sites across 22
+// bound methods. They have said two other pairs, and both were grep artifacts,
+// which is exactly why the lines above are commands and not integers. "27
+// across 25" was `grep -c 'refuse('` — which counts the doc comment at
+// app.go:60 — over a raw `grep -cE '^func \(a \*App\)'`, which counts startup,
+// context and onIPCMessage: unexported, not bound by Wails, and returning no
+// error. "26 across 22" was that same grep minus the doc comment, still blind
+// to the generic instantiation form `refuse[[]service.HabitView](nil, err)` at
+// app.go:250 and app.go:259, which contains no `refuse(` substring at all.
+// Nothing here ever depended on the figure: the enumeration below reads
+// app.go's own text, so the prose was the only thing that could go stale.
 //
 // 20 is deliberately below 22, so that removing a method is not a spurious red,
 // and far above zero, so that a parse which silently matched nothing is a real
