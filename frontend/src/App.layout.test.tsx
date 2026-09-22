@@ -32,9 +32,10 @@ import { renderIn } from './test/render';
  *
  * Paths are relative to the package root, which is where npm runs a script from
  * and therefore where `make front-test` puts us. Why `node:fs` at all, and why
- * neither `?raw` nor `import.meta.url` can do this job, is written down once in
- * src/test/node-builtins.d.ts — both of those routes fail SILENTLY, which is the
- * dangerous kind.
+ * neither `?raw` nor `new URL(…, import.meta.url)` can do this job, is written
+ * down once in src/test/node-builtins.d.ts. The two fail differently and only
+ * one of them is the dangerous kind: `?raw` returns the EMPTY STRING and says
+ * nothing, while the URL route throws.
  */
 function sourceOf(relative: string): string {
   const text = readFileSync(relative, 'utf8');

@@ -241,6 +241,21 @@ GUARD_ALLOW_RE =
 # exactly that, and routing it through the helper would make it a test of the
 # helper instead of of the element. The rule is about the APPLICATION's focus
 # moves, and every one of those lives in a non-test module.
+#
+# `.focus(` IS NOT THE ONLY SPELLING, and the other two are greppped here too.
+#
+#   * React's `autoFocus` prop. React implements it by calling the DOM's own
+#     focus() with no options at all, so an <input autoFocus /> scrolls its
+#     ancestors exactly as the eleven hand-written calls did — and it is the
+#     spelling a form reaches for first. There are ZERO occurrences in
+#     frontend/src today; this is added while it is free, because block B is a
+#     detail panel and a quick-add form, which is precisely where it would land.
+#     The fix when it fires is `focusWithoutScrolling()` in an effect.
+#   * `el['focus']()`. Bracket notation reaches the same method and the `.focus(`
+#     pattern cannot see it.
+#
+# Both stay EXACT — a literal `autoFocus`, a literal bracketed 'focus' — so the
+# D17 standard for a guard check is unchanged: no judgement in the grep.
 GUARD_FOCUS_FILE = frontend/src/lib/focus.ts
 
 # ---------------------------------------------------------------------------
@@ -301,8 +316,8 @@ guard: ## The mechanical rules greps over frontend/src (not a gate)
 	if [ ! -s $(GUARD_FOCUS_FILE) ]; then \
 		fail "check 7, the focus module is missing or empty. Deleting it must not be a way to pass this check." "$(GUARD_FOCUS_FILE)"; \
 	else \
-		out=$$(git grep -n --untracked -E '\.focus\(' -- frontend/src ':!$(GUARD_FOCUS_FILE)' ':!*.test.ts' ':!*.test.tsx' | keep); \
-		[ -z "$$out" ] || { fail "check 7, a .focus( call outside $(GUARD_FOCUS_FILE). D22: no focus move may scroll its ancestors, and that rule has ONE spelling - focusWithoutScrolling() in $(GUARD_FOCUS_FILE), which passes { preventScroll: true }. Call it instead; it accepts null, so a ref or a querySelector result needs no ?. of its own." "$$out"; }; \
+		out=$$(git grep -n --untracked -E "\.focus\(|\[[\"']focus[\"']\]|autoFocus" -- frontend/src ':!$(GUARD_FOCUS_FILE)' ':!*.test.ts' ':!*.test.tsx' | keep); \
+		[ -z "$$out" ] || { fail "check 7, a focus move outside $(GUARD_FOCUS_FILE). D22: no focus move may scroll its ancestors, and that rule has ONE spelling - focusWithoutScrolling() in $(GUARD_FOCUS_FILE), which passes { preventScroll: true }. Call it instead; it accepts null, so a ref or a querySelector result needs no ?. of its own. React's autoFocus is the same defect wearing a JSX prop: it calls focus() with no options. Drop the prop and call the helper from an effect." "$$out"; }; \
 	fi; \
 	out=$$(git grep -n --untracked -E 'backdrop-blur-glass' -- frontend/src $(addprefix ':!',$(GUARD_BLUR_FILES)) | keep); \
 	[ -z "$$out" ] || { fail "check 8, backdrop-blur-glass outside D19's allow-list. backdrop-filter creates a compositing layer EVEN AT blur(0px); ~50 of them at once is what made a resize break the layout until the app was restarted (K7). The class belongs to the column and the two overlay scrims only: $(GUARD_BLUR_FILES). Keep the bg-surface / bg-elevated token - that is what makes a surface translucent under Aurora - and drop the filter." "$$out"; }; \
