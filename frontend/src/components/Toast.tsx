@@ -24,9 +24,16 @@ import type { Toast } from '../store';
 //
 // Colours come from the token names and nowhere else: `danger` because
 // design/README.md assigns danger to failure, `elevated`/`line`/`ink`/`muted`
-// for the surface. Aurora's surfaces are translucent, so the panel pairs
-// bg-elevated with backdrop-blur-glass; Studio's --blur is 0px, which makes the
-// same class a no-op there, and shadow-sm is what gives Studio its edge.
+// for the surface. Aurora's surfaces are translucent and `bg-elevated` is what
+// makes this one translucent; `shadow-sm` is what gives Studio its edge.
+//
+// It does NOT carry Aurora's backdrop-filter utility (K7, D19). A toast is
+// small, there can be several at once, and each one was its own compositing
+// layer — the same reason the card and the habit chip lost it. D19's allow-list
+// is the five columns and the two overlay scrims, and `make guard` check 8
+// enforces exactly that list with an exact grep, which is why the class name is
+// not written here. The translucency is unaffected: the token, not the filter,
+// is what lets the background through.
 
 export interface ToastListProps {
   toasts: readonly Toast[];
@@ -51,7 +58,7 @@ export function ToastList({ toasts, onDismiss }: ToastListProps) {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className="flex flex-col gap-2 rounded-md border border-danger bg-elevated p-3 text-ink shadow-sm backdrop-blur-glass"
+          className="flex flex-col gap-2 rounded-md border border-danger bg-elevated p-3 text-ink shadow-sm"
         >
           <p className="text-danger">{t('toast.error.title')}</p>
           {/* Russian runs ~30% wider than English, so the text wraps rather

@@ -40,6 +40,14 @@ import { Card } from './Card';
 // is translucent under Aurora, a no-op under Studio (whose `--blur` is 0px),
 // where `shadow-sm` supplies the edge instead.
 //
+// The column is one of only THREE files allowed to say `backdrop-blur-glass` at
+// all (K7, D19): here, and the two full-screen overlay scrims. It keeps it
+// because it is a LARGE surface and there are exactly five of them — the card,
+// the habit chip and the toast lost it because there is one per card, one per
+// habit and one per toast, which is how ~50 compositing layers came to exist at
+// once and how a resize came to break the layout until the app was restarted.
+// `make guard` check 8 is an exact grep over that allow-list.
+//
 // # The drag half (S2-17), and the two places it deliberately stops
 //
 // The column is a DROP TARGET (`useDroppable`, keyed by the status Go sent) and

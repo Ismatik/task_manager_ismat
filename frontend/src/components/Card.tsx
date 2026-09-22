@@ -61,10 +61,27 @@ import { TypeIcon } from './TypeIcon';
 // mechanisms somebody already thought of. A layout that only works in English is
 // a broken layout — and so is an audit that only knows the utilities we listed.
 //
-// Surfaces come from the tokens and there is no palette conditional anywhere:
-// `bg-surface` + `backdrop-blur-glass` is translucent under Aurora, and under
-// Studio `--blur` is 0px, which makes the same class a no-op while `shadow-sm`
-// — `none` in Aurora — gives Studio its edge. One markup, two palettes.
+// # Surfaces, and the blur this card NO LONGER carries (K7, D19)
+//
+// `bg-surface` and `shadow-sm`, and there is no palette conditional anywhere:
+// the token is translucent under Aurora and opaque under Studio, and `shadow-sm`
+// — `none` in Aurora — is what gives Studio its edge. One markup, two palettes,
+// unchanged.
+//
+// What is gone is the backdrop filter. Aurora's glass utility used to sit here
+// too, which meant ONE COMPOSITING LAYER PER CARD and ~50 on a full board;
+// resizing broke the layout and it did not recover without a restart. D19's
+// allow-list keeps the blur on the five columns and the two overlay scrims and
+// takes it off the card, the habit chip and the toast — seven surfaces instead
+// of fifty. The card is still translucent under Aurora, because the token is
+// what makes it translucent; it simply stops promoting itself.
+//
+// The evidence is the user's and it is a discriminating experiment rather than a
+// theory: with the layout stuck broken, switching the palette to Studio — whose
+// `--blur` is 0px — repaired it LIVE, with no restart. `make guard` check 8 is
+// what stops the utility quietly coming back here; it is an exact grep, and it
+// is the reason this paragraph does not spell the class out, exactly as the
+// keys-only ACCEPT test does not spell out the pointing device check 6 forbids.
 
 export interface CardProps {
   /** One NodeView from Board(), rendered exactly as it arrived. */
@@ -107,7 +124,7 @@ export function Card({ view, tabIndex, describedBy }: CardProps) {
       data-node-id={view.node.id}
       tabIndex={tabIndex}
       aria-describedby={describedBy}
-      className="flex flex-col gap-2 rounded-md border border-line bg-surface p-2 text-ink shadow-sm backdrop-blur-glass"
+      className="flex flex-col gap-2 rounded-md border border-line bg-surface p-2 text-ink shadow-sm"
     >
       <div className="flex min-w-0 items-start gap-2">
         <TypeIcon type={view.node.type} />

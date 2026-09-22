@@ -165,7 +165,7 @@ front-test: $(NODE_MODULES) ## Run the vitest suite in frontend/ (not a gate)
 # TypeScript, and the one defence that does not depend on a reviewer's attention
 # is a grep that runs every time. That is all this is.
 #
-# Seven checks. Checks 1, 2, 5, 6 and 7 are EXACT — they look for a literal that has
+# Eight checks. Checks 1, 2, 5, 6, 7 and 8 are EXACT — they look for a literal that has
 # no legitimate reason to exist in frontend/src, so a hit is a defect and there
 # is nothing to argue about. "Exact" also means CASE-INSENSITIVE where the
 # literal has more than one spelling: check 2 was `-E` and so read 'backlog' as
@@ -242,6 +242,32 @@ GUARD_ALLOW_RE =
 # helper instead of of the element. The rule is about the APPLICATION's focus
 # moves, and every one of those lives in a non-test module.
 GUARD_FOCUS_FILE = frontend/src/lib/focus.ts
+
+# ---------------------------------------------------------------------------
+# CHECK 8 — the blur allow-list (S3-04, D19).
+#
+# `backdrop-filter` creates its own compositing layer, EVEN AT blur(0px), and
+# before S3-04 the class was on every surface: one per card, one per habit chip,
+# one per toast — roughly fifty at once on a full board. Resizing broke the
+# layout and it did not recover without a restart.
+#
+# The cause is the user's own discriminating experiment rather than a theory:
+# with the layout stuck broken, switching the palette to Studio — whose `--blur`
+# is 0px — repaired it LIVE, with no restart. That is WebKitGTK compositing-layer
+# staleness, and it eliminates the competing scrollbar-hysteresis explanation,
+# which no palette switch could have touched.
+#
+# D19's allow-list is exhaustive and is exactly these three files: the five
+# column surfaces, and the two full-screen overlay scrims of which at most one is
+# on screen at a time. Seven blurred surfaces instead of fifty.
+#
+# EXACT, not a heuristic: a hit outside the list is a new compositing layer
+# nobody decided on. This is what stops the class quietly returning to the card
+# in a later stage, which is the only way this fix can be undone by accident.
+#
+# The three losers keep their bg-surface / bg-elevated tokens, so Aurora is still
+# translucent — the TOKEN is what lets the background through, not the filter.
+GUARD_BLUR_FILES = frontend/src/components/Column.tsx frontend/src/components/QuickAdd.tsx frontend/src/components/CommandPalette.tsx
 GUARD_ACCEPT_FILE = frontend/src/App.accept.test.tsx
 
 .PHONY: guard
@@ -278,6 +304,8 @@ guard: ## The mechanical rules greps over frontend/src (not a gate)
 		out=$$(git grep -n --untracked -E '\.focus\(' -- frontend/src ':!$(GUARD_FOCUS_FILE)' ':!*.test.ts' ':!*.test.tsx' | keep); \
 		[ -z "$$out" ] || { fail "check 7, a .focus( call outside $(GUARD_FOCUS_FILE). D22: no focus move may scroll its ancestors, and that rule has ONE spelling - focusWithoutScrolling() in $(GUARD_FOCUS_FILE), which passes { preventScroll: true }. Call it instead; it accepts null, so a ref or a querySelector result needs no ?. of its own." "$$out"; }; \
 	fi; \
+	out=$$(git grep -n --untracked -E 'backdrop-blur-glass' -- frontend/src $(addprefix ':!',$(GUARD_BLUR_FILES)) | keep); \
+	[ -z "$$out" ] || { fail "check 8, backdrop-blur-glass outside D19's allow-list. backdrop-filter creates a compositing layer EVEN AT blur(0px); ~50 of them at once is what made a resize break the layout until the app was restarted (K7). The class belongs to the column and the two overlay scrims only: $(GUARD_BLUR_FILES). Keep the bg-surface / bg-elevated token - that is what makes a surface translucent under Aurora - and drop the filter." "$$out"; }; \
 	echo; \
 	if [ $$status -ne 0 ]; then \
 		echo "make guard FAILED: see the FAIL block(s) above."; \
@@ -285,7 +313,7 @@ guard: ## The mechanical rules greps over frontend/src (not a gate)
 		echo "commented entry to GUARD_ALLOW_RE in the Makefile — never an inline suppression."; \
 		exit 1; \
 	fi; \
-	echo "make guard: all seven mechanical rules checks passed over frontend/src."
+	echo "make guard: all eight mechanical rules checks passed over frontend/src."
 
 .PHONY: dev
 dev: ## Run the app in live-development mode (needs GTK/WebKit)

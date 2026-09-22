@@ -66,13 +66,19 @@ export function HabitChip({ habit, tabIndex, onToggle }: HabitChipProps) {
       aria-checked={habit.checkedToday}
       tabIndex={tabIndex}
       onClick={() => onToggle(habit.node.id)}
+      // No backdrop filter either (K7, D19): Aurora's glass utility here was one
+      // compositing layer per habit, and D19's allow-list is the column and the
+      // two overlay scrims and nothing else. `bg-surface` stays, so the chip is
+      // still translucent under Aurora — only the filter went. `make guard`
+      // check 8 is an exact grep, which is why the class is not spelt out here.
+      //
       // No `shrink-0` on the chip (K8, D20). Its width is the width of a
       // habit's TITLE, which is localised, so holding it at max-content is the
       // same defect as the due badge's one level up: in Russian the strip's
       // chips would each demand their full title and push the row past the
       // window. `min-w-0` lets a chip give ground, and the strip's `flex-wrap`
       // means it moves to a new line before it ever has to.
-      className={`flex min-w-0 items-center gap-2 rounded-md border border-line bg-surface px-2 py-1 shadow-sm backdrop-blur-glass transition-colors duration-fast ${
+      className={`flex min-w-0 items-center gap-2 rounded-md border border-line bg-surface px-2 py-1 shadow-sm transition-colors duration-fast ${
         habit.scheduledToday ? 'text-ink' : 'text-muted'
       }`}
     >
